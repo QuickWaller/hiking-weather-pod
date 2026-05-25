@@ -14,8 +14,9 @@ Usage:
 
 Pixel packing: 4 pixels per byte, MSB = leftmost pixel.
 
-Optional third argument resizes before conversion:
-  python img_to_epd.py nijntje_normal.png NijntjeNormal 128
+Optional size arguments resize before conversion:
+  python img_to_epd.py input.png VarName 128        # square 128x128
+  python img_to_epd.py input.png VarName 200 160    # 200x160 (full sprite area)
 """
 
 import sys
@@ -37,10 +38,12 @@ def nearest_colour(r, g, b):
             best_dist, best = d, code
     return best
 
-def convert(png_path, var_name, target_size=None):
+def convert(png_path, var_name, target_w=None, target_h=None):
     img = Image.open(png_path).convert('RGB')
-    if target_size:
-        img = img.resize((target_size, target_size), Image.NEAREST)
+    if target_w and target_h:
+        img = img.resize((target_w, target_h), Image.NEAREST)
+    elif target_w:
+        img = img.resize((target_w, target_w), Image.NEAREST)
     w, h = img.size
     pixels = list(img.getdata())
 
@@ -87,8 +90,9 @@ static const uint8_t {var_name}[] = {{
     print(f'Written {total} bytes to {out_path}  ({w}x{h})')
 
 if __name__ == '__main__':
-    if len(sys.argv) not in (3, 4):
-        print('Usage: img_to_epd.py <input.png> <VarName> [size]')
+    if len(sys.argv) not in (3, 4, 5):
+        print('Usage: img_to_epd.py <input.png> <VarName> [width [height]]')
         sys.exit(1)
-    size = int(sys.argv[3]) if len(sys.argv) == 4 else None
-    convert(sys.argv[1], sys.argv[2], size)
+    w = int(sys.argv[3]) if len(sys.argv) >= 4 else None
+    h = int(sys.argv[4]) if len(sys.argv) == 5 else None
+    convert(sys.argv[1], sys.argv[2], w, h)

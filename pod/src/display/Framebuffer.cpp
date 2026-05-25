@@ -34,9 +34,10 @@ void Framebuffer::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, EPDColour
 }
 
 void Framebuffer::drawSprite(int16_t x, int16_t y, const uint8_t* sprite, uint16_t sw, uint16_t sh) {
+    uint16_t rowBytes = (sw + 3) / 4;
     for (uint16_t row = 0; row < sh; row++) {
         for (uint16_t col = 0; col < sw; col++) {
-            uint32_t idx   = (row * sw + col) / 4;
+            uint32_t idx   = row * rowBytes + col / 4;
             uint8_t  shift = (3 - (col % 4)) * 2;
             uint8_t  code  = (sprite[idx] >> shift) & 0x3;
             setPixel(x + col, y + row, static_cast<EPDColour>(code));
