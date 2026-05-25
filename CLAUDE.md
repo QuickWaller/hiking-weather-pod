@@ -26,28 +26,39 @@ timestamp|lat,lon|alt|temp|humidity|pressure|battery
 - Celestial calculations: simplified algorithms (±1-2 min accuracy) — NOT full Meeus
 
 ## Nijntje Display Character
-Main screen only. XBM bitmap, size TBD (~32×32 or 48×48px). 11 states:
+Main screen only (1.54" 4-colour display). Sprites are 2bpp XBM bitmaps rendered via Adafruit GFX drawBitmap(). Size TBD (~48×48px).
 
-**Activity-based:**
-- Normal (default)
-- Tired — walking without rest for extended period
-- Refreshed — after a rest
-- Climbing — significant elevation gain in progress
+### Primary states (priority order, highest first)
+1. **Connected** — syncing with cyberdeck (antenna ears)
+2. **Worried** — storm imminent (pairs with Red banner)
+3. **Climbing** — significant elevation gain in progress
+4. **Tired** — walking without rest for extended period
+5. **Sleepy** — between sunset and sunrise
+6. **Walking** — default
 
-**Environment-based (current conditions only, not forecasts):**
-- Hot — high temperature
-- Cold — low temperature (scarf, hunched)
-- Foggy — dew point spread <1.5°C + humidity >95%
-- Sleepy — between sunset and sunrise
+### Modifier (applied on top of primary state)
+One modifier maximum. Priority when multiple conditions true: **Foggy > Cold > Hot > None**
+- **Foggy** — dew point spread <1.5°C + humidity >95%
+- **Cold** — low temperature (scarf, hunched)
+- **Hot** — high temperature
+- **None** — default
 
-**System-based:**
-- Low battery — below threshold
-- Connected — syncing with cyberdeck (antenna ears)
-- Worried — imminent rain/storm only (thresholds TBD)
+### Banner (independent of Nijntje state)
+Rendered as a coloured bar at the bottom of the display.
+- **None** — white (no alert)
+- **Yellow** — rain possible
+- **Red** — storm coming (Worried state will almost always pair with this)
 
-Priority hierarchy and imminence/confidence thresholds: TBD.
-Weather states only trigger when imminent — not hours in advance.
-All icons (including emoji equivalents) rendered as XBM bitmaps via Adafruit GFX drawBitmap().
+### Sprite set (18 total)
+16 state+modifier combinations (Walking/Tired/Climbing/Sleepy × None/Hot/Cold/Foggy)
+plus 2 standalone: Worried, Connected.
+
+Raining and Snowing states are planned but sprites deferred.
+
+### Architecture
+`NijntjeState`, `NijntjeModifier`, `BannerState` evaluated independently.
+`NijntjeDisplay` struct bundles all three. `NijntjeRenderer` renders to Framebuffer.
+Sensor evaluation (thresholds, conditions) is not yet implemented.
 
 ## Weather Algorithm Ideas (Future Work)
 Not yet implemented. Candidate approaches:

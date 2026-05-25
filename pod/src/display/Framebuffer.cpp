@@ -1,8 +1,17 @@
 #include "Framebuffer.h"
 #include <string.h>
 
-Framebuffer::Framebuffer() {
+Framebuffer::Framebuffer() : Adafruit_GFX(EPD_WIDTH, EPD_HEIGHT) {
     fill(EPDColour::White);
+}
+
+void Framebuffer::drawPixel(int16_t x, int16_t y, uint16_t color) {
+    EPDColour c;
+    if      (color == EPD_GFX_BLACK)  c = EPDColour::Black;
+    else if (color == EPD_GFX_YELLOW) c = EPDColour::Yellow;
+    else if (color == EPD_GFX_RED)    c = EPDColour::Red;
+    else                              c = EPDColour::White;
+    setPixel(x, y, c);
 }
 
 void Framebuffer::setPixel(int16_t x, int16_t y, EPDColour colour) {

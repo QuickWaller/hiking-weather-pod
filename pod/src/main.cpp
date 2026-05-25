@@ -2,11 +2,8 @@
 #include "hal/ESP32DisplayHAL.h"
 #include "display/EPD1in54G.h"
 #include "display/Framebuffer.h"
-#include "sprites/NijntjeWalking.h"
-
-static constexpr uint16_t SPRITE_AREA_H = 160;
-static constexpr uint16_t STATUS_BAR_Y  = 160;
-static constexpr uint16_t STATUS_BAR_H  =  40;
+#include "nijntje/NijntjeState.h"
+#include "nijntje/NijntjeRenderer.h"
 
 static ESP32DisplayHAL hal(
     /* CS    */ 15,
@@ -24,11 +21,12 @@ void setup() {
     hal.begin();
     epd.init();
 
-    int16_t x = (EPD_WIDTH  - NijntjeWalking_WIDTH)  / 2;
-    int16_t y = (SPRITE_AREA_H - NijntjeWalking_HEIGHT) / 2;
-    fb.drawSprite(x, y, NijntjeWalking, NijntjeWalking_WIDTH, NijntjeWalking_HEIGHT);
-    fb.fillRect(0, STATUS_BAR_Y, EPD_WIDTH, STATUS_BAR_H, EPDColour::Red);
+    NijntjeDisplay d;
+    d.state    = NijntjeState::Climbing;
+    d.modifier = NijntjeModifier::Cold;
+    d.banner   = BannerState::Yellow;
 
+    NijntjeRenderer::render(fb, d);
     epd.display(fb.buffer());
     epd.sleep();
     Serial.println("Done.");

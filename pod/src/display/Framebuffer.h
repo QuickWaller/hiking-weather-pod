@@ -1,10 +1,19 @@
 #pragma once
 #include "EPD1in54G.h"
+#include <Adafruit_GFX.h>
 #include <stdint.h>
 
-class Framebuffer {
+// RGB565 constants mapping to EPD colours, for use with Adafruit GFX text methods
+static constexpr uint16_t EPD_GFX_BLACK  = 0x0000;
+static constexpr uint16_t EPD_GFX_WHITE  = 0xFFFF;
+static constexpr uint16_t EPD_GFX_YELLOW = 0xFFE0;
+static constexpr uint16_t EPD_GFX_RED    = 0xF800;
+
+class Framebuffer : public Adafruit_GFX {
 public:
     Framebuffer();
+
+    void drawPixel(int16_t x, int16_t y, uint16_t color) override;
 
     void fill(EPDColour colour);
     void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, EPDColour colour);
