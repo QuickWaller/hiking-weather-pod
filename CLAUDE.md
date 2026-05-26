@@ -29,31 +29,41 @@ timestamp|lat,lon|alt|temp|humidity|pressure|battery
 Main screen only (1.54" 4-colour display). Sprites are 2bpp XBM bitmaps rendered via Adafruit GFX drawBitmap(). Size TBD (~48×48px).
 
 ### Primary states (priority order, highest first)
-1. **Connected** — syncing with cyberdeck (antenna ears)
+1. **Connected** — syncing with cyberdeck
 2. **Worried** — storm imminent (pairs with Red banner)
 3. **Climbing** — significant elevation gain in progress
-4. **Tired** — walking without rest for extended period
-5. **Sleepy** — between sunset and sunrise
-6. **Walking** — default
+4. **Resting** — GPS stationary 20+ minutes during day
+5. **WalkingNight** — moving between sunset and sunrise
+6. **SleepyEvening** — stationary, early evening (campfire)
+7. **SleepingTent** — stationary, midnight to sunrise (tent)
+8. **Walking** — default
 
 ### Modifier (applied on top of primary state)
 One modifier maximum. Priority when multiple conditions true: **Foggy > Cold > Hot > None**
 - **Foggy** — dew point spread <1.5°C + humidity >95%
-- **Cold** — low temperature (scarf, hunched)
+- **Cold** — low temperature
 - **Hot** — high temperature
 - **None** — default
 
+Modifiers apply to: Walking, Climbing, Resting.
+No modifier variants for: WalkingNight, SleepyEvening, SleepingTent, Worried, Connected.
+
 ### Banner (independent of Nijntje state)
-Rendered as a coloured bar at the bottom of the display.
 - **None** — white (no alert)
 - **Yellow** — rain possible
 - **Red** — storm coming (Worried state will almost always pair with this)
 
-### Sprite set (18 total)
-16 state+modifier combinations (Walking/Tired/Climbing/Sleepy × None/Hot/Cold/Foggy)
-plus 2 standalone: Worried, Connected.
+### Sprite set (17 total)
+- Walking × 4 (None/Hot/Cold/Foggy)
+- Climbing × 4 (None/Hot/Cold/Foggy)
+- Resting × 4 (None/Hot/Cold/Foggy)
+- SleepyEvening × 1
+- SleepingTent × 1
+- WalkingNight × 1
+- Worried × 1
+- Connected × 1
 
-Raining and Snowing states are planned but sprites deferred.
+Tired state deferred — reskin of Walking later.
 
 ### Architecture
 `NijntjeState`, `NijntjeModifier`, `BannerState` evaluated independently.

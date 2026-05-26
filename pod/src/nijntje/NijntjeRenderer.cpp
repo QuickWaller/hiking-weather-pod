@@ -8,13 +8,15 @@ static constexpr int16_t BANNER_H      =  40;
 
 static const char* stateLabel(NijntjeState s) {
     switch (s) {
-        case NijntjeState::Walking:   return "WALKING";
-        case NijntjeState::Tired:     return "TIRED";
-        case NijntjeState::Climbing:  return "CLIMBING";
-        case NijntjeState::Sleepy:    return "SLEEPY";
-        case NijntjeState::Worried:   return "WORRIED";
-        case NijntjeState::Connected: return "CONNECTED";
-        default:                      return "?";
+        case NijntjeState::Walking:      return "WALKING";
+        case NijntjeState::WalkingNight: return "NIGHT";
+        case NijntjeState::Climbing:     return "CLIMBING";
+        case NijntjeState::Resting:      return "RESTING";
+        case NijntjeState::SleepyEvening:return "SLEEPY";
+        case NijntjeState::SleepingTent: return "SLEEPING";
+        case NijntjeState::Worried:      return "WORRIED";
+        case NijntjeState::Connected:    return "CONNECTED";
+        default:                         return "?";
     }
 }
 

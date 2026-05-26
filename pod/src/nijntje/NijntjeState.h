@@ -3,9 +3,11 @@
 
 enum class NijntjeState : uint8_t {
     Walking,
-    Tired,
+    WalkingNight,
     Climbing,
-    Sleepy,
+    Resting,
+    SleepyEvening,
+    SleepingTent,
     Worried,
     Connected
 };
@@ -17,10 +19,14 @@ enum class NijntjeModifier : uint8_t {
     Foggy
 };
 
+// Not all states use modifiers:
+// Walking, Climbing, Resting: all 4 modifiers
+// WalkingNight, SleepyEvening, SleepingTent, Worried, Connected: None only
+
 enum class BannerState : uint8_t {
     None,
-    Yellow,
-    Red
+    Yellow,  // rain possible
+    Red      // storm coming
 };
 
 struct NijntjeDisplay {
