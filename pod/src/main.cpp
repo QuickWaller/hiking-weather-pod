@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Fonts/FreeSansBold9pt7b.h>
+#include "debug.h"
 #include "hal/ESP32DisplayHAL.h"
 #include "display/EPD1in54G.h"
 #include "display/Framebuffer.h"
@@ -82,7 +83,7 @@ static const TestFrame frames[] = {
     { NijntjeWorried,       NijntjeWorried_WIDTH,       NijntjeWorried_HEIGHT,
       "WALKING",   "STORM INBOUND", "80% 6 HOURS",  EPD_GFX_RED    },
     { NijntjeConnected,     NijntjeConnected_WIDTH,     NijntjeConnected_HEIGHT,
-      "CONNECTED", "SYNCING",       "CYBERDECK",    EPD_GFX_YELLOW },
+      "SYNCING",   nullptr,         nullptr,        EPD_GFX_WHITE  },
 };
 static constexpr int NUM_FRAMES = sizeof(frames) / sizeof(frames[0]);
 
@@ -127,14 +128,17 @@ static void showFrame(const TestFrame& f) {
 
 void setup() {
     Serial.begin(115200);
+    LOG("boot");
     hal.begin();
+    LOG("HAL init done");
     epd.init();
+    LOG("EPD init done");
 }
 
 static int currentFrame = 0;
 
 void loop() {
-    Serial.printf("Frame %d/%d — %s\n", currentFrame + 1, NUM_FRAMES, frames[currentFrame].activity);
+    LOG("frame %d/%d — %s", currentFrame + 1, NUM_FRAMES, frames[currentFrame].activity);
     showFrame(frames[currentFrame]);
     currentFrame = (currentFrame + 1) % NUM_FRAMES;
     delay(5000);
