@@ -307,6 +307,192 @@ void test_buzzer_silent_when_no_storm() {
     TEST_ASSERT_FALSE(WeatherAlgorithm::shouldChirp(storm, 12));
 }
 
+// ── GpsBuffer edge cases ──────────────────────────────────────────────────────
+
+void test_gps_buffer_wraparound() {
+    GpsBuffer buf;
+    // Push 16 entries into 15-slot buffer — count must stay 15
+    for (int i = 0; i < 16; i++) {
+        GpsEntry e{};
+        e.lat = -41.0f; e.lon = 174.0f;
+        e.altitudeM = (float)i * 10.0f;
+        e.timestamp = 1000 + i * 60;
+        buf.push(e);
+    }
+    TEST_ASSERT_EQUAL(15, buf.count());
+    // Newest should be the last entry pushed (i=15)
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 150.0f, buf.newest().altitudeM);
+}
+
+void test_gps_alt_gain_descending_returns_zero() {
+    GpsBuffer buf;
+    for (int i = 0; i < 10; i++) {
+        GpsEntry e{};
+        e.lat = -41.0f; e.lon = 174.0f;
+        e.altitudeM = 500.0f - i * 20.0f;  // descending
+        e.timestamp = 1000 + i * 60;
+        buf.push(e);
+    }
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.0f, buf.averageAltGainPerMinute(10));
+}
+
+void test_gps_speed_maxentries_larger_than_count() {
+    GpsBuffer buf;
+    for (int i = 0; i < 5; i++) {
+        GpsEntry e{};
+        e.lat = -41.0f + i * 0.001f;
+        e.lon = 174.0f;
+        e.altitudeM = 100.0f;
+        e.timestamp = 1000 + i * 60;
+        buf.push(e);
+    }
+    // Requesting 10 entries but only 5 exist — should not crash, uses 5
+    float speed = buf.averageSpeedKph(10);
+    TEST_ASSERT_TRUE(speed >= 0.0f);
+}
+
+void test_gps_stationary_single_entry() {
+    GpsBuffer buf;
+    GpsEntry e{};
+    e.lat = -41.0f; e.lon = 174.0f;
+    e.altitudeM = 100.0f; e.timestamp = 1000;
+    buf.push(e);
+    TEST_ASSERT_TRUE(buf.isStationary(STATIONARY_RADIUS_M));
+}
+
+// ── ActivityDetector hour boundaries ─────────────────────────────────────────
+
+void test_activity_night_boundary_hour_20() {
+    GpsBuffer buf = makeWalkingBuffer();
+    SensorData s  = makeSensor(20);  // exactly at night boundary
+    TEST_ASSERT_EQUAL(NijntjeState::WalkingNight, ActivityDetector::detect(buf, s, 1600));
+}
+
+void test_activity_tent_boundary_hour_22() {
+    GpsBuffer buf = makeStationaryBuffer();
+    SensorData s  = makeSensor(22);  // exactly at tent boundary
+    TEST_ASSERT_EQUAL(NijntjeState::SleepingTent, ActivityDetector::detect(buf, s, 1600));
+}
+
+void test_activity_sleepy_evening_boundary_hour_19() {
+    GpsBuffer buf = makeStationaryBuffer();
+    SensorData s  = makeSensor(19);  // exactly at sleepy evening start
+    TEST_ASSERT_EQUAL(NijntjeState::SleepyEvening, ActivityDetector::detect(buf, s, 1600));
+}
+
+void test_activity_stale_exactly_at_threshold() {
+    // nowUnix - newest == GPS_STALE_THRESHOLD_S exactly → still fresh (uses >)
+    GpsBuffer buf = makeClimbingBuffer();
+    SensorData s  = makeSensor(12);
+    uint32_t atThreshold = 1540 + GPS_STALE_THRESHOLD_S;
+    TEST_ASSERT_EQUAL(NijntjeState::Climbing, ActivityDetector::detect(buf, s, atThreshold));
+}
+
+// ── WeatherBuffer edge cases ──────────────────────────────────────────────────
+
+void test_weather_buffer_wraparound() {
+    WeatherBuffer wb;
+    for (int i = 0; i < 290; i++) {
+        WeatherEntry e{};
+        e.timestamp = 1000 + i * 300;
+        e.pressureAdj = 1013.0f;
+        e.tempC = 15.0f; e.humidity = 60.0f;
+        e.lat = -41.0f; e.lon = 174.0f;
+        wb.push(e);
+    }
+    TEST_ASSERT_EQUAL(288, wb.count());
+}
+
+void test_prune_to_empty_then_push() {
+    // Prune all entries, then push one — count should be 1
+    WeatherBuffer wb = makeFallingPressureBuffer(-1.0f, 5, -41.29f, 174.78f);
+    wb.pruneByLocation(-36.85f, 174.76f, 50000.0f);  // Auckland vs Wellington ~490km
+    TEST_ASSERT_EQUAL(0, wb.count());
+    WeatherEntry e{};
+    e.timestamp = 99999; e.pressureAdj = 1013.0f;
+    e.tempC = 15.0f; e.humidity = 60.0f;
+    e.lat = -36.85f; e.lon = 174.76f;
+    wb.push(e);
+    TEST_ASSERT_EQUAL(1, wb.count());
+}
+
+void test_pressure_rate_fewer_entries_than_hours_requested() {
+    WeatherBuffer wb;
+    // Only 6 entries (30 min) but requesting 3-hour rate
+    for (int i = 0; i < 6; i++) {
+        WeatherEntry e{};
+        e.timestamp = 1000 + i * 300;
+        e.pressureAdj = 1013.0f - i * 0.5f;
+        e.tempC = 15.0f; e.humidity = 60.0f;
+        e.lat = -41.0f; e.lon = 174.0f;
+        wb.push(e);
+    }
+    // Should use all 6 entries, not crash
+    float rate = wb.pressureRateHpaPerHour(3);
+    TEST_ASSERT_TRUE(rate < 0.0f);  // pressure is falling
+}
+
+// ── WeatherAlgorithm — recovery bug fix ──────────────────────────────────────
+
+void test_weather_storm_clears_on_partial_recovery() {
+    // Pressure drops 12 hPa then recovers 7 hPa (58% recovery > 50%) with low confidence
+    WeatherPrediction rain{}, storm{};
+    storm.active           = true;
+    storm.predictedAt      = 100000;
+    storm.baselinePressure = 1013.0f;
+    storm.minPressure      = 1001.0f;  // trough: 12 hPa drop
+    storm.confidence       = 70;
+
+    // Fill with pressure at 1008 — 7/12 = 58% recovery, rising pressure = low confidence
+    WeatherBuffer wb;
+    for (int i = 0; i < 36; i++) {
+        WeatherEntry e{};
+        e.timestamp   = 100000 + i * 300;
+        e.pressureAdj = 1008.0f;
+        e.tempC = 15.0f; e.humidity = 50.0f;
+        e.lat = -41.0f; e.lon = 174.0f;
+        wb.push(e);
+    }
+    WeatherAlgorithm::update(wb, rain, storm, 200000);
+    TEST_ASSERT_FALSE(storm.active);
+}
+
+void test_weather_storm_stays_latched_low_confidence_no_recovery() {
+    // Low confidence but pressure still at trough — should NOT clear
+    WeatherPrediction rain{}, storm{};
+    storm.active           = true;
+    storm.predictedAt      = 100000;
+    storm.baselinePressure = 1013.0f;
+    storm.minPressure      = 1001.0f;
+    storm.confidence       = 70;
+
+    WeatherBuffer wb;
+    for (int i = 0; i < 36; i++) {
+        WeatherEntry e{};
+        e.timestamp   = 100000 + i * 300;
+        e.pressureAdj = 1002.0f;  // barely above trough — only 8% recovery
+        e.tempC = 15.0f; e.humidity = 50.0f;
+        e.lat = -41.0f; e.lon = 174.0f;
+        wb.push(e);
+    }
+    WeatherAlgorithm::update(wb, rain, storm, 200000);
+    TEST_ASSERT_TRUE(storm.active);
+}
+
+void test_weather_storm_stays_latched_when_buffer_empty() {
+    // Buffer location-pruned to empty — storm should stay latched, not clear
+    WeatherPrediction rain{}, storm{};
+    storm.active           = true;
+    storm.predictedAt      = 100000;
+    storm.baselinePressure = 1013.0f;
+    storm.minPressure      = 1001.0f;
+    storm.confidence       = 70;
+
+    WeatherBuffer wb;  // empty
+    WeatherAlgorithm::update(wb, rain, storm, 200000);
+    TEST_ASSERT_TRUE(storm.active);
+}
+
 int main() {
     UNITY_BEGIN();
 
@@ -331,6 +517,24 @@ int main() {
     RUN_TEST(test_prune_keeps_nearby_entries);
     RUN_TEST(test_prune_drops_distant_oldest_entries);
     RUN_TEST(test_prune_empty_buffer_safe);
+
+    RUN_TEST(test_gps_buffer_wraparound);
+    RUN_TEST(test_gps_alt_gain_descending_returns_zero);
+    RUN_TEST(test_gps_speed_maxentries_larger_than_count);
+    RUN_TEST(test_gps_stationary_single_entry);
+
+    RUN_TEST(test_activity_night_boundary_hour_20);
+    RUN_TEST(test_activity_tent_boundary_hour_22);
+    RUN_TEST(test_activity_sleepy_evening_boundary_hour_19);
+    RUN_TEST(test_activity_stale_exactly_at_threshold);
+
+    RUN_TEST(test_weather_buffer_wraparound);
+    RUN_TEST(test_prune_to_empty_then_push);
+    RUN_TEST(test_pressure_rate_fewer_entries_than_hours_requested);
+
+    RUN_TEST(test_weather_storm_clears_on_partial_recovery);
+    RUN_TEST(test_weather_storm_stays_latched_low_confidence_no_recovery);
+    RUN_TEST(test_weather_storm_stays_latched_when_buffer_empty);
 
     RUN_TEST(test_buzzer_silent_at_midnight);
     RUN_TEST(test_buzzer_silent_at_23h);

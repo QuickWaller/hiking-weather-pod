@@ -62,13 +62,18 @@ static void updatePrediction(WeatherPrediction& pred,
             pred.active           = true;
             pred.predictedAt      = nowUnix;
             pred.baselinePressure = maxPressure;
+            pred.minPressure      = currentPressure;
         }
     } else {
-        // Check clear condition: recovered >= 50% of drop AND confidence low
-        float drop     = pred.baselinePressure - currentPressure;
-        float recovery = (drop > 0.1f)
-                       ? (currentPressure - (pred.baselinePressure - drop)) / drop
-                       : 1.0f;
+        // Track the lowest pressure seen since trigger
+        if (currentPressure < pred.minPressure)
+            pred.minPressure = currentPressure;
+
+        // Recovery = how much pressure has risen from the trough, relative to total drop
+        float totalDrop = pred.baselinePressure - pred.minPressure;
+        float recovery  = (totalDrop > 0.1f)
+                        ? (currentPressure - pred.minPressure) / totalDrop
+                        : 1.0f;
         if (confidence < clearThreshold && recovery >= PRESSURE_RECOVERY_RATIO) {
             pred.active = false;
             return;
