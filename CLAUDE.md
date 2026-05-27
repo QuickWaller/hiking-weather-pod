@@ -16,9 +16,31 @@ README.md - Root overview
 ## Data Format
 Pipe-delimited CSV, logged every 5 minutes:
 ```
-timestamp|lat,lon|alt|temp|humidity|pressure|battery
-2026-05-25T14:32:42|-41.2865,172.1043|847|12.3|65|980.2|64
+timestamp|lat,lon|alt|temp|humidity|pressure_raw|pressure_adj|battery|storm_conf|rain_conf|storm_active|rain_active|pressure_rate|activity|state|modifier|banner|gps_ms|free_heap
+2026-05-25T14:32:42|-41.2865,172.1043|847|12.3|65|980.2|978.1|64|58|42|0|0|-1.2|R|X|N|R|3240|198432
 ```
+
+| Field | Type | Notes |
+|---|---|---|
+| timestamp | ISO 8601 | DS3231 |
+| lat,lon | float,float | degrees |
+| alt | int | metres |
+| temp | float | °C, BME280 |
+| humidity | int | %, BME280 |
+| pressure_raw | float | hPa, BME280 as-read |
+| pressure_adj | float | hPa, altitude-adjusted |
+| battery | int | % estimate via ADC |
+| storm_conf | int | 0–100, algorithm output |
+| rain_conf | int | 0–100, algorithm output |
+| storm_active | 0/1 | prediction latched |
+| rain_active | 0/1 | prediction latched |
+| pressure_rate | float | hPa/hr over last 3hr (negative = falling) |
+| activity | char | C/W/N/R/E/T = Climbing/Walking/Night/Resting/sEepy/Tent |
+| state | char | C/W/N/R/E/T/X/K = above + Worried/connected |
+| modifier | char | N/H/C/F = None/Hot/Cold/Foggy |
+| banner | char | N/Y/R = None/Yellow/Red |
+| gps_ms | int | ms to get GPS fix (8000 = timeout) |
+| free_heap | int | bytes of free RAM at cycle time |
 
 ## Shared Technical Decisions
 - UART between pod and cyberdeck: 115200 baud, GX16-5 connector

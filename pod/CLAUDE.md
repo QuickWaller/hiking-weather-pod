@@ -56,7 +56,9 @@ BME280 is in an external waterproof probe, not inside the enclosure. Humidity re
 - Pack-away mode: deferred — no accelerometer on board
 
 ## Flash Storage
-LittleFS on RP2350 onboard 2MB flash. No SD card. Log entries ~50 bytes each, ~14KB/day at 5-min intervals. Tide tables ~110-150KB baked into firmware. Plenty of headroom.
+LittleFS on RP2350 onboard 2MB flash. No SD card. Log entries ~100 bytes each, ~29KB/day at 5-min intervals. Tide tables ~110-150KB baked into firmware. Plenty of headroom.
+
+See root CLAUDE.md for full log format — includes sensor data, algorithm outputs (confidence, active state, pressure rate), display state (activity/state/modifier/banner), and MCU diagnostics (gps_ms, free_heap).
 
 ## Display Graphics Stack
 1. GxEPD2 library (SSD1680 driver)
