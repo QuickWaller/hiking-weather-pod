@@ -91,7 +91,7 @@ Tired state deferred — reskin of Walking later.
 ### Architecture
 `NijntjeState`, `NijntjeModifier`, `BannerState` evaluated independently.
 `NijntjeDisplay` struct bundles all three. `NijntjeRenderer` renders to Framebuffer.
-Sensor evaluation (thresholds, conditions) is not yet implemented.
+`NijntjeEvaluator::evaluate()` takes `SensorData`, `NijntjeState` (from ActivityDetector), and both `WeatherPrediction` structs.
 
 ## Wake Cycle
 
@@ -110,26 +110,26 @@ MCU wakes every 1 minute via RTC alarm.
 - Run weather algorithm → update rain + storm predictions
 - Write log entry to flash
 
-**Log format:**
-```
-timestamp|lat,lon|alt|temp|humidity|pressure_raw|pressure_adj|battery
-2026-05-25T14:32:42|-41.2865,172.1043|847|12.3|65|980.2|978.1|64
-```
+**Log format:** see Data Format section above.
 
 ## RAM Buffers
 
-All buffers survive DORMANT sleep. Seeded from flash on boot.
+All buffers survive DORMANT sleep. Seeded from flash on boot (time-windowed — entries older than the buffer window are discarded).
 
 | Buffer | Struct | Entries | Size |
 |---|---|---|---|
-| GPS history | `GpsEntry` {lat,lon,alt,timestamp} | 30 (30 min) | 480 bytes |
-| Weather history | `WeatherEntry` {timestamp,pressureAdj,tempC,humidity} | 288 (24 hrs) | 4.6KB |
+| GPS history | `GpsEntry` {lat,lon,alt,timestamp} | 15 (15 min) | 240 bytes |
+| Weather history | `WeatherEntry` {timestamp,pressureAdj,tempC,humidity,lat,lon} | 288 (24 hrs) | 6.9KB |
 | WeatherPrediction × 2 | rain + storm | — | ~40 bytes |
-| **Total** | | | **~5KB** |
+| **Total** | | | **~7.2KB** |
+
+`WeatherPrediction` structs are also persisted to flash on every 5-min cycle and reloaded on boot — storm/rain warnings survive power cycles.
 
 ## Activity Detection
 
-Runs every 1-min cycle from `GpsBuffer` (last 30 entries).
+Runs every 1-min cycle from `GpsBuffer` (last 15 entries). Takes `nowUnix` to detect stale data.
+
+**Staleness check first:** if newest GPS entry is older than `GPS_STALE_THRESHOLD_S` (180s = 3 missed fixes), skip movement detection entirely and fall through to stationary logic.
 
 Priority order:
 1. **Climbing** — avg altitude gain > `CLIMBING_ALT_GAIN_M_PER_MIN` over last 10 entries
@@ -138,6 +138,10 @@ Priority order:
 4. **SleepyEvening** — stationary, `SLEEPY_EVENING_HOUR_START`–`SLEEPY_EVENING_HOUR_END`
 5. **Resting** — stationary (default daytime)
 
+Stationary = all buffer entries within `STATIONARY_RADIUS_M` (25m) of newest fix. 25m chosen to accommodate GPS drift under bush/valley conditions.
+
+Averaging is windowed — climbing uses last `CLIMBING_MIN_ENTRIES` (10) entries only, not the full buffer. Minimum entry count gate prevents false detection on partial buffers.
+
 Modifier (Walking/Climbing/Resting only — not Night/Evening/Tent/Worried/Connected):
 - **Foggy**: dew point spread < `FOG_DEWPOINT_SPREAD_C` AND humidity > `FOG_HUMIDITY_PCT`
 - **Cold**: temp < `COLD_TEMP_C`
@@ -145,7 +149,9 @@ Modifier (Walking/Climbing/Resting only — not Night/Evening/Tent/Worried/Conne
 
 ## Weather Prediction
 
-Runs every 5-min cycle from `WeatherBuffer` (last 288 entries).
+Runs every 5-min cycle from `WeatherBuffer` (last 288 entries, 24 hours).
+
+**Location pruning (before each update):** oldest entries more than `WEATHER_LOCATION_RADIUS_M` (50km) from current GPS position are dropped. Handles driving between locations — entries from a different pressure regime are discarded, keeping only locally relevant history. Uses lat/lon stored in each `WeatherEntry`.
 
 Two parallel predictions — same latch/clear logic, different weights:
 
@@ -187,14 +193,10 @@ struct WeatherPrediction {
 - **Quiet hours:** 22:00–07:00, no chirps
 - **Severe storm override:** if `storm.confidence >= SEVERE_STORM_THRESHOLD` (85%), chirp regardless of hour
 
-## Weather Algorithm Ideas (Future Work)
-Not yet implemented. Candidate approaches:
-1. Linear regression on altitude-adjusted pressure (circular buffer, last 3-6 hours)
-2. Zambretti algorithm — sea-level pressure + trend → forecast category lookup table
-3. Rate → imminence lookup (empirical: >6 hPa/3hr falling = <2h to event)
-4. Humidity trend as confidence modifier
+## Weather Algorithm Notes
+
+Implemented. Weights tunable via `config.h` — intended to be adjusted against real hike log data.
 
 Realistic accuracy: 70-80% for rain/no-rain. Time-of-arrival ±2-4 hours.
-Algorithm weightings are TBD — designed to be tunable over time.
 NZ Southern Alps orographic effects worth considering (GPS position could infer which side of ranges).
 Always present predictions with confidence percentages, never as certainties.

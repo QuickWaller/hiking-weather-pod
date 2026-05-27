@@ -47,6 +47,10 @@ Both displays share the SPI bus (GP2/GP3). Each has its own CS, DC, RST, BUSY.
 BME280 is in an external waterproof probe, not inside the enclosure. Humidity readings are valid.
 
 ## Power Design
+- **Battery:** 18650 2600mAh connected directly to RP2350-Zero VSYS (3.0–4.2V, within 1.8–5.5V input range)
+- **Charging:** TP4056 USB-C module — charges 18650 via IP67 USB-C bulkhead
+- **Battery monitoring:** voltage divider on VSYS → GP29 (ADC), reported as % estimate in logs
+- No UPS HAT — TP4056 + direct VSYS connection is sufficient
 - GPS duty-cycled: on ~5s per minute for hot start fix (~4mA average vs 45mA continuous)
   - GPS VBAT pin always connected (maintains almanac/time at microamps)
   - GPS main power switched via GPIO-controlled transistor/MOSFET
