@@ -14,16 +14,17 @@ README.md - Root overview
 ```
 
 ## Data Format
-Pipe-delimited CSV, logged every 5 minutes:
+CSV, logged every 5 minutes:
 ```
-timestamp|lat,lon|alt|temp|humidity|pressure_raw|pressure_adj|battery|storm_conf|rain_conf|storm_active|rain_active|pressure_rate|activity|state|modifier|banner|gps_ms|free_heap
-2026-05-25T14:32:42|-41.2865,172.1043|847|12.3|65|980.2|978.1|64|58|42|0|0|-1.2|R|X|N|R|3240|198432
+timestamp,lat,lon,alt,temp,humidity,pressure_raw,pressure_adj,battery,storm_conf,rain_conf,storm_active,rain_active,pressure_rate,activity,state,modifier,banner,gps_ms,free_heap
+2026-05-25T14:32:42,-41.2865,172.1043,847,12.3,65,980.2,978.1,64,58,42,0,0,-1.2,R,X,N,R,3240,198432
 ```
 
 | Field | Type | Notes |
 |---|---|---|
 | timestamp | ISO 8601 | DS3231 |
-| lat,lon | float,float | degrees |
+| lat | float | degrees |
+| lon | float | degrees |
 | alt | int | metres |
 | temp | float | °C, BME280 |
 | humidity | int | %, BME280 |
