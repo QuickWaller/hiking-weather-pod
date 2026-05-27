@@ -34,16 +34,15 @@ C++ with Arduino framework via PlatformIO. Not C#.
 | GP13 | UART0 RX (GPS) |
 | GP14 | Buzzer (PWM) |
 | GP9 | GX16 connection detect |
-| GP26 | I2C1 SDA (BME280, DS3231, LSM303AGR, AS3935) |
-| GP27 | I2C1 SCL (BME280, DS3231, LSM303AGR, AS3935) |
+| GP26 | I2C1 SDA (BME280, DS3231) |
+| GP27 | I2C1 SCL (BME280, DS3231) |
 | GP28 | Rotary position switch (ADC, voltage divider) |
 | GP29 | Spare (ADC) |
 
 Both displays share the SPI bus (GP2/GP3). Each has its own CS, DC, RST, BUSY.
 
 ## Additional Sensors (Provisional)
-- **LSM303AGR** (accel + mag, I2C): accelerometer for pack-away detection + activity analysis; magnetometer for tilt-compensated compass. Must be physically separated from battery and TP4056 to reduce magnetic interference. Calibration routine required. Confirm during hardware build.
-- **AS3935** (lightning detector, I2C): detects RF from lightning up to 40km. Works inside plastic enclosure — no external mounting needed. On the table, not yet confirmed.
+- **AS3935** (lightning detector, I2C): detects RF from lightning up to 40km. Works inside plastic enclosure — no external mounting needed. Not yet confirmed.
 
 BME280 is in an external waterproof probe, not inside the enclosure. Humidity readings are valid.
 
@@ -54,7 +53,7 @@ BME280 is in an external waterproof probe, not inside the enclosure. Humidity re
 - BME280: forced mode — read then sleep immediately
 - RP2350: DORMANT/sleep between readings, wake on RTC alarm
 - Estimated average draw: ~13mA → 8+ days on 2600mAh (target was 5 days)
-- Pack-away mode (future): detect pod stashed in bag via accelerometer, slow/stop GPS cycling
+- Pack-away mode: deferred — no accelerometer on board
 
 ## Flash Storage
 LittleFS on RP2350 onboard 2MB flash. No SD card. Log entries ~50 bytes each, ~14KB/day at 5-min intervals. Tide tables ~110-150KB baked into firmware. Plenty of headroom.

@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-static constexpr int GPS_BUFFER_SIZE = 30;
+static constexpr int GPS_BUFFER_SIZE = 15;
 
 struct GpsEntry {
     float    lat;
@@ -17,8 +17,8 @@ public:
     void  push(const GpsEntry& e);
     int   count() const;
 
-    float averageSpeedKph() const;
-    float averageAltGainPerMinute() const;
+    float averageSpeedKph(int maxEntries) const;
+    float averageAltGainPerMinute(int maxEntries) const;
     bool  isStationary(float radiusM) const;
 
     void  seedFromFlash();  // stub — implemented when LittleFS logging exists

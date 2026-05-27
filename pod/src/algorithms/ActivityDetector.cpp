@@ -6,14 +6,17 @@ static bool isNight(uint8_t hour) {
     return hour >= 20 || hour < 6;
 }
 
-NijntjeState ActivityDetector::detect(const GpsBuffer& gps, const SensorData& s) {
-    if (gps.count() >= CLIMBING_MIN_ENTRIES) {
-        if (gps.averageAltGainPerMinute() >= CLIMBING_ALT_GAIN_M_PER_MIN)
+NijntjeState ActivityDetector::detect(const GpsBuffer& gps, const SensorData& s, uint32_t nowUnix) {
+    bool gpsStale = (gps.count() == 0) ||
+                    (nowUnix - gps.newest().timestamp > GPS_STALE_THRESHOLD_S);
+
+    if (!gpsStale && gps.count() >= CLIMBING_MIN_ENTRIES) {
+        if (gps.averageAltGainPerMinute(CLIMBING_MIN_ENTRIES) >= CLIMBING_ALT_GAIN_M_PER_MIN)
             return NijntjeState::Climbing;
     }
 
-    if (gps.count() >= WALKING_MIN_ENTRIES) {
-        if (gps.averageSpeedKph() >= WALKING_SPEED_KPH) {
+    if (!gpsStale && gps.count() >= WALKING_MIN_ENTRIES) {
+        if (gps.averageSpeedKph(WALKING_MIN_ENTRIES) >= WALKING_SPEED_KPH) {
             return isNight(s.hour) ? NijntjeState::WalkingNight : NijntjeState::Walking;
         }
     }

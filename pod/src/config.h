@@ -6,7 +6,7 @@ static constexpr float   CLIMBING_ALT_GAIN_M_PER_MIN = 10.0f;  // m/min sustaine
 static constexpr int     CLIMBING_MIN_ENTRIES         = 10;     // entries (~10 min)
 static constexpr float   WALKING_SPEED_KPH            = 2.0f;   // min avg speed
 static constexpr int     WALKING_MIN_ENTRIES          = 10;
-static constexpr float   STATIONARY_RADIUS_M          = 10.0f;  // GPS noise tolerance
+static constexpr float   STATIONARY_RADIUS_M          = 25.0f;  // GPS noise tolerance (bush/valley)
 
 // ── Modifier thresholds ───────────────────────────────────────────────────────
 static constexpr float   HOT_TEMP_C           = 25.0f;
@@ -42,6 +42,12 @@ static constexpr float RAIN_W_TEMP_DROP       = 0.05f;
 // ── Buzzer ────────────────────────────────────────────────────────────────────
 static constexpr uint8_t QUIET_HOUR_START = 22;
 static constexpr uint8_t QUIET_HOUR_END   =  7;
+
+// ── Location-based weather pruning ───────────────────────────────────────────
+static constexpr float WEATHER_LOCATION_RADIUS_M = 50000.0f;  // 50km
+
+// ── GPS staleness ─────────────────────────────────────────────────────────────
+static constexpr uint32_t GPS_STALE_THRESHOLD_S = 180;  // 3 missed fixes → treat as no data
 
 // ── Timing ────────────────────────────────────────────────────────────────────
 static constexpr int     FULL_CYCLE_INTERVAL = 5;     // every Nth 1-min wake = full cycle

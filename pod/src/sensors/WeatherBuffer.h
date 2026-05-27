@@ -8,6 +8,8 @@ struct WeatherEntry {
     float    pressureAdj;  // hPa, altitude-adjusted
     float    tempC;
     float    humidity;
+    float    lat;
+    float    lon;
 };
 
 class WeatherBuffer {
@@ -28,6 +30,9 @@ public:
 
     // Temperature trend over last 3 hours (negative = falling)
     float tempTrend() const;
+
+    // Drop oldest entries that are more than maxDistM from current position
+    void  pruneByLocation(float lat, float lon, float maxDistM);
 
     void  seedFromFlash();  // stub
 

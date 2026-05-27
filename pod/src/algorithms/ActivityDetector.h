@@ -4,5 +4,5 @@
 #include "nijntje/NijntjeState.h"
 
 namespace ActivityDetector {
-    NijntjeState detect(const GpsBuffer& gps, const SensorData& s);
+    NijntjeState detect(const GpsBuffer& gps, const SensorData& s, uint32_t nowUnix);
 }

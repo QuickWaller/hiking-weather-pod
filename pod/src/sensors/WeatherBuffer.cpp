@@ -63,6 +63,15 @@ float WeatherBuffer::tempTrend() const {
     return MathUtils::linearRegressionSlope(values, n);
 }
 
+void WeatherBuffer::pruneByLocation(float lat, float lon, float maxDistM) {
+    while (_count > 0) {
+        const WeatherEntry& old = entryAt(_count - 1);
+        float dist = MathUtils::haversineM(lat, lon, old.lat, old.lon);
+        if (dist <= maxDistM) break;
+        _count--;
+    }
+}
+
 void WeatherBuffer::seedFromFlash() {
     // stub — populate buffer from LittleFS log on boot
 }
