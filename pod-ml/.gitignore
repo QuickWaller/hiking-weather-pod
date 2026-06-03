@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+build/
+dist/
+
+# Environments / secrets
+.env
+.cdsapirc
+# Earthdata / OPeNDAP auth artifacts (auto-created by earthaccess/netCDF in the cwd)
+.dodsrc
+.urs_cookies
+_netrc
+.netrc
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Data — large gridded files, never commit
+data/raw/
+data/processed/
+*.nc
+*.nc4
+*.hdf5
+*.HDF5
+*.grib
+
+# Compiled feature-parity shared lib
+*.so
+*.dll
+*.pyd
+*.o
+
+# Plots / scratch outputs
+outputs/

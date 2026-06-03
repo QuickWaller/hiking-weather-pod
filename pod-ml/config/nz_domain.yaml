@@ -1,0 +1,86 @@
+# NZ domain + data config.
+# NOTE: the `variables` lists below are CANDIDATES based on the design assumptions.
+# Step 2 (data acquisition) must VERIFY these names exist in the actual dataset catalogues
+# before we trust them — this file gets corrected once we've inspected real downloads.
+
+domain:
+  # NZ mainland bounding box. CDS "area" order is [North, West, South, East].
+  north: -34.0
+  west: 166.0
+  south: -47.5
+  east: 179.0
+
+time:
+  # Full training range (per validation plan: train 2010-2022 / val 2023 / test 2024).
+  train_start: "2010-01-01"
+  train_end: "2022-12-31"
+  val_year: 2023
+  test_year: 2024
+  # We ACQUIRE from 1991 (covers the recent-climatology reference below + the training-window ablation),
+  # but the model's training window is decided empirically at step 5, not assumed. ERA5 is homogeneous
+  # across the whole post-1979 satellite era, so there's no data-quality reason to trim old years —
+  # only a climate-regime one, which the ablation tests directly. See docs/02 "Climate non-stationarity".
+  acquisition_start: "1991-01-01"
+  # Candidate training windows for the step-5 ablation (all evaluated on val 2023 / test 2024):
+  ablation_train_windows: ["2015-01-01", "2010-01-01", "2000-01-01", "1991-01-01"]
+  # Tiny slice pulled FIRST in step 2 just to verify variable catalogues (cheap).
+  verification_slice:
+    start: "2022-06-01"
+    end: "2022-06-07"
+
+era5_land:
+  # v1 (point-based skill probe): TIME-SERIES product — full hourly series at a single lat/lon.
+  # Request schema differs from gridded: location={longitude,latitude}, date=["YYYY-MM-DD/YYYY-MM-DD"].
+  timeseries_dataset: "reanalysis-era5-land-timeseries"
+  # v2 (gridded zoning): full spatial field, same underlying values. Switch to this for SKATER.
+  gridded_dataset: "reanalysis-era5-land"
+  # ERA5-Land gives SURFACE pressure, not MSLP — we reduce to sea level ourselves via elevation.
+  # 2m dewpoint → relative humidity derived. (NB: CDS "Show API request code" omits surface_pressure —
+  # include it explicitly, it's the tendency backbone.) Verify all names against the real download.
+  candidate_variables:
+    - surface_pressure
+    - 2m_temperature
+    - 2m_dewpoint_temperature
+    - 10m_u_component_of_wind
+    - 10m_v_component_of_wind
+    - total_precipitation
+  static_needed:
+    - geopotential_or_orography   # for elevation → sea-level pressure reduction; confirm source
+
+# Representative NZ land points spanning climate regimes — for the v1 point-based skill probe.
+# (ERA5-Land is land-only; these are land cells. Elevations approximate, for MSLP reduction.)
+probe_points:
+  # Coastal Hokitika cell (-42.7,171.0) is ocean-masked in ERA5-Land → moved inland to valid foothills cell.
+  hokitika_westcoast: {lat: -42.70, lon: 171.10, elevation_m: 300, regime: "wet orographic westerly (West Coast foothills)"}
+  christchurch_lee:   {lat: -43.53, lon: 172.55, elevation_m: 20,  regime: "dry foehn lee of Alps (Canterbury)"}
+  mtcook_alpine:      {lat: -43.73, lon: 170.10, elevation_m: 770, regime: "alpine (Southern Alps)"}
+  # Long Bay beach cell (-36.7,174.8) is Hauraki-Gulf-masked; nearest valid land cell is Okura/Albany
+  # (-36.7,174.7), ~5km inland. User's local area.
+  long_bay_okura:     {lat: -36.66, lon: 174.73, elevation_m: 40,  regime: "mild maritime (North Island, user's local area)"}
+  milford_fiordland:  {lat: -44.67, lon: 167.93, elevation_m: 5,   regime: "extreme rainfall (Fiordland)"}
+# Point used for the cheap variable-verification pull (step 2):
+verification_point: hokitika_westcoast
+
+gpm_imerg:
+  # LABELS (precip). IMERG Final V07. Coverage starts 2000-06 (NOT 1991) → the GPM-labelled period is
+  # 2000-2024; pre-2000 ERA5 is only usable with ERA5's own (lower-fidelity) precip as a label.
+  # Verify product/version + timestamp convention (period-beginning?) so the strictly-after-T window is right.
+  product: "GPM_3IMERGHH"        # half-hourly Final
+  version: "07"
+  variable: "precipitation"      # V07 field name (was precipitationCal in V06) — verify in step 2b
+  # NB granules are GLOBAL; bbox only filters intersection, it does not spatially subset the data.
+  # The full label pull needs real subsetting (Harmony/OPeNDAP) — a step-4 concern. Verification
+  # just grabs 1-2 global granules to confirm the field name, units, and time convention.
+
+labels:
+  # Acute model: max severity class in [T, T+H]. Boundaries grounded in MetService NZ thresholds.
+  horizons_hours: [6, 12, 24, 48]
+  # Accumulation/river model: 24h total. Filled in once severity bins are validated.
+
+climatology:
+  # Fixed reference period for the climatology feature AND the BSS baseline (pod-knowable, no leakage).
+  # Deliberately RECENT (not WMO 1991-2020): NZ warming + a 4-5x rise in heat extremes mean an older
+  # normal understates "normal now", which is what the deployed pod faces. Kept train-only (ends 2022)
+  # so it never peeks at val/test. Trend-adjusted normals are a future refinement. See docs/02.
+  reference_start: "2005-01-01"
+  reference_end: "2022-12-31"

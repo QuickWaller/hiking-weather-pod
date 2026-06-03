@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# pod-ml pre-commit hook — runs ruff + pytest, but ONLY when pod-ml/ files are staged.
+# (This is a shared repo: pod/ firmware, deck/, pcb/, ... — we must not run pod-ml's
+#  test suite on an unrelated commit.)  Bypass in a pinch with:  git commit --no-verify
+#
+# Source of truth lives at pod-ml/scripts/pre-commit; install it with:
+#   pod-ml/scripts/install-hooks.sh
+set -euo pipefail
+
+# Anything staged under pod-ml/?  If not, this commit doesn't concern us.
+staged="$(git diff --cached --name-only --diff-filter=ACM -- pod-ml/)"
+[ -n "$staged" ] || exit 0
+
+echo "[pod-ml] staged changes detected -> ruff + pytest"
+cd "$(git rev-parse --show-toplevel)/pod-ml"
+
+if [ -x ".venv/Scripts/python.exe" ]; then
+  PY=".venv/Scripts/python.exe"   # Windows venv
+elif [ -x ".venv/bin/python" ]; then
+  PY=".venv/bin/python"           # Linux / macOS venv
+else
+  PY="python"                     # fall back to whatever's on PATH
+fi
+
+"$PY" -m ruff check src tests || { echo "[pod-ml] X ruff failed  (bypass: git commit --no-verify)"; exit 1; }
+"$PY" -m pytest -q          || { echo "[pod-ml] X pytest failed (bypass: git commit --no-verify)"; exit 1; }
+echo "[pod-ml] OK - checks passed"

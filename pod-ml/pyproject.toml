@@ -1,0 +1,42 @@
+[project]
+name = "podml"
+version = "0.1.0"
+description = "Weather-severity prediction model for the hiking pod (trains on reanalysis, exports to C)"
+requires-python = ">=3.10"
+dependencies = [
+    # data access
+    "cdsapi",          # ERA5-Land download (Copernicus CDS)
+    "earthaccess",     # GPM IMERG download (NASA Earthdata auth)
+    # reading gridded data
+    "xarray",
+    "netcdf4",
+    "h5py",            # IMERG is HDF5
+    # core
+    "numpy",
+    "pandas",
+    "pyyaml",          # config
+    # modelling
+    "lightgbm",
+    "scikit-learn",
+    # feature parity with pod firmware (call C++ feature fns from Python)
+    "cffi",
+    # plots
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "ipykernel",       # notebooks
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/podml"]
+
+[tool.ruff]
+line-length = 100
