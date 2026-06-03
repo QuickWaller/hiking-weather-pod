@@ -15,6 +15,7 @@ Long job — run on the VM in tmux:
 from __future__ import annotations
 
 import argparse
+import atexit
 import os
 import shutil
 import time
@@ -91,18 +92,36 @@ def stack_month(files) -> "xr.Dataset | None":
     return xr.concat(dsets, dim="time").sortby("time")
 
 
+def _acquire_lock() -> None:
+    """Refuse to start if another GPM pull is alive — two processes sharing temp dirs corrupt months."""
+    GRID_DIR.mkdir(parents=True, exist_ok=True)
+    lock = GRID_DIR / ".pull.lock"
+    if lock.exists():
+        try:
+            old = int(lock.read_text().strip() or "0")
+            os.kill(old, 0)  # no exception ⇒ that pid is alive
+        except (ValueError, ProcessLookupError):
+            pass  # stale/unparsable lock → take over
+        else:
+            raise SystemExit(f"Another GPM pull (pid {old}) is already running; refusing to start a second.")
+    lock.write_text(str(os.getpid()))
+    atexit.register(lambda: lock.unlink(missing_ok=True))
+
+
 def build_grid(start: str, end: str, client, collection, bbox) -> None:
     """Download + store one NetCDF per month (skips months already on disk)."""
     from harmony import Request
 
     GRID_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = GRID_DIR / "_tmp"
     # Newest month first, so recent years (what the probe needs) land soonest; old years backfill.
     for yr, mo in reversed(list(month_range(start, end))):
         out = _grid_path(yr, mo)
         if out.exists():
             print(f"[{yr}-{mo:02d}] already stored, skipping", flush=True)
             continue
+        # PER-MONTH private temp dir: a stale/parallel run can never delete this month's granules mid-stack.
+        tmp = GRID_DIR / f"_tmp_{yr}{mo:02d}"
+        shutil.rmtree(tmp, ignore_errors=True)
         s = pd.Timestamp(yr, mo, 1)
         e = (s + pd.offsets.MonthEnd(1)).replace(hour=23, minute=59)
         print(f"[{yr}-{mo:02d}] Harmony request...", flush=True)
@@ -110,15 +129,26 @@ def build_grid(start: str, end: str, client, collection, bbox) -> None:
             req = Request(collection=collection, spatial=bbox,
                           temporal={"start": s.to_pydatetime(), "stop": e.to_pydatetime()})
             job = _run_job(client, req)
-            if tmp.exists():
-                shutil.rmtree(tmp)
             tmp.mkdir(parents=True)
             files = [f.result() for f in client.download_all(job, directory=str(tmp), overwrite=True)]
             month = stack_month(files)
-            if month is not None:
-                month.to_netcdf(out, encoding={v: {"zlib": True, "complevel": 4} for v in month.data_vars})
-                print(f"[{yr}-{mo:02d}] {len(files)} granules -> {month.sizes['time']} steps -> {out.name}",
+            if month is None:
+                print(f"[{yr}-{mo:02d}] no usable granules — skipping", flush=True)
+                continue
+            steps, ngran = month.sizes["time"], len(files)
+            if steps < 0.95 * ngran:
+                # Integrity guard: each granule is one 30-min step, so steps should ≈ granules. A big
+                # shortfall means granules went missing (stale parallel run / partial downloads) → do NOT
+                # bank a holey month; leave it absent so a later run retries it cleanly.
+                print(f"[{yr}-{mo:02d}] INCOMPLETE {steps}/{ngran} steps — NOT banking, will retry",
                       flush=True)
+                continue
+            # Write atomically (temp + rename) so an interrupted write never leaves a half file that
+            # looks complete to the `out.exists()` skip.
+            part = out.with_suffix(".nc.part")
+            month.to_netcdf(part, encoding={v: {"zlib": True, "complevel": 4} for v in month.data_vars})
+            part.replace(out)
+            print(f"[{yr}-{mo:02d}] {ngran} granules -> {steps} steps -> {out.name}", flush=True)
         except Exception as exc:  # noqa: BLE001
             # No data (recent months past Final latency, or pre-2000) or a transient error → skip and
             # keep going; since no file is written, a later re-run retries the month.
@@ -156,6 +186,7 @@ def main() -> None:
     dom, gpm, points = cfg["domain"], cfg["gpm_imerg"], cfg["probe_points"]
 
     if not args.points_only:
+        _acquire_lock()  # one pull at a time — concurrent runs corrupt months
         from harmony import BBox, Client, Collection
         build_grid(args.start, args.end, Client(), Collection(id=gpm["harmony_collection_hhr"]),
                    BBox(dom["west"], dom["south"], dom["east"], dom["north"]))
