@@ -25,6 +25,9 @@ import pandas as pd
 # (168h) is one entry away if importance says it helps; beyond ~3 days `month` already covers the scale.
 PRESSURE_TREND_HOURS = [3, 6, 12, 24, 48, 72]
 
+# Shape features (range/chunk-deltas) were tested and DROPPED — no BSS or precision gain on rain or
+# wind; the slope ladder already captured the recent shape. See docs/04-results.md.
+
 # The pod-replicable feature vector (order is the contract — bump a version if it changes).
 FEATURE_COLUMNS = (
     ["sp_hPa"]                                          # absolute level (LOW trust: sensor + altitude bias)

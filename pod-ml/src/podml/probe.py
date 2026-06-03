@@ -29,6 +29,35 @@ def brier_score(p: np.ndarray, y: np.ndarray) -> float:
     return float(np.mean((p - y) ** 2))
 
 
+def operating_point_metrics(y: np.ndarray, p: np.ndarray, target_recall: float = 0.70) -> dict:
+    """At the threshold that catches ~target_recall of events, return the confusion breakdown.
+
+    Answers the safety question BSS can't: to catch most dangerous spells, how many warnings are
+    false (cry-wolf)? precision = of warnings, how many real · recall = of events, how many caught ·
+    false_alarm_rate = of calm periods, how many wrongly warned (FP/(FP+TN)).
+    """
+    y = np.asarray(y)
+    p = np.asarray(p)
+    pos = int(y.sum())
+    if pos == 0 or pos == len(y):
+        return {}
+    order = np.argsort(-p)
+    recall_cum = np.cumsum(y[order]) / pos
+    k = min(max(int(np.searchsorted(recall_cum, target_recall)) + 1, 1), len(y))
+    thr = p[order][k - 1]
+    pred = p >= thr
+    tp = int((pred & (y == 1)).sum())
+    fp = int((pred & (y == 0)).sum())
+    fn = int((~pred & (y == 1)).sum())
+    tn = int((~pred & (y == 0)).sum())
+    return {
+        "precision": tp / (tp + fp) if tp + fp else np.nan,
+        "recall": tp / (tp + fn) if tp + fn else np.nan,
+        "false_alarm_rate": fp / (fp + tn) if fp + tn else np.nan,
+        "tp": tp, "fp": fp, "fn": fn, "tn": tn,
+    }
+
+
 def _point_path(name: str, cfg: dict) -> "object":
     t = cfg["time"]
     tag = f"{t['acquisition_start']}_{t['test_year']}-12-31"
@@ -65,7 +94,9 @@ def probe_point(name: str, cfg: dict, importances: list | None = None,
 
             row = {"point": name, "threshold_mm_hr": thr, "horizon_h": h,
                    "n_train": len(tr), "n_test": len(te), "base_rate": base_rate,
-                   "bss": np.nan, "pr_auc": np.nan, "pr_auc_lift": np.nan}
+                   "bss": np.nan, "pr_auc": np.nan, "pr_auc_lift": np.nan,
+                   "precision": np.nan, "recall": np.nan, "false_alarm_rate": np.nan,
+                   "tp": np.nan, "fp": np.nan, "fn": np.nan, "tn": np.nan}
 
             # Need both classes present in train, and a non-degenerate test set.
             if len(te) and 0 < ytr.mean() < 1 and 0 < yte.mean() < 1:
@@ -93,6 +124,7 @@ def probe_point(name: str, cfg: dict, importances: list | None = None,
                 row["bss"] = 1.0 - bs_model / bs_clim if bs_clim > 0 else np.nan
                 row["pr_auc"] = float(average_precision_score(yte, p))
                 row["pr_auc_lift"] = row["pr_auc"] / base_rate if base_rate > 0 else np.nan
+                row.update(operating_point_metrics(yte, p))
             rows.append(row)
     return pd.DataFrame(rows)
 
@@ -110,7 +142,7 @@ def main() -> None:
     points = list(cfg["probe_points"])
     suffix = "_sim" if args.sensor_sim else ""
     mode = "SENSOR-SIM (train clean / test degraded)" if args.sensor_sim else "CLEAN (optimistic ceiling)"
-    print(f"Dress-rehearsal skill probe — {mode} — {len(points)} points")
+    print(f"Rain skill probe — {mode} — {len(points)} points")
     print(f"Train {TRAIN_YEARS.start}-{TRAIN_YEARS.stop - 1} | embargo 2023 | test {TEST_YEAR}\n")
 
     importances: list = []
@@ -125,8 +157,18 @@ def main() -> None:
     for thr in THRESHOLDS_MM_HR:
         sub = results[results.threshold_mm_hr == thr]
         piv = sub.pivot(index="point", columns="horizon_h", values="bss")
-        print(f"\n-- threshold >= {thr} mm/hr --")
+        print(f"\n-- rain >= {thr} mm/hr --")
         print(piv.round(3).to_string())
+
+    print("\n\n### Confusion breakdown at ~70% catch (recall held ~0.70; raw TP/FP/FN/TN in the CSV) ###")
+    for metric, blurb in [("false_alarm_rate", "FALSE-ALARM rate FP/(FP+TN) — cry-wolf, lower better"),
+                          ("precision", "PRECISION — of warnings, fraction that were real, higher better")]:
+        print(f"\n=== {blurb} ===")
+        for thr in THRESHOLDS_MM_HR:
+            sub = results[results.threshold_mm_hr == thr]
+            piv = sub.pivot(index="point", columns="horizon_h", values=metric)
+            print(f"-- rain >= {thr} mm/hr --")
+            print(piv.round(3).to_string())
 
     if importances:
         imp_df = pd.DataFrame(importances)

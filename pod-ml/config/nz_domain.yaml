@@ -68,6 +68,9 @@ gpm_imerg:
   product: "GPM_3IMERGHH"        # half-hourly Final
   version: "07"
   variable: "precipitation"      # V07 field name (was precipitationCal in V06) — verify in step 2b
+  # NASA Harmony collection concept-ids (bbox subsetting; NO concatenation → 48 files/day for HHR).
+  harmony_collection_hhr: "C2723754847-GES_DISC"    # GPM_3IMERGHH v07 (30-min) — rain intensity labels
+  harmony_collection_daily: "C2723754864-GES_DISC"  # GPM_3IMERGDF v07 (daily) — proven in spike
   # NB granules are GLOBAL; bbox only filters intersection, it does not spatially subset the data.
   # The full label pull needs real subsetting (Harmony/OPeNDAP) — a step-4 concern. Verification
   # just grabs 1-2 global granules to confirm the field name, units, and time convention.

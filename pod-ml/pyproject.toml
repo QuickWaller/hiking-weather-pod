@@ -7,6 +7,7 @@ dependencies = [
     # data access
     "cdsapi",          # ERA5-Land download (Copernicus CDS)
     "earthaccess",     # GPM IMERG download (NASA Earthdata auth)
+    "harmony-py",      # NASA Harmony bbox-subsetting (GPM rain labels)
     # reading gridded data
     "xarray",
     "netcdf4",
