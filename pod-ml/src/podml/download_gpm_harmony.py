@@ -106,19 +106,25 @@ def build_grid(start: str, end: str, client, collection, bbox) -> None:
         s = pd.Timestamp(yr, mo, 1)
         e = (s + pd.offsets.MonthEnd(1)).replace(hour=23, minute=59)
         print(f"[{yr}-{mo:02d}] Harmony request...", flush=True)
-        req = Request(collection=collection, spatial=bbox,
-                      temporal={"start": s.to_pydatetime(), "stop": e.to_pydatetime()})
-        job = _run_job(client, req)
-        if tmp.exists():
-            shutil.rmtree(tmp)
-        tmp.mkdir(parents=True)
-        files = [f.result() for f in client.download_all(job, directory=str(tmp), overwrite=True)]
-        month = stack_month(files)
-        if month is not None:
-            month.to_netcdf(out, encoding={v: {"zlib": True, "complevel": 4} for v in month.data_vars})
-            print(f"[{yr}-{mo:02d}] {len(files)} granules -> {month.sizes['time']} steps -> {out.name}",
-                  flush=True)
-        shutil.rmtree(tmp)
+        try:
+            req = Request(collection=collection, spatial=bbox,
+                          temporal={"start": s.to_pydatetime(), "stop": e.to_pydatetime()})
+            job = _run_job(client, req)
+            if tmp.exists():
+                shutil.rmtree(tmp)
+            tmp.mkdir(parents=True)
+            files = [f.result() for f in client.download_all(job, directory=str(tmp), overwrite=True)]
+            month = stack_month(files)
+            if month is not None:
+                month.to_netcdf(out, encoding={v: {"zlib": True, "complevel": 4} for v in month.data_vars})
+                print(f"[{yr}-{mo:02d}] {len(files)} granules -> {month.sizes['time']} steps -> {out.name}",
+                      flush=True)
+        except Exception as exc:  # noqa: BLE001
+            # No data (recent months past Final latency, or pre-2000) or a transient error → skip and
+            # keep going; since no file is written, a later re-run retries the month.
+            print(f"[{yr}-{mo:02d}] SKIPPED: {str(exc)[:90]}", flush=True)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 def extract_points(start: str, end: str, points: dict) -> pd.DataFrame:
