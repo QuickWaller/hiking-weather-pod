@@ -114,11 +114,48 @@ def _check(label: str, ok: bool) -> None:
     print(f"  [{'OK ' if ok else '!! '}] {label}")
 
 
+def _date(s: str, *, end: bool) -> str:
+    """Accept 'YYYY' or 'YYYY-MM-DD'; bare year → Jan-01 (start) or Dec-31 (end)."""
+    return s if "-" in s else (f"{s}-12-31" if end else f"{s}-01-01")
+
+
+def download_points_file(csv_path: Path, start: str, end: str, variables, dataset: str) -> None:
+    """Bulk, CHECKPOINTED pull: one ERA5-Land time-series per row of config/sampled_points.csv.
+
+    Skips any point whose output already exists, so the job is resumable across crashes/disconnects.
+    One row → one CDS retrieve covering the whole date range (the time-series product returns the full
+    span per request). Long job — run on the VM in the background alongside the GPM pull.
+    """
+    import pandas as pd
+
+    pts = pd.read_csv(csv_path).to_dict("records")
+    tag = f"{start}_{end}".replace("/", "_")
+    done = skipped = failed = 0
+    for i, row in enumerate(pts, 1):
+        out = RAW / f"era5land_ts_{row['name']}_{tag}.nc"
+        if out.exists():
+            skipped += 1
+            continue
+        try:
+            req = build_request(variables, row["lon"], row["lat"], f"{start}/{end}")
+            download_point(dataset, req, out)
+            done += 1
+            print(f"[{i}/{len(pts)}] {row['name']} ({row['lat']},{row['lon']}) -> {out.name}", flush=True)
+        except Exception as exc:  # noqa: BLE001
+            failed += 1
+            print(f"[{i}/{len(pts)}] {row['name']} FAILED: {str(exc)[:110]}", flush=True)
+    print(f"\nERA5 points pull: done={done} skipped(existing)={skipped} failed={failed} of {len(pts)}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Download + verify ERA5-Land time-series for NZ points.")
     ap.add_argument("--full", action="store_true",
                     help="Full train..test date range, ALL probe points (large).")
     ap.add_argument("--point", help="Probe point name (default: config verification_point).")
+    ap.add_argument("--points-file", help="CSV of name,lat,lon (e.g. config/sampled_points.csv); "
+                                          "checkpointed bulk pull.")
+    ap.add_argument("--start", default="2000", help="start year or YYYY-MM-DD (points-file mode)")
+    ap.add_argument("--end", default="2024", help="end year or YYYY-MM-DD (points-file mode)")
     args = ap.parse_args()
 
     cfg = load_config()
@@ -127,6 +164,11 @@ def main() -> None:
     variables = era["candidate_variables"]
     points = cfg["probe_points"]
     t = cfg["time"]
+
+    if args.points_file:
+        download_points_file(Path(args.points_file), _date(args.start, end=False),
+                             _date(args.end, end=True), variables, dataset)
+        return
 
     if args.full:
         selected = points
