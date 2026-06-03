@@ -43,18 +43,29 @@ float GpsBuffer::averageSpeedKph(int maxEntries) const {
 float GpsBuffer::averageAltGainPerMinute(int maxEntries) const {
     if (_count < 2) return 0.0f;
     int n = (_count < maxEntries) ? _count : maxEntries;
-    float totalGain = 0.0f;
-    for (int i = 0; i < n - 1; i++) {
-        int idxA = (_head - n + i + GPS_BUFFER_SIZE) % GPS_BUFFER_SIZE;
-        int idxB = (_head - n + i + 1 + GPS_BUFFER_SIZE) % GPS_BUFFER_SIZE;
-        float delta = _buf[idxB].altitudeM - _buf[idxA].altitudeM;
-        if (delta > 0) totalGain += delta;
-    }
     int oldestIdx = (_head - n + GPS_BUFFER_SIZE) % GPS_BUFFER_SIZE;
     int newestIdx = (_head - 1 + GPS_BUFFER_SIZE) % GPS_BUFFER_SIZE;
     uint32_t dt = _buf[newestIdx].timestamp - _buf[oldestIdx].timestamp;
     if (dt == 0) return 0.0f;
-    return totalGain / (dt / 60.0f);
+    // Use net altitude change over the window, NOT the sum of positive steps.
+    // Summing only positive deltas rectifies GPS-altitude noise (the noisiest GPS
+    // axis, ±10-30 m) into a phantom climb — standing still on flat ground would
+    // accumulate enough fake "gain" to trip the Climbing threshold. Floor at 0 so a
+    // descent reports no gain.
+    float netGain = _buf[newestIdx].altitudeM - _buf[oldestIdx].altitudeM;
+    if (netGain < 0.0f) netGain = 0.0f;
+    return netGain / (dt / 60.0f);
+}
+
+float GpsBuffer::medianAltitude(int maxEntries) const {
+    if (_count == 0) return 0.0f;
+    int n = (_count < maxEntries) ? _count : maxEntries;
+    float alts[GPS_BUFFER_SIZE];
+    for (int i = 0; i < n; i++) {
+        int idx = (_head - 1 - i + GPS_BUFFER_SIZE) % GPS_BUFFER_SIZE;  // newest → older
+        alts[i] = _buf[idx].altitudeM;
+    }
+    return MathUtils::median(alts, n);
 }
 
 bool GpsBuffer::isStationary(float radiusM) const {

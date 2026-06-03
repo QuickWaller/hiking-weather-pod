@@ -30,6 +30,18 @@ echo "[setup-vm] verifying (ruff + pytest)..."
 # 4. install the pod-ml git hook (lint+test on pod-ml commits)
 bash scripts/install-hooks.sh || echo "[setup-vm] (hook install skipped — not a git checkout?)"
 
+# 5. set up cron job for hourly Open-Meteo fetch
+REPO_ROOT="$(pwd)"
+CRON_CMD="0 * * * * cd $REPO_ROOT && bash -c 'source .venv/bin/activate && python -m podml.fetch_openmeteo >> logs/openmeteo_cron.log 2>&1'"
+if crontab -l 2>/dev/null | grep -q "fetch_openmeteo"; then
+  echo "[setup-vm] cron job for fetch_openmeteo already installed"
+else
+  echo "[setup-vm] installing hourly cron job for Open-Meteo fetch..."
+  mkdir -p logs
+  (crontab -l 2>/dev/null; echo "$CRON_CMD") | crontab -
+  echo "[setup-vm] cron job installed; check with: crontab -l"
+fi
+
 cat <<'EOF'
 
 [setup-vm] Environment ready. Two credential steps before downloads will work:

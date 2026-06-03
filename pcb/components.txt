@@ -1,0 +1,25 @@
+Component List — Hiking Pod PCB
+================================
+
+| Component     | What                                      |
+|---------------|-------------------------------------------|
+| MCU           | RP2350-Zero (castellated, no headers)     |
+| Pressure      | BMP280 bare chip                          |
+| Temp/humidity | SHT31 bare chip                           |
+| Compass       | LIS3MDL bare chip                         |
+| Accel/gyro    | LSM6DS3 bare chip                         |
+| RTC           | DS3231 bare chip                          |
+| GPS           | keep as module (u-blox or Quectel)        |
+| Charging      | MCP73831                                  |
+| 3.3V reg      | AP2112K-3.3                               |
+| Displays      | FPC connectors (1.54" colour + 2.13" B/W) |
+| Cyberdeck     | GX16-5 connector                          |
+| Battery       | LiPo JST connector                        |
+
+Notes
+-----
+- RP2350-Zero: castellated edges, solder flat onto PCB. No external flash needed.
+- GPS: kept as module — RF/antenna routing is out of scope for first PCB.
+- All sensors: use Adafruit open-source KiCad schematics as reference for
+  decoupling caps, pull-ups, and layout.
+- Hard iron calibration (LIS3MDL) deferred until permanent mount.

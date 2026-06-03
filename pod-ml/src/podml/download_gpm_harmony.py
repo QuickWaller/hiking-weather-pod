@@ -63,11 +63,14 @@ def _to_timestamp(tval) -> pd.Timestamp:
     return pd.Timestamp(tval)
 
 
-def _run_job(client, req):
-    """Submit and resume through Harmony's preview-pause until the job is terminal."""
+def _run_job(client, req, timeout_sec=1800):
+    """Submit and resume through Harmony's preview-pause until the job is terminal or timeout."""
     job = client.submit(req)
     terminal = {"successful", "failed", "canceled", "complete_with_errors"}
+    start = time.time()
     while True:
+        if time.time() - start > timeout_sec:
+            raise TimeoutError(f"Harmony job {job} exceeded {timeout_sec}s timeout")
         status = client.status(job).get("status", "")
         if status == "paused":
             client.resume(job)

@@ -21,6 +21,11 @@ public:
     float averageAltGainPerMinute(int maxEntries) const;
     bool  isStationary(float radiusM) const;
 
+    // Median altitude over the most recent maxEntries fixes (metres). Smooths out
+    // GPS-altitude spikes, the noisiest GPS axis, before pressure adjustment.
+    // Returns 0 if the buffer is empty.
+    float medianAltitude(int maxEntries) const;
+
     void  seedFromFlash();  // stub — implemented when LittleFS logging exists
 
     const GpsEntry& newest() const;

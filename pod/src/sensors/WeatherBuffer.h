@@ -3,6 +3,10 @@
 
 static constexpr int WEATHER_BUFFER_SIZE = 288;  // 24 hours at 5-min intervals
 
+// Cap on samples used for the pressure-rate regression. The algorithm uses a
+// 3-hour window (36 samples at 5-min spacing); this bounds the stack arrays.
+static constexpr int PRESSURE_RATE_MAX_SAMPLES = 36;
+
 struct WeatherEntry {
     uint32_t timestamp;
     float    pressureAdj;  // hPa, altitude-adjusted
@@ -25,10 +29,12 @@ public:
     // Max pressure in entire buffer — used as baseline for recovery calculation
     float maxPressure() const;
 
-    // Humidity trend: positive = rising, negative = falling (over last 3 hours)
+    // Humidity trend in %/hour: positive = rising (over last ~3 hours).
+    // Time-based regression — robust to unevenly-spaced / skipped samples.
     float humidityTrend() const;
 
-    // Temperature trend over last 3 hours (negative = falling)
+    // Temperature trend in °C/hour over last ~3 hours (negative = falling).
+    // Time-based regression — robust to unevenly-spaced / skipped samples.
     float tempTrend() const;
 
     // Drop oldest entries that are more than maxDistM from current position

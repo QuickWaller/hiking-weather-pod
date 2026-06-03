@@ -1,5 +1,6 @@
 #include "NijntjeRenderer.h"
-#include "display/Framebuffer.h"
+#include "display/IFramebuffer.h"
+#include "NijntjeSpriteRegistry.h"
 #include <string.h>
 
 static constexpr int16_t SPRITE_AREA_H = 160;
@@ -34,8 +35,13 @@ static int16_t centreX(const char* str, uint8_t textSize) {
     return (EPD_WIDTH - (int16_t)(strlen(str) * 6 * textSize)) / 2;
 }
 
-void NijntjeRenderer::render(Framebuffer& fb, const NijntjeDisplay& d) {
+void NijntjeRenderer::render(IFramebuffer& fb, const NijntjeDisplay& d) {
     fb.fill(EPDColour::White);
+
+    NijntjeSprite sprite = lookupSprite(d.state, d.modifier);
+    int16_t sx = (EPD_WIDTH  - (int16_t)sprite.width)  / 2;
+    int16_t sy = (SPRITE_AREA_H - (int16_t)sprite.height) / 2;
+    fb.drawSprite(sx, sy, sprite.data, sprite.width, sprite.height);
 
     const char* state = stateLabel(d.state);
     const char* mod   = modifierLabel(d.modifier);

@@ -4,15 +4,38 @@
 #include <math.h>
 #include <stdio.h>
 
+// ── Absolute pressure level factor ────────────────────────────────────────────
+// Real Zambretti uses pressure LEVEL as well as tendency: the same fall is more
+// ominous when pressure is already low (deepening low) and less so when high
+// (settling high). Returns a multiplier — boosts below LOW, damps above HIGH,
+// neutral (1.0) between, clamped. Invalid/zero pressure → neutral.
+static float pressureLevelFactor(float pHpa) {
+    if (pHpa <= 0.0f) return 1.0f;
+    if (pHpa < PRESSURE_LEVEL_LOW_HPA) {
+        float f = 1.0f + (PRESSURE_LEVEL_LOW_HPA - pHpa) / PRESSURE_LEVEL_SPAN_HPA
+                       * (PRESSURE_LEVEL_MAX_BOOST - 1.0f);
+        return f > PRESSURE_LEVEL_MAX_BOOST ? PRESSURE_LEVEL_MAX_BOOST : f;
+    }
+    if (pHpa > PRESSURE_LEVEL_HIGH_HPA) {
+        float f = 1.0f - (pHpa - PRESSURE_LEVEL_HIGH_HPA) / PRESSURE_LEVEL_SPAN_HPA
+                       * (1.0f - PRESSURE_LEVEL_MIN_DAMP);
+        return f < PRESSURE_LEVEL_MIN_DAMP ? PRESSURE_LEVEL_MIN_DAMP : f;
+    }
+    return 1.0f;
+}
+
 // ── Zambretti score (0.0–1.0) ─────────────────────────────────────────────────
-// Simplified without wind direction. Maps pressure rate to Zambretti tendency.
-static float zambrettiScore(float rateHpaPerHour) {
-    if (rateHpaPerHour < -3.0f)  return 1.0f;   // rapid fall — certain deterioration
-    if (rateHpaPerHour < -1.5f)  return 0.75f;
-    if (rateHpaPerHour < -0.5f)  return 0.50f;
-    if (rateHpaPerHour < 0.0f)   return 0.25f;
-    if (rateHpaPerHour < 0.5f)   return 0.10f;  // steady
-    return 0.0f;                                  // rising — improving
+// Tendency (rate) binning, modulated by absolute pressure level. No wind input.
+static float zambrettiScore(float rateHpaPerHour, float currentPressureHpa) {
+    float base;
+    if (rateHpaPerHour < -3.0f)       base = 1.0f;   // rapid fall — certain deterioration
+    else if (rateHpaPerHour < -1.5f)  base = 0.75f;
+    else if (rateHpaPerHour < -0.5f)  base = 0.50f;
+    else if (rateHpaPerHour < 0.0f)   base = 0.25f;
+    else if (rateHpaPerHour < 0.5f)   base = 0.10f;  // steady
+    else                              base = 0.0f;    // rising — improving
+    float s = base * pressureLevelFactor(currentPressureHpa);
+    return s > 1.0f ? 1.0f : s;
 }
 
 // ── Pressure rate score (0.0–1.0) ─────────────────────────────────────────────
@@ -26,13 +49,15 @@ static float pressureRateScore(float rateHpaPerHour) {
 // ── Humidity trend score (0.0–1.0) ────────────────────────────────────────────
 static float humidityScore(float humidityTrend) {
     if (humidityTrend <= 0.0f) return 0.0f;
-    return fminf(humidityTrend / 2.0f, 1.0f);  // 2%/entry trend → full score
+    // Trend is now %/hour. 24%/hr (== the old 2%/5-min-entry) → full score.
+    return fminf(humidityTrend / 24.0f, 1.0f);
 }
 
 // ── Temperature drop score (0.0–1.0) ─────────────────────────────────────────
 static float tempDropScore(float tempTrend) {
     if (tempTrend >= 0.0f) return 0.0f;
-    return fminf(-tempTrend / 0.5f, 1.0f);  // 0.5°C/entry drop → full score
+    // Trend is now °C/hour. 6°C/hr drop (== the old 0.5°C/5-min-entry) → full score.
+    return fminf(-tempTrend / 6.0f, 1.0f);
 }
 
 // ── Imminence: hours until event from pressure rate ───────────────────────────
@@ -63,10 +88,16 @@ static void updatePrediction(WeatherPrediction& pred,
             pred.predictedAt      = nowUnix;
             pred.baselinePressure = maxPressure;
             pred.minPressure      = currentPressure;
+            // Set arrival estimate on the trigger cycle too, so it is never left at 0
+            // for the first active cycle (which would flip the banner text spuriously).
+            pred.estimatedArrival = nowUnix + (uint32_t)(imminenceHours(rateHpaPerHour) * 3600.0f);
         }
     } else {
-        // Track the lowest pressure seen since trigger
-        if (currentPressure < pred.minPressure)
+        // Track the lowest pressure seen since trigger.
+        // Guard against curP==0 (empty buffer after location-prune) — that sentinel
+        // would corrupt minPressure to 0, making totalDrop look enormous and causing
+        // premature clearing on the next real cycle.
+        if (currentPressure > 0.0f && currentPressure < pred.minPressure)
             pred.minPressure = currentPressure;
 
         // Recovery = how much pressure has risen from the trough, relative to total drop
@@ -85,6 +116,13 @@ static void updatePrediction(WeatherPrediction& pred,
     }
 }
 
+uint8_t WeatherAlgorithm::scoreToConfidence(float score01) {
+    float pct = score01 * 100.0f + 0.5f;  // round to nearest
+    if (pct > 100.0f) pct = 100.0f;
+    if (pct < 0.0f)   pct = 0.0f;
+    return (uint8_t)pct;
+}
+
 void WeatherAlgorithm::update(const WeatherBuffer& wb,
                                WeatherPrediction&   rain,
                                WeatherPrediction&   storm,
@@ -96,19 +134,19 @@ void WeatherAlgorithm::update(const WeatherBuffer& wb,
     float tmpTrend = wb.tempTrend();
 
     float pRate = pressureRateScore(rate);
-    float zamb  = zambrettiScore(rate);
+    float zamb  = zambrettiScore(rate, curP);
     float hum   = humidityScore(humTrend);
     float tmp   = tempDropScore(tmpTrend);
 
-    uint8_t stormConf = (uint8_t)((STORM_W_PRESSURE_RATE * pRate
-                                 + STORM_W_ZAMBRETTI     * zamb
-                                 + STORM_W_HUMIDITY      * hum
-                                 + STORM_W_TEMP_DROP     * tmp) * 100.0f);
+    uint8_t stormConf = scoreToConfidence(STORM_W_PRESSURE_RATE * pRate
+                                        + STORM_W_ZAMBRETTI     * zamb
+                                        + STORM_W_HUMIDITY      * hum
+                                        + STORM_W_TEMP_DROP     * tmp);
 
-    uint8_t rainConf  = (uint8_t)((RAIN_W_PRESSURE_RATE  * pRate
-                                 + RAIN_W_ZAMBRETTI      * zamb
-                                 + RAIN_W_HUMIDITY       * hum
-                                 + RAIN_W_TEMP_DROP      * tmp) * 100.0f);
+    uint8_t rainConf  = scoreToConfidence(RAIN_W_PRESSURE_RATE  * pRate
+                                        + RAIN_W_ZAMBRETTI      * zamb
+                                        + RAIN_W_HUMIDITY       * hum
+                                        + RAIN_W_TEMP_DROP      * tmp);
 
     updatePrediction(storm, stormConf, STORM_TRIGGER_THRESHOLD, STORM_CLEAR_THRESHOLD,
                      curP, maxP, rate, nowUnix);

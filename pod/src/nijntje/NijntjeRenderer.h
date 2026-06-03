@@ -1,9 +1,9 @@
 #pragma once
 #include "NijntjeState.h"
 
-class Framebuffer;
+class IFramebuffer;
 
 class NijntjeRenderer {
 public:
-    static void render(Framebuffer& fb, const NijntjeDisplay& d);
+    static void render(IFramebuffer& fb, const NijntjeDisplay& d);
 };

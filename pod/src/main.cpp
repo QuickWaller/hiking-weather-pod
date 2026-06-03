@@ -1,145 +1,288 @@
+#ifndef UNIT_TEST
+
 #include <Arduino.h>
-#include <Fonts/FreeSansBold9pt7b.h>
+#include <math.h>
+#include <LittleFS.h>
+#include "config.h"
 #include "debug.h"
-#include "hal/ESP32DisplayHAL.h"
-#include "display/EPD1in54G.h"
-#include "display/Framebuffer.h"
+#include "EventLog.h"
+#include "GpsReader.h"
+#include "sensors/RtcReader.h"
+#include "sensors/CompassReader.h"
+#include "sensors/AccelReader.h"
+#include "sensors/Bmp180Reader.h"
+#include "sensors/Aht10Reader.h"
+#include "sensors/GpsBuffer.h"
+#include "sensors/WeatherBuffer.h"
+#include "sensors/SensorData.h"
+#include "sensors/WeatherPrediction.h"
+#include "algorithms/ActivityDetector.h"
+#include "algorithms/WeatherAlgorithm.h"
+#include "algorithms/NijntjeEvaluator.h"
+#include "algorithms/MathUtils.h"
+#include "nijntje/NijntjeState.h"
+#include "LogFormatter.h"
+#include "UartSync.h"
+#include "BuzzerController.h"
 
-#include "sprites/NijntjeWalking.h"
-#include "sprites/NijntjeWalkingHot.h"
-#include "sprites/NijntjeWalkingCold.h"
-#include "sprites/NijntjeWalkingFoggy.h"
-#include "sprites/NijntjeClimbing.h"
-#include "sprites/NijntjeClimbingHot.h"
-#include "sprites/NijntjeClimbingCold.h"
-#include "sprites/NijntjeClimbingFoggy.h"
-#include "sprites/NijntjeResting.h"
-#include "sprites/NijntjeRestingHot.h"
-#include "sprites/NijntjeRestingCold.h"
-#include "sprites/NijntjeRestingFoggy.h"
-#include "sprites/NijntjeSleepyEvening.h"
-#include "sprites/NijntjeSleepingTent.h"
-#include "sprites/NijntjeWalkingNight.h"
-#include "sprites/NijntjeWorried.h"
-#include "sprites/NijntjeConnected.h"
+// ── Globals ───────────────────────────────────────────────────────────────────
 
-static constexpr uint16_t BANNER_Y = 160;
-static constexpr uint16_t BANNER_H =  40;
+static EventLog      eventLog;
+static RtcReader     rtc;
+static GpsReader     gps;
+static CompassReader compass;
+static AccelReader   accel;
+static Bmp180Reader  bmp180;
+static Aht10Reader   aht10;
 
-static ESP32DisplayHAL hal(
-    /* CS    */ 15,
-    /* DC    */ 27,
-    /* Reset */ 26,
-    /* Busy  */ 25,
-    /* SCK   */ 13,
-    /* MOSI  */ 14
-);
-static EPD1in54G   epd(hal);
-static Framebuffer fb;
+static GpsBuffer         gpsBuffer;
+static WeatherBuffer     weatherBuffer;
+static WeatherPrediction rainPred{};
+static WeatherPrediction stormPred{};
 
-// bannerColor: EPD_GFX_WHITE = activity label only
-//              EPD_GFX_YELLOW/RED = weather alert (line1 + line2)
-struct TestFrame {
-    const uint8_t* sprite;
-    uint16_t       w;
-    uint16_t       h;
-    const char*    activity;   // always shown on white banner
-    const char*    line1;      // weather alert line 1 (null = white banner)
-    const char*    line2;      // weather alert line 2
-    uint16_t       bannerColor;
-};
+static bool compassOk = false;
+static bool accelOk   = false;
+static bool bmp180Ok  = false;
+static bool aht10Ok   = false;
+static bool rtcSynced = false;
 
-static const TestFrame frames[] = {
-    { NijntjeWalking,       NijntjeWalking_WIDTH,       NijntjeWalking_HEIGHT,
-      "WALKING",   nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeWalkingHot,    NijntjeWalkingHot_WIDTH,    NijntjeWalkingHot_HEIGHT,
-      "WALKING",   nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeWalkingCold,   NijntjeWalkingCold_WIDTH,   NijntjeWalkingCold_HEIGHT,
-      "WALKING",   nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeWalkingFoggy,  NijntjeWalkingFoggy_WIDTH,  NijntjeWalkingFoggy_HEIGHT,
-      "WALKING",   nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeClimbing,      NijntjeClimbing_WIDTH,      NijntjeClimbing_HEIGHT,
-      "CLIMBING",  nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeClimbingHot,   NijntjeClimbingHot_WIDTH,   NijntjeClimbingHot_HEIGHT,
-      "CLIMBING",  nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeClimbingCold,  NijntjeClimbingCold_WIDTH,  NijntjeClimbingCold_HEIGHT,
-      "CLIMBING",  nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeClimbingFoggy, NijntjeClimbingFoggy_WIDTH, NijntjeClimbingFoggy_HEIGHT,
-      "CLIMBING",  nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeResting,       NijntjeResting_WIDTH,       NijntjeResting_HEIGHT,
-      "RESTING",   nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeRestingHot,    NijntjeRestingHot_WIDTH,    NijntjeRestingHot_HEIGHT,
-      "RESTING",   nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeRestingCold,   NijntjeRestingCold_WIDTH,   NijntjeRestingCold_HEIGHT,
-      "RESTING",   nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeRestingFoggy,  NijntjeRestingFoggy_WIDTH,  NijntjeRestingFoggy_HEIGHT,
-      "RESTING",   nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeSleepyEvening, NijntjeSleepyEvening_WIDTH, NijntjeSleepyEvening_HEIGHT,
-      "SLEEPING",  nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeSleepingTent,  NijntjeSleepingTent_WIDTH,  NijntjeSleepingTent_HEIGHT,
-      "SLEEPING",  nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeWalkingNight,  NijntjeWalkingNight_WIDTH,  NijntjeWalkingNight_HEIGHT,
-      "WALKING",   nullptr,         nullptr,        EPD_GFX_WHITE  },
-    { NijntjeWorried,       NijntjeWorried_WIDTH,       NijntjeWorried_HEIGHT,
-      "WALKING",   "STORM INBOUND", "80% 6 HOURS",  EPD_GFX_RED    },
-    { NijntjeConnected,     NijntjeConnected_WIDTH,     NijntjeConnected_HEIGHT,
-      "SYNCING",   nullptr,         nullptr,        EPD_GFX_WHITE  },
-};
-static constexpr int NUM_FRAMES = sizeof(frames) / sizeof(frames[0]);
+static UartSync          uartSync;
+static BuzzerController  buzzer;
+static SensorData     sensor{};
+static NijntjeDisplay display{};
+static int            cycleCount = 0;
 
-static void showFrame(const TestFrame& f) {
-    fb.fill(EPDColour::White);
+// Sunrise/sunset cache (local minutes since midnight; -1 = unknown). Refreshed once
+// per day at the first wake ≥ SUN_REFRESH_HOUR, with a one-shot boot bootstrap.
+static int16_t  cachedSunriseMin = -1;
+static int16_t  cachedSunsetMin  = -1;
+static uint16_t sunCalcDoy       = 0;   // day-of-year the cache holds (0 = never computed)
 
-    // sprites are exactly 220×160 — centre horizontally, sit flush at top
-    int16_t x = (EPD_WIDTH - f.w) / 2;
-    fb.drawSprite(x, 0, f.sprite, f.w, f.h);
+// Cached readings from last 5-min cycle
+static Bmp180Reading lastPressure{};
+static Aht10Reading  lastEnv{};
 
-    fb.setFont(&FreeSansBold9pt7b);
-    fb.setTextSize(1);
-    fb.setTextWrap(false);
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-    int16_t x1, y1; uint16_t tw, th;
-
-    if (f.bannerColor == EPD_GFX_WHITE) {
-        fb.fillRect(0, BANNER_Y, EPD_WIDTH, BANNER_H, EPDColour::White);
-        fb.setTextColor(EPD_GFX_BLACK);
-        fb.getTextBounds(f.activity, 0, 0, &x1, &y1, &tw, &th);
-        fb.setCursor((EPD_WIDTH - tw) / 2, BANNER_Y + 26);
-        fb.print(f.activity);
-    } else {
-        EPDColour bc = (f.bannerColor == EPD_GFX_RED) ? EPDColour::Red : EPDColour::Yellow;
-        fb.fillRect(0, BANNER_Y, EPD_WIDTH, BANNER_H, bc);
-        fb.setTextColor(f.bannerColor == EPD_GFX_RED ? EPD_GFX_WHITE : EPD_GFX_BLACK);
-        if (f.line1) {
-            fb.getTextBounds(f.line1, 0, 0, &x1, &y1, &tw, &th);
-            fb.setCursor((EPD_WIDTH - tw) / 2, BANNER_Y + 16);
-            fb.print(f.line1);
-        }
-        if (f.line2) {
-            fb.getTextBounds(f.line2, 0, 0, &x1, &y1, &tw, &th);
-            fb.setCursor((EPD_WIDTH - tw) / 2, BANNER_Y + 34);
-            fb.print(f.line2);
-        }
-    }
-
-    fb.setFont(nullptr);
-    epd.display(fb.buffer());
+static uint32_t getUnixTime() {
+    RtcTime t = rtc.now();
+    if (t.year >= 2024 && t.year <= 2035) return t.unixTime;
+    if (gps.fix().unixTime > 1700000000UL) return gps.fix().unixTime;
+    return 0;
 }
+
+static uint32_t getFreeHeap() {
+#ifdef ARDUINO_ARCH_RP2040
+    return rp2040.getFreeHeap();
+#else
+    return ESP.getFreeHeap();
+#endif
+}
+
+static void writeLogEntry(uint32_t now, uint32_t gpsMs, NijntjeState activity) {
+    File f = LittleFS.open("/data.csv", "a");
+    if (!f) {
+        eventLog.error("LOG_FAIL", "data.csv", now);
+        return;
+    }
+    float pressureRate = weatherBuffer.count() > 1
+        ? weatherBuffer.pressureRateHpaPerHour(3) : 0.0f;
+    char buf[220];
+    LogFormatter::formatEntry(buf, sizeof(buf), now, sensor,
+        stormPred, rainPred, pressureRate, activity, display, gpsMs, getFreeHeap());
+    f.printf("%s\n", buf);
+    f.close();
+    if (sensor.cyberdeckConnected) uartSync.sendEntry(buf);
+}
+
+// ── Setup ─────────────────────────────────────────────────────────────────────
 
 void setup() {
     Serial.begin(115200);
+    delay(500);
     LOG("boot");
-    hal.begin();
-    LOG("HAL init done");
-    epd.init();
-    LOG("EPD init done");
+
+    eventLog.begin();
+
+    rtc.begin();
+    {
+        RtcTime t = rtc.now();
+        if (t.year < 2024 || t.year > 2035)
+            eventLog.warn("RTC_INVALID", "awaiting GPS sync", 0);
+    }
+
+    gps.begin();
+    pinMode(PIN_GX16_DETECT, INPUT_PULLUP);
+
+    // Compass + accel are an IMU pair — disable accel if compass fails
+    compassOk = compass.begin();
+    if (!compassOk) {
+        eventLog.error("SENSOR_FAIL", "compass+accel disabled", 0);
+    } else {
+        accelOk = accel.begin();
+        if (!accelOk) eventLog.warn("SENSOR_FAIL", "accel", 0);
+    }
+
+    bmp180Ok = bmp180.begin();
+    if (!bmp180Ok) eventLog.error("SENSOR_FAIL", "bmp180", 0);
+
+    aht10Ok = aht10.begin();
+    if (!aht10Ok) eventLog.error("SENSOR_FAIL", "aht10", 0);
+
+    uartSync.begin();
+
+    gpsBuffer.seedFromFlash();
+    weatherBuffer.seedFromFlash();
+
+    LOG("boot complete");
 }
 
-static int currentFrame = 0;
+// ── Main loop (1-min cycle) ───────────────────────────────────────────────────
 
 void loop() {
-    LOG("frame %d/%d — %s", currentFrame + 1, NUM_FRAMES, frames[currentFrame].activity);
-    showFrame(frames[currentFrame]);
-    currentFrame = (currentFrame + 1) % NUM_FRAMES;
-    delay(5000);
+    uint32_t cycleStart = millis();
+    cycleCount++;
+
+    // ── GPS fix ───────────────────────────────────────────────────────────────
+    uint32_t gpsStart = millis();
+    while (!gps.fix().valid && millis() - gpsStart < GPS_FIX_TIMEOUT_MS)
+        gps.poll();
+    // Drain remaining NMEA to keep RMC timestamp fresh
+    uint32_t drainUntil = millis() + 500;
+    while (millis() < drainUntil) gps.poll();
+    uint32_t gpsMs = millis() - gpsStart;
+
+    // First valid GPS fix → sync RTC
+    if (!rtcSynced && gps.fix().valid && gps.fix().unixTime > 1700000000UL) {
+        rtc.setTime(gps.fix().unixTime);
+        rtcSynced = true;
+        eventLog.warn("RTC_SYNCED", "from GPS", gps.fix().unixTime);
+        LOG("RTC synced: %lu", gps.fix().unixTime);
+    }
+    // Ongoing reconciliation: GPS UTC stays authoritative. A drifted or jumped RTC
+    // can still look plausible (valid year) and would otherwise be trusted forever,
+    // so re-sync when RTC and GPS disagree beyond the threshold. Both are UTC.
+    else if (rtcSynced && gps.fix().valid && gps.fix().unixTime > 1700000000UL) {
+        int32_t skew = (int32_t)(rtc.now().unixTime - gps.fix().unixTime);
+        if (skew < 0) skew = -skew;
+        if (skew > RTC_GPS_MAX_SKEW_S) {
+            rtc.setTime(gps.fix().unixTime);
+            eventLog.warn("RTC_DRIFT", "resynced from GPS", (uint32_t)skew);
+            LOG("RTC drift %ld s → resynced from GPS", (long)skew);
+        }
+    }
+
+    uint32_t now = getUnixTime();
+    RtcTime  t   = rtc.now();
+
+    // ── Populate SensorData ───────────────────────────────────────────────────
+    sensor.lat               = gps.fix().lat;
+    sensor.lon               = gps.fix().lon;
+    sensor.altitudeM         = gps.fix().altM;
+    sensor.gpsHasFix         = gps.fix().valid;
+    sensor.unixTime          = now;
+    sensor.hour              = t.hour;
+    sensor.minute            = t.minute;
+    sensor.cyberdeckConnected = (digitalRead(PIN_GX16_DETECT) == LOW);
+    sensor.batteryPct        = 0;  // TODO: ADC on RP2350 GP29
+
+    // ── GPS buffer ────────────────────────────────────────────────────────────
+    // Push before pressure adjustment so the newest fix is included in the median.
+    if (gps.fix().valid) {
+        GpsEntry entry{ gps.fix().lat, gps.fix().lon, gps.fix().altM, now };
+        gpsBuffer.push(entry);
+    }
+
+    // Median-filtered altitude smooths GPS spikes before pressure adjustment.
+    // Falls back to the raw fix altitude if the buffer is empty.
+    float adjAltM = (gpsBuffer.count() > 0)
+        ? gpsBuffer.medianAltitude(ALTITUDE_MEDIAN_SAMPLES)
+        : sensor.altitudeM;
+
+    if (lastPressure.valid) {
+        sensor.pressureRaw = lastPressure.pressureHpa;
+        sensor.pressureAdj = MathUtils::altitudeAdjustedPressure(
+            lastPressure.pressureHpa, adjAltM);
+    }
+    if (lastEnv.valid) {
+        sensor.tempC    = lastEnv.tempC;
+        sensor.humidity = lastEnv.humidity;
+    }
+
+    // ── Sunrise/sunset (daily refresh ≥03:00 local, boot bootstrap) ───────────
+    // Needs a real position and a trustworthy clock. t is NZ-local (RtcReader), so
+    // day-of-year is right near UTC midnight; offset is DST-aware for this instant.
+    if (gps.fix().valid && t.year >= 2024 && t.year <= 2035) {
+        uint16_t doy = (uint16_t)MathUtils::dayOfYear(t.year, t.month, t.day);
+        bool bootstrap    = (sunCalcDoy == 0);
+        bool dailyRefresh = (t.hour >= SUN_REFRESH_HOUR && doy != sunCalcDoy);
+        if (bootstrap || dailyRefresh) {
+            int offMin = MathUtils::nzUtcOffsetMinutes(now);
+            MathUtils::sunriseSunsetMinutes(sensor.lat, sensor.lon, doy, offMin,
+                                            cachedSunriseMin, cachedSunsetMin);
+            sunCalcDoy = doy;
+        }
+    }
+    sensor.sunriseMin = cachedSunriseMin;
+    sensor.sunsetMin  = cachedSunsetMin;
+
+    // ── Activity + display evaluation ─────────────────────────────────────────
+    NijntjeState activity = ActivityDetector::detect(gpsBuffer, sensor, now);
+    display = NijntjeEvaluator::evaluate(sensor, activity, rainPred, stormPred);
+
+    // TODO: if display changed → refresh e-ink (stubbed until 1.54" replaced)
+
+    if (sensor.cyberdeckConnected) uartSync.poll();
+
+    buzzer.sound(buzzer.evaluate(rainPred, stormPred, t.hour));
+
+    // ── 5-min cycle ───────────────────────────────────────────────────────────
+    if (cycleCount % FULL_CYCLE_INTERVAL == 0) {
+
+        if (bmp180Ok) lastPressure = bmp180.read();
+        if (aht10Ok)  lastEnv      = aht10.read();
+
+        if (lastPressure.valid) {
+            sensor.pressureRaw = lastPressure.pressureHpa;
+            sensor.pressureAdj = MathUtils::altitudeAdjustedPressure(
+                lastPressure.pressureHpa, adjAltM);
+        }
+        if (lastEnv.valid) {
+            sensor.tempC    = lastEnv.tempC;
+            sensor.humidity = lastEnv.humidity;
+        }
+
+        // Only record weather when we have a real position. Location pruning needs
+        // valid coords; a GPS dropout (lat/lon defaulting to 0,0) would otherwise
+        // wipe the whole 24h history and blind storm prediction during bad weather.
+        if (lastPressure.valid && gps.fix().valid) {
+            weatherBuffer.pruneByLocation(
+                sensor.lat, sensor.lon, WEATHER_LOCATION_RADIUS_M);
+
+            // Pressure drives storm prediction (~75% of confidence). If the AHT10
+            // failed this cycle, store temp/humidity as NaN rather than bogus zeros
+            // — the trend functions skip NaN, so a dead env sensor degrades rather
+            // than poisons the prediction (0 °C is a real alpine temp, not a sentinel).
+            float entryTemp = lastEnv.valid ? sensor.tempC    : NAN;
+            float entryHum  = lastEnv.valid ? sensor.humidity : NAN;
+            WeatherEntry we{ now, sensor.pressureAdj, entryTemp,
+                             entryHum, sensor.lat, sensor.lon };
+            weatherBuffer.push(we);
+        }
+
+        WeatherAlgorithm::update(weatherBuffer, rainPred, stormPred, now);
+
+        writeLogEntry(now, gpsMs, activity);
+
+        LOG("5min | temp=%.1fC hum=%.0f%% pres=%.1fhPa storm=%d%% rain=%d%%",
+            sensor.tempC, sensor.humidity, sensor.pressureAdj,
+            stormPred.confidence, rainPred.confidence);
+    }
+
+    // On RP2350: sleep GPS via UBX, enter DORMANT until RTC alarm
+    // On ESP32: simulate 1-min cycle with delay
+    uint32_t elapsed = millis() - cycleStart;
+    if (elapsed < 60000UL) delay(60000UL - elapsed);
 }
+
+#endif // UNIT_TEST

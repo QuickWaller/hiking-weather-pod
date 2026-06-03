@@ -1,25 +1,24 @@
 #pragma once
-#include "EPD1in54G.h"
+#include "IFramebuffer.h"
 #include <Adafruit_GFX.h>
-#include <stdint.h>
 
-// RGB565 constants mapping to EPD colours, for use with Adafruit GFX text methods
-static constexpr uint16_t EPD_GFX_BLACK  = 0x0000;
-static constexpr uint16_t EPD_GFX_WHITE  = 0xFFFF;
-static constexpr uint16_t EPD_GFX_YELLOW = 0xFFE0;
-static constexpr uint16_t EPD_GFX_RED    = 0xF800;
-
-class Framebuffer : public Adafruit_GFX {
+class Framebuffer : public IFramebuffer, public Adafruit_GFX {
 public:
     Framebuffer();
 
     void drawPixel(int16_t x, int16_t y, uint16_t color) override;
 
-    void fill(EPDColour colour);
-    void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, EPDColour colour);
-    void drawSprite(int16_t x, int16_t y, const uint8_t* sprite, uint16_t sw, uint16_t sh);
+    void fill(EPDColour colour) override;
+    void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, EPDColour colour) override;
+    void drawSprite(int16_t x, int16_t y, const uint8_t* data, uint16_t w, uint16_t h) override;
 
-    const uint8_t* buffer() const { return _buf; }
+    void setTextSize(uint8_t size) override       { Adafruit_GFX::setTextSize(size); }
+    void setTextColor(uint16_t c) override        { Adafruit_GFX::setTextColor(c); }
+    void setTextWrap(bool wrap) override          { Adafruit_GFX::setTextWrap(wrap); }
+    void setCursor(int16_t x, int16_t y) override { Adafruit_GFX::setCursor(x, y); }
+    void print(const char* str) override          { Adafruit_GFX::print(str); }
+
+    const uint8_t* buffer() const override { return _buf; }
 
 private:
     uint8_t _buf[EPD_BUFFER_SIZE];

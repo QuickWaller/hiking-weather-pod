@@ -13,7 +13,33 @@ Python 3.8+, running on CM5.
 ## UART Config
 - Port: `/dev/ttyUSB0`
 - Baud: 115200
-- Format received: `timestamp|lat,lon|alt|temp|humidity|pressure|battery`
+- Protocol: pod streams one CSV line per entry when connected. Send `DUMP\n` to receive the full flash log; pod replies with all CSV lines then `END\n`. Send `HELLO\n` for handshake.
+- Format received (CSV, 20 fields):
+  ```
+  timestamp,lat,lon,alt,temp,humidity,pressure_raw,pressure_adj,battery,storm_conf,rain_conf,storm_active,rain_active,pressure_rate,activity,state,modifier,banner,gps_ms,free_heap
+  ```
+  | Field | Type | Notes |
+  |---|---|---|
+  | timestamp | ISO 8601 | |
+  | lat | float | degrees |
+  | lon | float | degrees |
+  | alt | int | metres |
+  | temp | float | °C (AHT10) |
+  | humidity | int | % (AHT10) |
+  | pressure_raw | float | hPa as-read |
+  | pressure_adj | float | hPa altitude-adjusted |
+  | battery | int | % estimate |
+  | storm_conf | int | 0–100 |
+  | rain_conf | int | 0–100 |
+  | storm_active | 0/1 | prediction latched |
+  | rain_active | 0/1 | prediction latched |
+  | pressure_rate | float | hPa/hr, negative = falling |
+  | activity | char | C/W/N/R/E/T |
+  | state | char | C/W/N/R/E/T/X/K |
+  | modifier | char | N/H/C/F |
+  | banner | char | N/Y/R |
+  | gps_ms | int | ms to fix (8000 = timeout) |
+  | free_heap | int | bytes free RAM |
 
 ## Analysis Algorithms
 
