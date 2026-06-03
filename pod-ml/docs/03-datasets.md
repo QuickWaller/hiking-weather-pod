@@ -85,3 +85,32 @@ Pulled 2 half-hour granules (GPM_3IMERGHH **V07** Final) for 2022-06-01:
   approved once per Earthdata account. earthaccess surfaces it as a misleading generic "EULA" traceback.
 - **Full label pull (step 4):** granules are GLOBAL (~30 MB each, 48/day). Pulling years of these is heavy
   → use spatial subsetting (Harmony/OPeNDAP) to the NZ box, or extract only the probe-point pixels.
+
+## Static: elevation (DEM) — ETOPO 2022
+
+For point **stratification** and the **elevation feature** we use **ETOPO 2022** (NOAA NCEI, public domain),
+not Copernicus 30 m, for v1:
+
+- **OPeNDAP-subset to the NZ box**, so only the subset (~MBs) transfers — no giant global download and **no
+  rasterio/GIS dependency** (xarray + netcdf4 read it). `download_dem.py` → `data/raw/dem_nz.nc`.
+- **30 arc-sec (~0.9 km)** is ample: GPM labels are 11 km, so finer elevation adds no *trainable* signal, and
+  inference uses the pod's own altitude anyway. Copernicus 30 m point-sampling is a clean later swap if
+  feature-importance says elevation carries a lot.
+- Negative values are ocean (bathymetry) → **land mask = elevation > 0**. `sample_points.py` aggregates the
+  DEM onto the ERA5-Land 0.1° grid (per-cell mean elevation over land pixels + land fraction), keeps
+  majority-land cells, and stratify-samples across elevation bands. See
+  [02 · Gridded model](02-design-decisions.md#gridded-model-pre--and-post-training-grid-logic).
+
+## Acquisition status (2026-06-04)
+
+Two background pulls running on the VM (different services, no contention):
+
+| Pull | Module | Output | Range | ETA |
+|---|---|---|---|---|
+| **GPM** rain labels (HHR 30-min), full NZ grid | `download_gpm_harmony` | `data/raw/gpm_grid/gpm_YYYY-MM.nc` (checkpointed per month) | 2000-06 → 2024-12, newest-first | ~40 min/month → recent 5 yr ~2 days, full ~8–9 days |
+| **ERA5** features at 205 stratified cells | `download_era5 --points-file` | `data/raw/era5land_ts_<name>_*.nc` (checkpointed per point) | 2000 → 2024 | queue-paced, resumable |
+
+> GPM ends at **2024**, not 2025: IMERG **Final** latency means late-2025 isn't posted yet — the pull skips
+> empty recent months cleanly. ERA5 matches the **2000–2024 GPM overlap** (no point pulling features where
+> there's no rain label). Both `data/raw/*` are gitignored and re-derived on each machine; the **point list**
+> (`config/sampled_points.csv`) is committed so both machines pull the identical set.

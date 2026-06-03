@@ -161,3 +161,102 @@ distributed) — and because **extreme classes are data-starved**, more years li
 - We **don't assume** — step 5 runs a **training-window ablation** ({2015,2010,2000,1991}→2022, all evaluated
   on 2023/24) to measure where older years stop helping. Val/test stay the *most recent* years, so we always
   evaluate on the current climate (what the pod faces).
+
+---
+
+## Gridded model: pre- and post-training grid logic
+
+The point probe proved a single location has skill. To **train for real** we go from 5 points to the whole
+country — but **not** by pulling the full ERA5 × GPM grid over 25 years (a terabyte). The architecture lets
+us avoid that.
+
+```mermaid
+flowchart TD
+    subgraph PRE["PRE-TRAINING (build one common-grid table)"]
+      E["ERA5-Land<br/>dynamic features"] --> J
+      G["GPM IMERG<br/>rain labels"] --> J
+      D["DEM (ETOPO)<br/>static: elevation, ruggedness"] --> J
+      C["coastline<br/>static: dist-to-coast"] --> J
+      J["rows = (land cell × hour)<br/>X = dynamic + static · y = GPM"]
+    end
+    J --> TR[("ONE global model<br/>cells told apart by<br/>static covariates")]
+    TR --> POST
+    subgraph POST["POST-TRAINING (shrink the map)"]
+      POST1["run model over FULL grid<br/>→ per-cell skill / bias"] --> SK["SKATER → contiguous zones<br/>+ per-zone calibration"]
+    end
+    SK --> SHIP["ship: 1 tree model<br/>+ zone raster + per-zone offsets"]
+```
+
+### One global model, cells told apart by static covariates
+
+**Choice:** train **one** model where each row is an ERA5-Land 0.1° cell carrying its **static context**
+(elevation, distance-to-coast, lat/lon) — *not* per-cell or per-zone models.
+
+The model learns *"given this terrain and this pressure trend → this much rain"*, which **generalises to
+cells it never saw**. Two payoffs: (1) we can **train on a *sample* of cells**, not all ~6 000 land cells,
+because the covariate relationship generalises; (2) it's the only valid order — **SKATER zones can't be
+defined until a model exists**, so we train global first regardless.
+
+### Two cheap pulls, not one terabyte
+
+**Choice:** split the ERA5 acquisition so we never pull full-grid × full-history.
+
+```mermaid
+flowchart LR
+    A["(a) deep history<br/>~200 stratified points<br/>2000-2024 hourly"] --> M[("global model")]
+    M --> B["(b) full grid, SHORT window<br/>~1-2 yr · only to run the<br/>trained model everywhere"]
+    B --> Z["SKATER zoning"]
+```
+
+(a) is the **training** data (the current 5-point pull scaled up). (b) is needed only at the **end**, to run
+the finished model over every cell for the zoning pass.
+
+### Static vs dynamic — and what bakes into firmware
+
+**Choice:** pull the **full grid for the cheap STATIC layers**; **sample** the expensive **dynamic** history.
+
+| Grid | Pull every cell? | On the MCU? |
+|---|---|---|
+| **Dynamic** (ERA5 hourly history) | No — sample | No — time-varying weather the pod senses live |
+| **Static** (elevation, ruggedness, coast-dist, **zone ID**, per-cell climatology) | **Yes — cheap** (~6 k cells × bytes) | **Yes — a compressed slice flashes in** |
+
+So the pod ships knowing, for its GPS spot: which **zone** (→ which calibration), its **coast-distance**, the
+local **climatological baseline**. Elevation it just *measures*. All KB-scale.
+
+### Altitude: feature resolution ≠ label resolution
+
+**Choice:** elevation is a **cell-representative** value in training, **continuous**, fed the pod's **own
+measured altitude** at inference.
+
+The knot is two different resolutions. **Labels are hard-capped at 0.1° (~11 km)** — GPM reports one rain
+number per cell, so within-cell rain variation is *not in the truth* and *cannot be learned*. Feeding
+elevation finer than the label buys no trainable signal (this is the grain of truth in "it's trained on
+averages"). But two things still hold:
+
+- **Don't aggregate to a hand-picked grid; sample the DEM at the cell** so the elevation feature means
+  "ground height here" — exactly what the pod feeds at inference (its baro/GPS altitude). The model learns
+  the elevation→rain gradient **across** cells (which spans the full 0–2 000 m range cleanly).
+- **At inference the pod plugs in its precise altitude** and rides that learned continuous gradient.
+  Sub-cell precision is a **sound physical extrapolation** (more height → more orographic rain), not
+  validatable (no sub-cell labels exist) — but it's free, so we keep it.
+
+### Stratified sampling — even across elevation, not proportional
+
+**Choice:** ~200 cells sampled **~evenly across elevation bands** (`[0,50,150,400,800,1400]+ m`), retaining
+the 5 original probes. High alpine terrain is **rare but is exactly where the orographic signal lives**, so
+proportional sampling (which is ~90 % lowland) would starve the gradient. Sampling is seeded and writes a
+**committed** `config/sampled_points.csv`, so both machines pull the identical set.
+
+### Smaller calls made alongside
+
+- **Nowcasting (current rain/snow/storm) — build in from the start as horizon 0.** It's the same label
+  machinery with no forward window (`X` at `T`, `y` at `T`), usually the **highest-skill** output and a free
+  sanity floor (can't nowcast rain from humidity → forecasting is hopeless). **Snow is nearly free** — we
+  already store `probabilityLiquidPrecipitation` (frozen/liquid split) + pod temp.
+- **Sun vs cloudy-dry — parked as a cheap later experiment.** Label is free (ERA5 `tcc` total cloud cover);
+  pod humidity/pressure carry signal. But it's **comfort, not safety**, and multi-day cloud *forecast* is
+  harder than rain (cloud is local/chaotic) — the *nowcast* is the feasible part. Build the label, see the
+  number, ride behind the hazards.
+- **Ground cover / land cover / soil — dropped for v1, parked not abandoned.** They're **runoff** variables
+  (weak causal link to rain-from-sky; importance would prune them). Their home is the future **river-flooding
+  model**, where ground composition governs rain → river. v1 static features stay elevation + coast + lat/lon.
