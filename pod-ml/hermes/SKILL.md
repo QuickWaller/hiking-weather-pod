@@ -107,6 +107,27 @@ limit), not permanently broken — skipping it silently destroys real data. When
 recurring error, your job is to surface the **root cause** with evidence, not to suppress the
 symptom. If unsure whether something is transient, say so and leave it for Opus.
 
+## How a change reaches production (the only correct path)
+
+A code change goes live through **exactly** these steps — never by editing the running code:
+
+1. **Draft** in `~/agent-work` (your clone) → `agent-propose.sh` → push `agent/<slug>` → ping the user.
+2. **Review + merge**: a human (with Opus) reviews the PR and merges it to `main`.
+3. **Deploy** (admin only): someone runs
+   ```
+   sudo -u claude bash /home/claude/cyber-deck-and-weather-station/pod-ml/scripts/deploy-live.sh <gpm|era5|all|none>
+   ```
+   which resets the live tree to `main` and restarts that service via its watchdog. **You cannot run
+   this** (it's not in your sudo allowlist) — but once a PR is merged you may *remind the user* of the
+   exact command so they can deploy.
+
+**Never edit `/home/claude/...` (the live tree) directly, and never ask anyone to hot-edit it.** A
+direct edit is untracked, unreviewed, and gets wiped by the next `deploy-live.sh` reset — so it's
+both unsafe and pointless. (This already happened: a hotfix was hand-edited into the live tree and
+had to be recaptured into `main` afterwards. Don't create that situation — route everything through
+a branch + PR.) The cron watchdogs are the backstop: a merged+deployed change, or a crashed
+download, is picked up automatically within ~15 min even if a restart misfires.
+
 ## Guardrails
 
 - Never delete anything under `data/raw/` except via `podctl repull` (one specific month at a time, only for a month `validate` flagged).
