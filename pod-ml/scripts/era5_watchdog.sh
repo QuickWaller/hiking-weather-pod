@@ -20,10 +20,10 @@ LOCK="/tmp/podml_era5.lock"
 START_YEAR=2010
 END_YEAR=2024                   # training span (2010-2022 train, 2024 test); fixed so
                                # we don't spin on months CDS hasn't published yet
-WORKERS=2                       # CDS executes only ~2 of our jobs at once and REJECTS submissions
-                               # past that in-flight cap (8=>52% rejected, 6=>39%, 4=>44%). 2 matches
-                               # the grant: ~zero rejections, same throughput (CDS-bound). Retry covers
-                               # the rare bounce. Per-month chunking matches CDS's own efficiency advice.
+WORKERS=4                       # CDS caps QUEUED requests per dataset at ~4 (see `podctl cds-queue`).
+                               # 4 workers keep that queue full for max throughput; the per-month
+                               # patient retry in download_era5_grid absorbs the overflow rejections
+                               # (they're transient queue throttling, not failures — never skip them).
 
 # 1. Already finished a clean full pass — nothing to do.
 [ -f "$DONE" ] && exit 0
