@@ -29,13 +29,13 @@ def load_dem_grid(dem_path: Path | None = None) -> xr.DataArray:
     """Load digital elevation model (DEM) for NZ.
 
     Args:
-        dem_path: path to DEM NetCDF (default: data/raw/dem/nz_dem.nc)
+        dem_path: path to DEM NetCDF (default: data/raw/dem_nz.nc, from download_dem.py)
 
     Returns:
         xr.DataArray with dimensions (lat, lon), values = elevation in meters
     """
     if dem_path is None:
-        dem_path = DATA_RAW / "dem" / "nz_dem.nc"
+        dem_path = DATA_RAW / "dem_nz.nc"
 
     if not dem_path.exists():
         raise FileNotFoundError(f"DEM not found at {dem_path}")
