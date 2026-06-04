@@ -41,6 +41,11 @@ VARIABLES = [
 CACHE = DATA_RAW / "era5_grid"
 _COORD_RENAME = {"latitude": "lat", "longitude": "lon"}  # valid_time already matches convention
 _DROP = ["number", "expver"]
+# CDS sets a dynamic per-user concurrency limit and REJECTS requests over it (~4 slots
+# observed). That's CDS's model ("it queues/limits, you retry"), so retry rejected
+# months with backoff — lets a slot free up instead of deferring to the next run.
+ERA5_MAX_ATTEMPTS = 5
+ERA5_BACKOFF_SEC = 20  # grows linearly: 20s, 40s, 60s, 80s
 
 
 def month_cache_path(year: int, month: int):
@@ -76,16 +81,26 @@ def download_month(year: int, month: int) -> str:
         "area": NZ_AREA,
     }
     t0 = time.time()
-    _client().retrieve("reanalysis-era5-land", request, str(raw))
-    # Normalise to the project convention, write to a temp, then atomically publish.
-    ds = xr.open_dataset(raw)
-    ds = ds.rename({k: v for k, v in _COORD_RENAME.items() if k in ds.variables})
-    ds = ds.drop_vars([c for c in _DROP if c in ds.variables], errors="ignore")
-    ds.to_netcdf(wrt)
-    ds.close()
-    os.replace(wrt, path)  # atomic: the final .nc only ever appears complete
-    raw.unlink(missing_ok=True)
-    return f"[{year}-{month:02d}] {time.time() - t0:.0f}s {path.stat().st_size / 1e6:.0f}MB"
+    last_exc: Exception | None = None
+    for attempt in range(1, ERA5_MAX_ATTEMPTS + 1):
+        try:
+            _client().retrieve("reanalysis-era5-land", request, str(raw))
+            # Normalise to the project convention, write to a temp, then atomically publish.
+            ds = xr.open_dataset(raw)
+            ds = ds.rename({k: v for k, v in _COORD_RENAME.items() if k in ds.variables})
+            ds = ds.drop_vars([c for c in _DROP if c in ds.variables], errors="ignore")
+            ds.to_netcdf(wrt)
+            ds.close()
+            os.replace(wrt, path)  # atomic: the final .nc only ever appears complete
+            raw.unlink(missing_ok=True)
+            return f"[{year}-{month:02d}] {time.time() - t0:.0f}s {path.stat().st_size / 1e6:.0f}MB (try {attempt})"
+        except Exception as exc:  # noqa: BLE001 — CDS rejection / transient; retry below
+            last_exc = exc
+            raw.unlink(missing_ok=True)
+            wrt.unlink(missing_ok=True)
+            if attempt < ERA5_MAX_ATTEMPTS:
+                time.sleep(ERA5_BACKOFF_SEC * attempt)
+    raise RuntimeError(f"{ERA5_MAX_ATTEMPTS} attempts failed: {str(last_exc)[:120]}")
 
 
 def main() -> int:

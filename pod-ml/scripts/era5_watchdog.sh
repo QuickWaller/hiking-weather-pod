@@ -20,7 +20,10 @@ LOCK="/tmp/podml_era5.lock"
 START_YEAR=2010
 END_YEAR=2024                   # training span (2010-2022 train, 2024 test); fixed so
                                # we don't spin on months CDS hasn't published yet
-WORKERS=4                       # parallel CDS requests (beats slow single-stream download)
+WORKERS=2                       # CDS executes only ~2 of our jobs at once and REJECTS submissions
+                               # past that in-flight cap (8=>52% rejected, 6=>39%, 4=>44%). 2 matches
+                               # the grant: ~zero rejections, same throughput (CDS-bound). Retry covers
+                               # the rare bounce. Per-month chunking matches CDS's own efficiency advice.
 
 # 1. Already finished a clean full pass — nothing to do.
 [ -f "$DONE" ] && exit 0
