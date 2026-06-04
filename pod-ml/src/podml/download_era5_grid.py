@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import random
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -53,7 +54,7 @@ ERA5_BACKOFF_SEC = 30  # grows linearly: 30s, 60s, 90s, ...
 # was misread as "permanently rejected months" and a skip-list nearly cost us real data.)
 RATE_LIMIT_HINTS = ("temporarily limited", "has been rejected", "queued requests")
 RATE_LIMIT_MAX_ATTEMPTS = 40
-RATE_LIMIT_BACKOFF_SEC = 60  # per try; the queue usually frees within a few minutes
+RATE_LIMIT_BACKOFF_SEC = 120  # base per try; jittered below so workers don't retry in lockstep
 
 # Full, untruncated failure records (CDS error body + traceback) land here, so a 400 is
 # actually diagnosable; stdout/era5_pull.log keeps only a one-line summary. Gitignored.
@@ -150,7 +151,8 @@ def download_month(year: int, month: int) -> str:
                 rate_waits += 1
                 if rate_waits > RATE_LIMIT_MAX_ATTEMPTS:
                     break
-                time.sleep(RATE_LIMIT_BACKOFF_SEC)
+                # Jitter so 4 workers don't resubmit in lockstep and re-collide on the queue.
+                time.sleep(RATE_LIMIT_BACKOFF_SEC + random.randint(0, 60))
                 continue
             # Genuine/unknown error: a few growing-backoff retries, then fail — NOT skip. A
             # later watchdog run retries the month, so nothing is permanently abandoned.
