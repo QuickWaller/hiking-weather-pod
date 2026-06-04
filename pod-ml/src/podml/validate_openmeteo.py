@@ -45,20 +45,16 @@ def openmeteo_to_signals(om_df: pd.DataFrame) -> dict:
     """Convert Open-Meteo observations to signal format for feature building.
 
     Expects columns: precipitation_mm_hr, pressure_hpa, temp_c, humidity_pct
-    Returns dict with structure matching raw_signals() output.
+    Returns dict with structure matching raw_signals() output (sp_hPa, t2m_C, rh).
     """
     if om_df.empty:
         return {}
 
-    # Resample pressure_rate: hPa/hour rolling difference (3-hour window, mean)
-    pressure_rate = om_df["pressure_hpa"].diff().rolling(window=3, min_periods=1).mean()
-
     return {
         "time": om_df.index,
-        "pressure": om_df["pressure_hpa"].values,
-        "pressure_rate": pressure_rate.values,
-        "temp": om_df["temp_c"].values,
-        "humidity": om_df["humidity_pct"].values,
+        "sp_hPa": om_df["pressure_hpa"].values,
+        "t2m_C": om_df["temp_c"].values,
+        "rh": om_df["humidity_pct"].values,
     }
 
 
