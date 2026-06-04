@@ -22,6 +22,7 @@ doesn't apply. It re-enters at deployment and is handled by gating inference on 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -36,8 +37,25 @@ class SensorSimParams:
     quantize: bool = True              # round to the pod's logged resolution
 
 
-def degrade_signals(signals: dict, params: SensorSimParams, rng: np.random.Generator) -> dict:
-    """Return sensor-degraded copies of the raw signals (pressure/temp/humidity)."""
+def degrade_signals(
+    signals: dict[str, Any], params: SensorSimParams, rng: np.random.Generator
+) -> dict[str, Any]:
+    """Return sensor-degraded copies of the raw signals (pressure/temp/humidity).
+
+    Applies realistic sensor biases and noise to clean ERA5 signals:
+      - Pressure: constant offset (cancels in trends, persists in absolute level) + small noise
+      - Temperature: constant warm bias (cancels in trend) + noise
+      - Humidity: bidirectional noise + clipping to [0, 100]%
+      - Quantization to pod resolution (0.1 hPa, 0.1°C, 1%)
+
+    Args:
+        signals: dict with sp_hPa, t2m_C, rh, time (from raw_signals or equivalent)
+        params: SensorSimParams with bias/noise magnitudes
+        rng: np.random.Generator for reproducible degradation
+
+    Returns:
+        dict with same structure as input, but with degraded pressure/temp/humidity
+    """
     sp = signals["sp_hPa"].astype("float64").copy()
     t = signals["t2m_C"].astype("float64").copy()
     rh = signals["rh"].astype("float64").copy()

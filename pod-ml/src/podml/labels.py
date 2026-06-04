@@ -34,13 +34,34 @@ def forward_window_max(x: np.ndarray, h: int) -> np.ndarray:
     return out
 
 
-def tp_mm_from_ds(ds) -> np.ndarray:
-    """ERA5-Land total precipitation (m, de-accumulated hourly) → mm/hr, negatives clipped to 0."""
+def tp_mm_from_ds(ds) -> np.ndarray:  # type: ignore[no-untyped-def]
+    """ERA5-Land total precipitation (m, de-accumulated hourly) → mm/hr, negatives clipped to 0.
+
+    Args:
+        ds: xarray Dataset with 'tp' variable (in meters)
+
+    Returns:
+        np.ndarray of precipitation in mm/hr (non-negative)
+    """
     return np.clip(ds["tp"].values.astype("float64") * 1000.0, 0.0, None)
 
 
-def build_labels(ds, horizons=HORIZONS_H, thresholds=THRESHOLDS_MM_HR) -> pd.DataFrame:
-    """Binary labels indexed by valid_time, one column per (threshold, horizon)."""
+def build_labels(
+    ds,  # type: ignore[no-untyped-def]
+    horizons: list[int] = HORIZONS_H,
+    thresholds: list[float] = THRESHOLDS_MM_HR,
+) -> pd.DataFrame:
+    """Binary labels indexed by valid_time, one column per (threshold, horizon).
+
+    Args:
+        ds: xarray Dataset with 'tp' variable and 'valid_time' coordinate
+        horizons: lead times in hours (default [6, 12, 24, 48])
+        thresholds: rain intensity thresholds in mm/hr (default [0.5, 2.5, 7.6])
+
+    Returns:
+        pd.DataFrame with columns ge{thr}_h{h} (binary 0/1, NaN for incomplete tail)
+        Index: DatetimeIndex named 'valid_time'
+    """
     t = pd.to_datetime(ds["valid_time"].values)
     tp = tp_mm_from_ds(ds)
     df = pd.DataFrame(index=t)
