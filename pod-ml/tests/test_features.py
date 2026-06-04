@@ -107,3 +107,54 @@ def test_long_pressure_trend_is_exact():
     df = build_features(ds)
     assert df["sp_rate_24h"].iloc[25] == pytest.approx(1.0, abs=1e-6)
     assert np.isnan(df["sp_rate_24h"].iloc[23])  # warmup: needs 25 points
+
+
+# ---- Additional edge cases ----
+
+def test_slope_nan_propagates():
+    """NaN in signal leads to NaN in trends."""
+    y = np.array([1.0, 2.0, np.nan, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
+    slope = trailing_slope(y, 4)
+    # Window including the NaN should produce NaN
+    assert np.isnan(slope[3])
+
+
+def test_rh_extreme_dewpoint_drop():
+    """Large dew point drop leads to low RH."""
+    rh = rh_from_t_td(np.array([293.15]), np.array([273.15]))  # 20°C drop
+    assert rh[0] < 30.0
+
+
+def test_rh_small_dewpoint_drop():
+    """Small dew point drop leads to high RH."""
+    rh = rh_from_t_td(np.array([293.15]), np.array([291.15]))  # 2°C drop
+    assert rh[0] > 80.0
+
+
+def test_rh_vectorized():
+    """Handle arrays of different temperatures."""
+    t_k = np.array([283.15, 293.15, 303.15])
+    td_k = np.array([273.15, 283.15, 293.15])
+    rh = rh_from_t_td(t_k, td_k)
+    assert len(rh) == 3
+    assert np.all((rh >= 0) & (rh <= 100))
+
+
+def test_pressure_falling_trend_negative():
+    """Falling pressure produces negative trend."""
+    y = np.linspace(1010, 990, 10)  # monotonic decrease
+    slope = trailing_slope(y, 5)
+    assert slope[-1] < 0
+
+
+def test_pressure_rising_trend_positive():
+    """Rising pressure produces positive trend."""
+    y = np.linspace(990, 1010, 10)  # monotonic increase
+    slope = trailing_slope(y, 5)
+    assert slope[-1] > 0
+
+
+def test_index_name_is_valid_time():
+    """Output index is named 'valid_time'."""
+    df = build_features(_toy_dataset())
+    assert df.index.name == "valid_time"

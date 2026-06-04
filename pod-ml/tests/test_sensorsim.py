@@ -50,3 +50,58 @@ def test_deterministic_with_seed():
     a = degrade_signals(_signals(), SensorSimParams(), np.random.default_rng(7))
     b = degrade_signals(_signals(), SensorSimParams(), np.random.default_rng(7))
     assert np.array_equal(a["sp_hPa"], b["sp_hPa"]) and np.array_equal(a["rh"], b["rh"])
+
+
+def test_different_seeds_give_different_noise():
+    """Different seeds produce different degradation."""
+    a = degrade_signals(_signals(), SensorSimParams(), np.random.default_rng(123))
+    b = degrade_signals(_signals(), SensorSimParams(), np.random.default_rng(456))
+    assert not np.allclose(a["sp_hPa"], b["sp_hPa"])
+
+
+def test_nan_preserved_in_pressure():
+    """NaN values in input are preserved in output."""
+    signals = _signals()
+    signals["sp_hPa"][5] = np.nan
+    d = degrade_signals(signals, _noiseless(), np.random.default_rng(0))
+    assert np.isnan(d["sp_hPa"][5])
+    # But other values should be degraded
+    assert not np.isclose(d["sp_hPa"][4], signals["sp_hPa"][4])
+
+
+def test_nan_preserved_in_temperature():
+    """NaN values in temperature are preserved."""
+    signals = _signals()
+    signals["t2m_C"][10] = np.nan
+    d = degrade_signals(signals, _noiseless(), np.random.default_rng(0))
+    assert np.isnan(d["t2m_C"][10])
+
+
+def test_nan_preserved_in_humidity():
+    """NaN values in humidity are preserved."""
+    signals = _signals()
+    signals["rh"][15] = np.nan
+    d = degrade_signals(signals, _noiseless(), np.random.default_rng(0))
+    assert np.isnan(d["rh"][15])
+
+
+def test_large_noise_creates_variance():
+    """Large noise parameters produce high variance."""
+    signals = _signals(n=100)
+    params_small = SensorSimParams(pressure_noise_hpa=0.1)
+    params_large = SensorSimParams(pressure_noise_hpa=2.0)
+
+    d_small = degrade_signals(signals, params_small, np.random.default_rng(42))
+    d_large = degrade_signals(signals, params_large, np.random.default_rng(42))
+
+    var_small = np.nanvar(d_small["sp_hPa"] - signals["sp_hPa"])
+    var_large = np.nanvar(d_large["sp_hPa"] - signals["sp_hPa"])
+    assert var_large > var_small
+
+
+def test_all_nan_signal_stays_all_nan():
+    """If input is all NaN, output stays all NaN."""
+    signals = _signals()
+    signals["sp_hPa"] = np.full_like(signals["sp_hPa"], np.nan)
+    d = degrade_signals(signals, SensorSimParams(), np.random.default_rng(0))
+    assert np.all(np.isnan(d["sp_hPa"]))
