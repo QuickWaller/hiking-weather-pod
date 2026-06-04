@@ -35,3 +35,8 @@ data/processed/
 
 # Plots / scratch outputs
 outputs/
+
+# Runtime logs + completion sentinels (per-run state, never commit)
+*.log
+logs/
+*.done
