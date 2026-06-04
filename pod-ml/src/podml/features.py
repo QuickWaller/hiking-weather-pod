@@ -16,8 +16,11 @@ For v1 we compute DYNAMIC features per point (the point-based skill probe). Stat
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
+import xarray as xr
 
 # Pressure-tendency ladder (hours). Pressure is the HIGH-trust backbone, so we give it long memory:
 # 3-6h catches the imminent front; 24-72h captures the slower synoptic evolution (NZ systems persist
@@ -63,11 +66,17 @@ def trailing_slope(y: np.ndarray, n: int) -> np.ndarray:
     return out
 
 
-def raw_signals(ds) -> dict:
+def raw_signals(ds: xr.Dataset) -> dict[str, Any]:
     """The pod-sensed raw signals, before feature-building.
 
     The sensor-sim layer degrades THESE (pressure/temp/humidity as the BME280 reads them) so that a
     constant pressure offset correctly cancels in the tendencies and persists only in absolute level.
+
+    Args:
+        ds: xarray Dataset with variables sp, t2m, d2m with valid_time coordinate
+
+    Returns:
+        dict with keys: time (DatetimeIndex), sp_hPa (ndarray), t2m_C (ndarray), rh (ndarray)
     """
     return {
         "time": pd.to_datetime(ds["valid_time"].values),
@@ -77,8 +86,15 @@ def raw_signals(ds) -> dict:
     }
 
 
-def build_features_from_signals(signals: dict) -> pd.DataFrame:
-    """Build the feature vector from (possibly sensor-degraded) raw signals."""
+def build_features_from_signals(signals: dict[str, Any]) -> pd.DataFrame:
+    """Build the feature vector from (possibly sensor-degraded) raw signals.
+
+    Args:
+        signals: dict with keys sp_hPa, t2m_C, rh, time. From raw_signals() or sensor-degraded.
+
+    Returns:
+        pd.DataFrame with FEATURE_COLUMNS in order, DatetimeIndex named 'valid_time'.
+    """
     sp_hpa, t2m_c, rh = signals["sp_hPa"], signals["t2m_C"], signals["rh"]
     df = pd.DataFrame(index=signals["time"])
     df.index.name = "valid_time"
@@ -94,8 +110,15 @@ def build_features_from_signals(signals: dict) -> pd.DataFrame:
     return df[FEATURE_COLUMNS]
 
 
-def build_features(ds) -> pd.DataFrame:
-    """Clean features straight from ERA5 (no sensor-sim)."""
+def build_features(ds: xr.Dataset) -> pd.DataFrame:
+    """Clean features straight from ERA5 (no sensor-sim).
+
+    Args:
+        ds: xarray Dataset with variables sp, t2m, d2m, valid_time coordinate
+
+    Returns:
+        pd.DataFrame with FEATURE_COLUMNS, DatetimeIndex named 'valid_time'.
+    """
     return build_features_from_signals(raw_signals(ds))
 
 
