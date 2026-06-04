@@ -28,6 +28,10 @@ from podml.config import DATA_RAW, load_config
 
 GRID_DIR = DATA_RAW / "gpm_grid"
 KEEP_VARS = ["precipitation", "probabilityLiquidPrecipitation"]  # rain + (frozen/liquid) for snow
+# Harmony hiccups (Service Unavailable / 5xx / job timeout) are transient — retry the
+# month a few times with backoff instead of skipping, which used to punch coverage holes.
+GPM_MAX_ATTEMPTS = 4
+GPM_BACKOFF_SEC = 30  # linear backoff between attempts: 30s, 60s, 90s
 
 
 def month_range(start: str, end: str):
@@ -124,40 +128,48 @@ def build_grid(start: str, end: str, client, collection, bbox) -> None:
             continue
         # PER-MONTH private temp dir: a stale/parallel run can never delete this month's granules mid-stack.
         tmp = GRID_DIR / f"_tmp_{yr}{mo:02d}"
-        shutil.rmtree(tmp, ignore_errors=True)
         s = pd.Timestamp(yr, mo, 1)
         e = (s + pd.offsets.MonthEnd(1)).replace(hour=23, minute=59)
-        print(f"[{yr}-{mo:02d}] Harmony request...", flush=True)
-        try:
-            req = Request(collection=collection, spatial=bbox,
-                          temporal={"start": s.to_pydatetime(), "stop": e.to_pydatetime()})
-            job = _run_job(client, req)
-            tmp.mkdir(parents=True)
-            files = [f.result() for f in client.download_all(job, directory=str(tmp), overwrite=True)]
-            month = stack_month(files)
-            if month is None:
-                print(f"[{yr}-{mo:02d}] no usable granules — skipping", flush=True)
-                continue
-            steps, ngran = month.sizes["time"], len(files)
-            if steps < 0.95 * ngran:
-                # Integrity guard: each granule is one 30-min step, so steps should ≈ granules. A big
-                # shortfall means granules went missing (stale parallel run / partial downloads) → do NOT
-                # bank a holey month; leave it absent so a later run retries it cleanly.
-                print(f"[{yr}-{mo:02d}] INCOMPLETE {steps}/{ngran} steps — NOT banking, will retry",
-                      flush=True)
-                continue
-            # Write atomically (temp + rename) so an interrupted write never leaves a half file that
-            # looks complete to the `out.exists()` skip.
-            part = out.with_suffix(".nc.part")
-            month.to_netcdf(part, encoding={v: {"zlib": True, "complevel": 4} for v in month.data_vars})
-            part.replace(out)
-            print(f"[{yr}-{mo:02d}] {ngran} granules -> {steps} steps -> {out.name}", flush=True)
-        except Exception as exc:  # noqa: BLE001
-            # No data (recent months past Final latency, or pre-2000) or a transient error → skip and
-            # keep going; since no file is written, a later re-run retries the month.
-            print(f"[{yr}-{mo:02d}] SKIPPED: {str(exc)[:90]}", flush=True)
-        finally:
+        banked = False
+        last_exc: Exception | None = None
+        for attempt in range(1, GPM_MAX_ATTEMPTS + 1):
             shutil.rmtree(tmp, ignore_errors=True)
+            print(f"[{yr}-{mo:02d}] Harmony request (attempt {attempt}/{GPM_MAX_ATTEMPTS})...", flush=True)
+            try:
+                req = Request(collection=collection, spatial=bbox,
+                              temporal={"start": s.to_pydatetime(), "stop": e.to_pydatetime()})
+                job = _run_job(client, req)
+                tmp.mkdir(parents=True)
+                files = [f.result() for f in client.download_all(job, directory=str(tmp), overwrite=True)]
+                month = stack_month(files)
+                if month is None:
+                    print(f"[{yr}-{mo:02d}] no usable granules — skipping", flush=True)
+                    break  # genuinely empty (recent past-Final / pre-2000) — retrying won't help
+                steps, ngran = month.sizes["time"], len(files)
+                if steps < 0.95 * ngran:
+                    # Integrity guard: each granule is one 30-min step, so steps should ≈ granules. A big
+                    # shortfall means granules went missing → don't bank a holey month; retry it.
+                    print(f"[{yr}-{mo:02d}] INCOMPLETE {steps}/{ngran} steps — retrying", flush=True)
+                    last_exc = RuntimeError(f"incomplete {steps}/{ngran} steps")
+                else:
+                    # Write atomically (temp + rename) so an interrupted write never leaves a half file
+                    # that looks complete to the `out.exists()` skip.
+                    part = out.with_suffix(".nc.part")
+                    month.to_netcdf(part, encoding={v: {"zlib": True, "complevel": 4} for v in month.data_vars})
+                    part.replace(out)
+                    print(f"[{yr}-{mo:02d}] {ngran} granules -> {steps} steps -> {out.name}", flush=True)
+                    banked = True
+                    break
+            except Exception as exc:  # noqa: BLE001 — transient Harmony error; retry below
+                last_exc = exc
+                print(f"[{yr}-{mo:02d}] attempt {attempt} failed: {str(exc)[:80]}", flush=True)
+            if attempt < GPM_MAX_ATTEMPTS:
+                time.sleep(GPM_BACKOFF_SEC * attempt)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if not banked and last_exc is not None:
+            # Exhausted retries — leave the month absent so a later run retries it cleanly.
+            print(f"[{yr}-{mo:02d}] SKIPPED after {GPM_MAX_ATTEMPTS} attempts: {str(last_exc)[:80]}",
+                  flush=True)
 
 
 def extract_points(start: str, end: str, points: dict) -> pd.DataFrame:
