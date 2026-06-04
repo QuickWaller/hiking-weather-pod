@@ -19,6 +19,7 @@ from podml.config import DATA_RAW, load_config
 from podml.dataio import load_timeseries
 from podml.features import FEATURE_COLUMNS, build_features_from_signals, raw_signals
 from podml.labels import HORIZONS_H, THRESHOLDS_MM_HR, build_labels
+from podml.labels_gpm import build_labels_gpm
 from podml.sensorsim import SensorSimParams, degrade_signals
 
 TRAIN_YEARS = range(2010, 2023)  # 2010–2022
@@ -65,7 +66,7 @@ def _point_path(name: str, cfg: dict) -> "object":
 
 
 def probe_point(name: str, cfg: dict, importances: list | None = None,
-                sensor_sim: bool = False) -> pd.DataFrame:
+                sensor_sim: bool = False, label_source: str = "era5") -> pd.DataFrame:
     ds = load_timeseries(_point_path(name, cfg))
     signals = raw_signals(ds)
     feats_train = build_features_from_signals(signals)  # lab conditions: clean ERA5
@@ -76,7 +77,14 @@ def probe_point(name: str, cfg: dict, importances: list | None = None,
         feats_eval = build_features_from_signals(degrade_signals(signals, SensorSimParams(), rng))
     else:
         feats_eval = feats_train
-    labels = build_labels(ds, horizons=HORIZONS_H, thresholds=THRESHOLDS_MM_HR)
+
+    # Load labels from selected source (ERA5 = optimistic, GPM = honest)
+    if label_source == "gpm":
+        pt = cfg["probe_points"][name]
+        labels = build_labels_gpm(lat=pt["lat"], lon=pt["lon"],
+                                  horizons=HORIZONS_H, thresholds=THRESHOLDS_MM_HR)
+    else:
+        labels = build_labels(ds, horizons=HORIZONS_H, thresholds=THRESHOLDS_MM_HR)
     train_data = feats_train.join(labels)
     eval_data = feats_eval.join(labels)
     train_mask = train_data.index.year.isin(list(TRAIN_YEARS))
@@ -136,17 +144,21 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Point skill probe (dress rehearsal).")
     ap.add_argument("--sensor-sim", action="store_true",
                     help="evaluate on sensor-degraded inputs (deployable number, not the clean ceiling)")
+    ap.add_argument("--label-source", choices=["era5", "gpm"], default="era5",
+                    help="ERA5 = optimistic (circular, same physics as features); GPM = honest (satellite-measured)")
     args = ap.parse_args()
 
     cfg = load_config()
     points = list(cfg["probe_points"])
-    suffix = "_sim" if args.sensor_sim else ""
+    suffix = f"{'_sim' if args.sensor_sim else ''}_{args.label_source}"
     mode = "SENSOR-SIM (train clean / test degraded)" if args.sensor_sim else "CLEAN (optimistic ceiling)"
-    print(f"Rain skill probe — {mode} — {len(points)} points")
+    labels_mode = "GPM (satellite-measured, honest)" if args.label_source == "gpm" else "ERA5 (optimistic, circular)"
+    print(f"Rain skill probe — {mode} — {labels_mode} — {len(points)} points")
     print(f"Train {TRAIN_YEARS.start}-{TRAIN_YEARS.stop - 1} | embargo 2023 | test {TEST_YEAR}\n")
 
     importances: list = []
-    results = pd.concat([probe_point(p, cfg, importances, args.sensor_sim) for p in points],
+    results = pd.concat([probe_point(p, cfg, importances, args.sensor_sim, args.label_source)
+                        for p in points],
                         ignore_index=True)
 
     out_dir = Path(__file__).resolve().parents[2] / "outputs"
