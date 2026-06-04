@@ -28,7 +28,9 @@ from __future__ import annotations
 import argparse
 import os
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 
 import xarray as xr
 
@@ -55,6 +57,10 @@ CDS_SKIP_MONTHS: set[tuple[int, int]] = {
     (2010, 12),
 }
 
+# Full, untruncated failure records (CDS error body + traceback) land here, so a 400 is
+# actually diagnosable; stdout/era5_pull.log keeps only a one-line summary. Gitignored.
+FAILURE_LOG = ROOT / "era5_failures.log"
+
 
 def month_cache_path(year: int, month: int):
     return CACHE / f"era5land_nz_{year}-{month:02d}.nc"
@@ -68,13 +74,41 @@ def _client():
     return cdsapi.Client()
 
 
+def _record_failure(year: int, month: int, exc: Exception) -> str:
+    """Append the FULL failure (CDS response body + traceback) to era5_failures.log.
+
+    Returns a one-line summary for stdout. The CDS reason for a 400 lives in the HTTP
+    response *body*, not in str(exc), so we pull it out explicitly — without it a rejected
+    month is undiagnosable (which is exactly how 2010-09/10/12 went unexplained).
+    """
+    body = ""
+    resp = getattr(exc, "response", None)
+    if resp is not None:
+        body = (getattr(resp, "text", "") or "").strip().replace("\n", " ")
+    summary = f"{type(exc).__name__}: {exc}"
+    if body:
+        summary += f" | CDS: {body[:400]}"
+    ts = datetime.now(timezone.utc).isoformat()
+    try:
+        with open(FAILURE_LOG, "a") as fh:
+            fh.write(f"\n===== [{year}-{month:02d}] {ts} =====\n")
+            fh.write(summary + "\n")
+            fh.write("".join(traceback.format_exception(type(exc), exc, exc.__traceback__)))
+    except OSError:
+        pass
+    return summary
+
+
 def download_month(year: int, month: int) -> str:
     """Fetch+normalise+cache one month. No-op (fast) if already cached."""
-    if (year, month) in CDS_SKIP_MONTHS:
-        return f"[{year}-{month:02d}] SKIPPED (CDS permanently rejects this month)"
     path = month_cache_path(year, month)
     if path.exists():
         return f"[{year}-{month:02d}] cached"
+    # KNOWN-BAD interim skip: CDS returns a persistent 400 for these (see CDS_SKIP_MONTHS).
+    # Documented data gap — to investigate, drop the month from the set and rerun; the full
+    # CDS error is now captured in era5_failures.log instead of being lost.
+    if (year, month) in CDS_SKIP_MONTHS:
+        return f"[{year}-{month:02d}] SKIPPED (known CDS reject — see CDS_SKIP_MONTHS)"
     CACHE.mkdir(parents=True, exist_ok=True)
     # Temp files must NOT end in .nc, or the cache glob in era5_load would match a
     # half-written file. Write the final atomically via os.replace.
@@ -110,7 +144,8 @@ def download_month(year: int, month: int) -> str:
             wrt.unlink(missing_ok=True)
             if attempt < ERA5_MAX_ATTEMPTS:
                 time.sleep(ERA5_BACKOFF_SEC * attempt)
-    raise RuntimeError(f"{ERA5_MAX_ATTEMPTS} attempts failed: {str(last_exc)[:120]}")
+    summary = _record_failure(year, month, last_exc) if last_exc else "unknown error"
+    raise RuntimeError(f"{ERA5_MAX_ATTEMPTS} attempts failed — {summary}")
 
 
 def main() -> int:
@@ -132,7 +167,7 @@ def main() -> int:
                 print(fut.result(), flush=True)
             except Exception as e:  # one bad/unpublished month must not abort the rest
                 failures += 1
-                print(f"[{y}-{m:02d}] FAILED: {type(e).__name__}: {str(e)[:160]}", flush=True)
+                print(f"[{y}-{m:02d}] FAILED: {e}  (full detail in era5_failures.log)", flush=True)
 
     if failures:
         print(f"Done with {failures} month(s) failed — rerun to retry.", flush=True)
