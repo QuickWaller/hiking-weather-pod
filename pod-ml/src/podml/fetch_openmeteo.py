@@ -1,5 +1,7 @@
 """Step 6 — Open-Meteo hourly observations for real-time hike validation.
 
+Weather data by Open-Meteo.com (CC BY 4.0). See pod-ml/OPENMETEO_LICENSE.md for terms.
+
 Fetches precipitation, pressure, temperature, humidity for the 5 probe points (NZ domain).
 Stores rolling 1-year CSV per point. Cron job: hourly fetches → append → deduplicate → prune.
 
