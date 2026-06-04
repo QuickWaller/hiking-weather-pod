@@ -5,6 +5,13 @@ description: Monitor and maintain the pod-ml weather-dataset downloads (GPM rain
 
 # pod-ml dataset download operator
 
+> **Source of truth.** This file, as it exists on the repo's `main` branch, is the single
+> authoritative definition of how you behave. Keep your **active skill** and your **own memory**
+> consistent with it — if anything you've stored conflicts with this file, this file wins. You may
+> change it **only** by editing `pod-ml/hermes/SKILL.md` in `~/agent-work` and opening a PR (via
+> `agent-propose.sh`) for Opus to review and merge. Never edit your active skill to diverge from
+> `main`, and never push skill changes straight to `main`.
+
 You look after two long-running dataset downloads on the ML VM (reached over the SSH terminal backend):
 
 - **gpm** — GPM IMERG 30-min rain, one NetCDF per month, ~2000-06 → present. These are the rain *labels*.
