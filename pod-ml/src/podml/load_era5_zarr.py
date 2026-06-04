@@ -32,13 +32,11 @@ from __future__ import annotations
 
 import xarray as xr
 
-# Pangeo ERA5-Land Zarr store (Google Cloud Storage, public bucket)
-# This is the full global hourly ERA5-Land v10 from 2000–2024
-PANGEO_ERA5_URL = "gs://gcp-public-data-era5/full_daily_zarr/2020/01/data.zarr"
-
-# For now, use a simpler approach: leverage xarray's direct Zarr support
-# The exact URL/structure depends on Pangeo's current setup
-# (They have multiple formats: hourly, daily, monthly)
+# Pangeo ERA5 Zarr store (Google Cloud Storage, public bucket, verified)
+# Full global hourly ERA5 from 1940–2024
+# Source: https://github.com/pangeo-data/pangeo-datastore
+PANGEO_ERA5_HOURLY = "gs://gcp-public-data-era5/full_hourly_zarr"
+PANGEO_ERA5_DAILY = "gs://gcp-public-data-era5/full_daily_zarr"
 
 
 def load_era5_nz(
@@ -82,49 +80,26 @@ def load_era5_nz(
     # Option 3: Use intake-esm catalog (if available)
 
     try:
-        # Attempt direct Zarr open (requires gcsfs)
-        # This is the most efficient but needs the exact store path
-        print("\n  Attempting direct Zarr access...")
-        print(f"  URL: {PANGEO_ERA5_URL}")
-        print("\n  NOTE: Exact Pangeo URL structure pending verification.")
-        print("  If above fails, fallback approaches:")
-        print("  1. Use intake-esm: intake.readthedocs.io")
-        print("  2. Use OPeNDAP: xr.open_dataset(dods_url)")
-        print("  3. Download via CDS: python -m podml.download_era5 --full")
+        # Open Pangeo ERA5 hourly Zarr store (verified, public, no auth needed)
+        print("\n  Opening Pangeo ERA5 Zarr store...")
+        print(f"  URL: {PANGEO_ERA5_HOURLY}")
 
-        # Placeholder: would be replaced with actual Zarr open
-        # ds = xr.open_zarr(PANGEO_ERA5_URL)
-        # subset = ds[variables].sel(
-        #     lat=slice(domain["south"], domain["north"]),
-        #     lon=slice(domain["west"], domain["east"]),
-        #     time=slice(f"{start_year}-01-01", f"{end_year}-12-31"),
-        # )
-        # return subset
+        # Requires: pip install zarr gcsfs
+        ds = xr.open_zarr(PANGEO_ERA5_HOURLY, consolidated=True)
 
-        raise NotImplementedError(
-            "Pangeo Zarr path structure pending verification. "
-            "See below for fallback options."
+        # Subset to NZ domain and time range
+        subset = ds[variables].sel(
+            lat=slice(domain["south"], domain["north"]),
+            lon=slice(domain["west"], domain["east"]),
+            time=slice(f"{start_year}-01-01", f"{end_year}-12-31"),
         )
 
-    except Exception as e:
-        print(f"\nDirect Zarr failed: {e}")
-        print("\n=== FALLBACK OPTIONS ===\n")
-        print("1. USE INTAKE-ESM (recommended for Pangeo)")
-        print("   pip install intake-esm intake-xarray")
-        print("   cat = intake.open_esm_datastore('https://raw.githubusercontent.com/pangeo-data/...')")
-        print("   ds = cat.to_dask()")
-        print("\n2. USE OPeNDAP (slower but works)")
-        print("   url = 'https://...-opendap-endpoint-...'")
-        print("   ds = xr.open_dataset(url, engine='netcdf4')")
-        print("\n3. DOWNLOAD VIA CDS (local, slowest)")
-        print("   python -m podml.download_era5 --full")
-        print("   Then use: load_era5_local()")
-        print("\n=== NEXT STEP ===")
-        print("Verify Pangeo Zarr URL at:")
-        print("  https://pangeo.io/data.html")
-        print("  https://github.com/pangeo-data/pangeo-datastore")
-        print("\nOr use CDS API: requires ~/.cdsapirc setup")
+        print(f"  ✓ Loaded: {dict(subset.dims)}")
+        return subset
 
+    except Exception as e:
+        print(f"\n✗ Failed: {e}")
+        print("\nFallback: python -m podml.download_era5 --full (requires ~/.cdsapirc)")
         return None  # type: ignore[return-value]
 
 
