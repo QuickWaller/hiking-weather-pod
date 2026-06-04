@@ -101,6 +101,18 @@ Enforcement:
 - `deploy-live.sh` is **not** in the bot's sudo allowlist (which permits only `podctl`), so the bot cannot self-deploy.
 - Enable **branch protection on `main`** (require a PR) so neither the bot nor a leaked token can reach `main` directly. This is the real gate; the rest is convention.
 
+## `SKILL.md` is the canonical source of truth
+
+`pod-ml/hermes/SKILL.md` on `main` is the **single authoritative definition** of the agent's
+behaviour. The agent must keep its **active skill** (`~/.hermes/skills/podml-downloads/SKILL.md`
+on the Hermes VM) and its **own memory** in sync with it — if either conflicts, `SKILL.md` wins.
+
+The agent may **propose** changes to its own instructions, but **only via a PR**: edit
+`pod-ml/hermes/SKILL.md` in `~/agent-work`, `agent-propose.sh`, and let a human + Opus review and
+merge. It must never edit its active skill to diverge from `main`, and never push skill changes
+straight to `main`. After a skill change merges, refresh the active copy on the Hermes VM (e.g.
+`curl …/main/pod-ml/hermes/SKILL.md -o ~/.hermes/skills/podml-downloads/SKILL.md`).
+
 ## Security posture
 
 - The agent's login is **unprivileged**; it can only mutate downloads through `podctl`, and every
