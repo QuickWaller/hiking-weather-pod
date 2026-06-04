@@ -46,6 +46,14 @@ _DROP = ["number", "expver"]
 # months with backoff — lets a slot free up instead of deferring to the next run.
 ERA5_MAX_ATTEMPTS = 5
 ERA5_BACKOFF_SEC = 20  # grows linearly: 20s, 40s, 60s, 80s
+# Months that CDS permanently rejects (accepted→rejected, not transient).
+# Rather than wasting retries every watchdog cycle, skip them explicitly.
+# Revisit when CDS publishes these months or we find alternate sources.
+CDS_SKIP_MONTHS: set[tuple[int, int]] = {
+    (2010, 9),
+    (2010, 10),
+    (2010, 12),
+}
 
 
 def month_cache_path(year: int, month: int):
@@ -62,6 +70,8 @@ def _client():
 
 def download_month(year: int, month: int) -> str:
     """Fetch+normalise+cache one month. No-op (fast) if already cached."""
+    if (year, month) in CDS_SKIP_MONTHS:
+        return f"[{year}-{month:02d}] SKIPPED (CDS permanently rejects this month)"
     path = month_cache_path(year, month)
     if path.exists():
         return f"[{year}-{month:02d}] cached"
