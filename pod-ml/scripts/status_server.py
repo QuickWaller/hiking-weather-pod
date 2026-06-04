@@ -118,11 +118,12 @@ def _parse_era5_log(log_path: Path) -> dict:
         m = re.search(r"ERA5-Land CDS: \d+ months, (\d+) parallel", line)
         if m:
             workers = int(m.group(1))
-        m = re.match(r"\[(\d{4}-\d{2})\] FAILED: (.+)", line)
+        # [W00] prefix is optional — new worker-aware format; old logs lack it
+        m = re.match(r"(?:\[W..\] )?\[(\d{4}-\d{2})\] FAILED: (.+)", line)
         if m:
             failures[m.group(1)] = m.group(2)[:80]
             continue
-        m = re.match(r"\[(\d{4}-\d{2})\] (cached|\d+s)", line)
+        m = re.match(r"(?:\[W..\] )?\[(\d{4}-\d{2})\] (cached|\d+s)", line)
         if m:
             failures.pop(m.group(1), None)
             continue
@@ -134,7 +135,7 @@ def _parse_era5_log(log_path: Path) -> dict:
     in_flight = False
     for line in reversed(lines[-300:]):
         line = line.strip()
-        if re.match(r"\[(\d{4}-\d{2})\] (cached|\d+s|FAILED)", line):
+        if re.match(r"(?:\[W..\] )?\[(\d{4}-\d{2})\] (cached|\d+s|FAILED)", line):
             in_flight = False
             break
         if "status has been updated to accepted" in line or "status has been updated to running" in line:
@@ -146,6 +147,65 @@ def _parse_era5_log(log_path: Path) -> dict:
         "failures": list(failures.items()),
         "cds_status": cds_status,
     }
+
+
+def _parse_era5_workers(log_path: Path) -> list[dict]:
+    """Parse [W..] [...] lines to reconstruct per-worker state.
+
+    Returns list of {id, month, stage, elapsed_s, line_age_s}, newest first.
+    Only returns workers seen in the last 10 minutes.
+    """
+    lines = _tail(log_path, n=600)
+    now = time.time()
+    # Walk backwards: each [W..] line is the *latest* stage for that worker+month combo
+    seen: set[tuple[str, str]] = set()  # (worker_id, month)
+    workers: list[dict] = []
+    for line in reversed(lines):
+        line = line.strip()
+        m = re.match(r"\[(W..)\] \[(\d{4}-\d{2})\] (.+)", line)
+        if not m:
+            continue
+        wid, month, rest = m.group(1), m.group(2), m.group(3)
+        key = (wid, month)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        # Extract stage
+        if rest.startswith("started"):
+            stage, extra = "started", ""
+        elif "rate-limited retry" in rest:
+            stage = "rate-limited"
+            rm = re.search(r"retry (\d+/\d+)", rest)
+            extra = f" {rm.group(1)}" if rm else ""
+        elif "cached" in rest:
+            stage, extra = "cached", ""
+            continue  # skip — already done, not actively working
+        elif "FAILED:" in rest:
+            stage, extra = "FAILED", ""
+        elif "s" in rest and "MB" in rest:
+            stage = "complete"
+            m2 = re.match(r"(\d+)s (\d+)MB", rest)
+            extra = f" {m2.group(1)}s {m2.group(2)}MB" if m2 else ""
+            continue  # skip — completed, not actively working
+        else:
+            stage, extra = "working", ""
+
+        # Estimate line age from position in tail (rough)
+        line_age_s = (len(lines) - lines.index(line)) * 0.5  # ~500 chars/s estimate
+
+        workers.append({
+            "id": wid,
+            "month": month,
+            "stage": stage + extra,
+            "elapsed_s": line_age_s,
+        })
+
+        # Only show recent workers (last 10 min from log tail)
+        if len(workers) >= 8:
+            break
+
+    return [w for w in workers if w["elapsed_s"] < 600]
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +281,40 @@ def _month_grid(files: list[str], year_start: int, year_end: int,
 # ---------------------------------------------------------------------------
 # HTML assembly
 # ---------------------------------------------------------------------------
+
+
+def _era5_workers_html(workers: list[dict]) -> str:
+    """Render a live per-worker table for the dashboard."""
+    if not workers:
+        return "<p style='color:#484f58;font-size:12px;margin-top:8px'>No active workers in the last 10 min.</p>"
+    stage_colors = {
+        "started": "#58a6ff", "rate-limited": "#e3b341",
+        "FAILED": "#f85149", "complete": "#3fb950",
+    }
+    rows = ""
+    for w in workers:
+        stage = w["stage"]
+        base = stage.split()[0] if " " in stage else stage
+        color = stage_colors.get(base, "#8b949e")
+        rows += (
+            f"<tr>"
+            f"<td style='font-family:monospace;font-size:12px;color:#c9d1d9;padding:3px 8px'>{w['id']}</td>"
+            f"<td style='font-family:monospace;font-size:12px;color:#c9d1d9;padding:3px 8px'>{w['month']}</td>"
+            f"<td style='font-size:12px;color:{color};padding:3px 8px'>{stage}</td>"
+            f"<td style='font-size:11px;color:#8b949e;padding:3px 8px'>~{w['elapsed_s']:.0f}s</td>"
+            f"</tr>"
+        )
+    return f"""<table style='border-collapse:collapse;margin-top:6px;width:100%;max-width:600px'>
+    <tr style='border-bottom:1px solid #21262d'>
+      <th style='color:#8b949e;font-size:11px;text-align:left;padding:4px 8px'>W</th>
+      <th style='color:#8b949e;font-size:11px;text-align:left;padding:4px 8px'>month</th>
+      <th style='color:#8b949e;font-size:11px;text-align:left;padding:4px 8px'>stage</th>
+      <th style='color:#8b949e;font-size:11px;text-align:left;padding:4px 8px'>age</th>
+    </tr>
+    {rows}
+</table>"""
+
+
 
 def _failure_html(failures: list[tuple[str, str]], label: str) -> str:
     if not failures:
@@ -350,6 +444,8 @@ def render() -> str:
     om_files, dem_ok = st["om_files"], st["dem_ok"]
     gpm_log, era5_log = st["gpm_log"], st["era5_log"]
     gpm_run, era5_run = st["gpm_run"], st["era5_run"]
+    era5_workers = _parse_era5_workers(REPO / "era5_pull.log")
+    era5_workers_html = _era5_workers_html(era5_workers)
 
     _empty = {"n": 0, "expected": 1, "pct": 0.0, "last_hr": 0,
               "recent": "-", "recent_age": None, "eta_h": None, "files": []}
@@ -405,6 +501,9 @@ def render() -> str:
 </table>
 
 {failures_html}
+
+<h2 style='margin-top:24px'>ERA5 active workers</h2>
+{era5_workers_html}
 
 <h2 style='margin-top:24px'>GPM completed months</h2>
 <div style='margin-bottom:6px'>{legend}</div>

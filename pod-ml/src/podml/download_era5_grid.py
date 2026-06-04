@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import os
 import random
+import threading
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -59,6 +60,15 @@ RATE_LIMIT_BACKOFF_SEC = 120  # base per try; jittered below so workers don't re
 # Full, untruncated failure records (CDS error body + traceback) land here, so a 400 is
 # actually diagnosable; stdout/era5_pull.log keeps only a one-line summary. Gitignored.
 FAILURE_LOG = ROOT / "era5_failures.log"
+
+
+def _worker_id() -> str:
+    """Short stable worker ID from the current thread name (e.g. '00','01','02','03')."""
+    name = threading.current_thread().name
+    if "ThreadPoolExecutor" in name:
+        # "ThreadPoolExecutor-0_0" → "00"
+        return name.rsplit("_", 1)[-1].zfill(2)
+    return name.replace(" ", "")[:4]
 
 
 def month_cache_path(year: int, month: int):
@@ -109,9 +119,11 @@ def _is_rate_limited(exc: Exception) -> bool:
 
 def download_month(year: int, month: int) -> str:
     """Fetch+normalise+cache one month. No-op (fast) if already cached."""
+    wid = _worker_id()
     path = month_cache_path(year, month)
     if path.exists():
-        return f"[{year}-{month:02d}] cached"
+        return f"[W{wid}] [{year}-{month:02d}] cached"
+    print(f"[W{wid}] [{year}-{month:02d}] started", flush=True)
     CACHE.mkdir(parents=True, exist_ok=True)
     # Temp files must NOT end in .nc, or the cache glob in era5_load would match a
     # half-written file. Write the final atomically via os.replace.
@@ -141,7 +153,7 @@ def download_month(year: int, month: int) -> str:
             ds.close()
             os.replace(wrt, path)  # atomic: the final .nc only ever appears complete
             raw.unlink(missing_ok=True)
-            return f"[{year}-{month:02d}] {time.time() - t0:.0f}s {path.stat().st_size / 1e6:.0f}MB"
+            return f"[W{wid}] [{year}-{month:02d}] {time.time() - t0:.0f}s {path.stat().st_size / 1e6:.0f}MB"
         except Exception as exc:  # noqa: BLE001 — classify + retry below
             last_exc = exc
             raw.unlink(missing_ok=True)
@@ -152,7 +164,9 @@ def download_month(year: int, month: int) -> str:
                 if rate_waits > RATE_LIMIT_MAX_ATTEMPTS:
                     break
                 # Jitter so 4 workers don't resubmit in lockstep and re-collide on the queue.
-                time.sleep(RATE_LIMIT_BACKOFF_SEC + random.randint(0, 60))
+                delay = RATE_LIMIT_BACKOFF_SEC + random.randint(0, 60)
+                print(f"[W{wid}] [{year}-{month:02d}] rate-limited retry {rate_waits}/{RATE_LIMIT_MAX_ATTEMPTS} (waiting {delay}s)", flush=True)
+                time.sleep(delay)
                 continue
             # Genuine/unknown error: a few growing-backoff retries, then fail — NOT skip. A
             # later watchdog run retries the month, so nothing is permanently abandoned.
@@ -183,7 +197,7 @@ def main() -> int:
                 print(fut.result(), flush=True)
             except Exception as e:  # one bad/unpublished month must not abort the rest
                 failures += 1
-                print(f"[{y}-{m:02d}] FAILED: {e}  (full detail in era5_failures.log)", flush=True)
+                print(f"[W??] [{y}-{m:02d}] FAILED: {e}  (full detail in era5_failures.log)", flush=True)
 
     if failures:
         print(f"Done with {failures} month(s) failed — rerun to retry.", flush=True)
