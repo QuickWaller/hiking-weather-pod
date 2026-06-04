@@ -72,6 +72,35 @@ ML_VM_HOST=192.168.2.156
 Use Hermes' built-in cron to have the agent run the routine check (in `SKILL.md`) on a schedule —
 e.g. every few hours — so it pings you proactively, not only when asked.
 
+## Code-fix loop (bot drafts, you merge, admin deploys)
+
+For problems that are in the *code* (not just operational), the bot drafts a fix in an isolated
+workspace and hands it off — it never edits or deploys the live tree.
+
+```
+  Hermes(DeepSeek) finds a code-level issue
+        │  (in ~/agent-work — a separate clone, owned by hermes-pod-ml)
+        ▼
+  agent-propose.sh <slug>  ──▶ pushes agent/<slug> + pings you on Telegram (what/why/PR link)
+        │
+        ▼
+  You + Opus review the PR ──▶ merge to main   (branch protection keeps the gate)
+        │
+        ▼
+  admin: deploy-live.sh [gpm|era5|all]  ──▶ resets live tree to origin/main + restarts
+```
+
+Setup (once, on the ML VM, after `setup-account.sh`):
+```bash
+sudo bash /home/claude/cyber-deck-and-weather-station/pod-ml/hermes/setup-agent-workspace.sh
+# then seed the push token as the script instructs
+```
+
+Enforcement:
+- The bot works only in `~/agent-work` and pushes only `agent/*` — it has no write access to the live tree.
+- `deploy-live.sh` is **not** in the bot's sudo allowlist (which permits only `podctl`), so the bot cannot self-deploy.
+- Enable **branch protection on `main`** (require a PR) so neither the bot nor a leaked token can reach `main` directly. This is the real gate; the rest is convention.
+
 ## Security posture
 
 - The agent's login is **unprivileged**; it can only mutate downloads through `podctl`, and every

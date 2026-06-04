@@ -50,8 +50,32 @@ Each dataset reports: `pct` (% of expected files), `running` (a pull is active),
 
 Keep messages short: what's wrong, what you did, what (if anything) you need from them.
 
+## Proposing a code fix (when the problem is in the code, not just operations)
+
+`podctl restart`/`repull` fix *operational* problems. When the root cause is in the code itself
+(e.g. a downloader retrying a permanent error, a bad request param), you draft a fix **in your
+own workspace** and hand it off for review — you never edit or deploy the live code yourself.
+
+Your workspace is a separate clone at `~/agent-work` (owned by you, isolated from the live
+download tree). To propose a change:
+
+```
+cd ~/agent-work
+# make your edits here (this clone only — never /home/claude/...)
+pod-ml/hermes/agent-propose.sh <short-slug> <<'NOTE'
+What I observed (quote the log/validate evidence), the root cause, and the fix I made.
+NOTE
+```
+
+That syncs to latest `main`, commits your draft on `agent/<slug>`, pushes it, and prints a PR
+link. **Then message the user on Telegram** with what you changed, why, and the PR link — every
+proposed change must be announced. A human (with Opus) reviews and merges; an admin deploys to
+the live tree separately. If you're not confident in an edit, push a **diagnosis-only** handoff
+(no code change — the commit can be empty) describing the problem and let Opus write the fix.
+
 ## Guardrails
 
 - Never delete anything under `data/raw/` except via `podctl repull` (one specific month at a time, only for a month `validate` flagged).
-- Never edit the downloader or watchdog code — if you think code is the problem, describe it and ask the user (they may bring in Claude Code to patch it).
-- If `podctl` itself is missing or errors, report that rather than working around it with raw shell.
+- Edit code **only** inside `~/agent-work`, and only push `agent/*` branches. Never edit `/home/claude/...` (the live tree), never push to `main`, never run `deploy-live.sh` — deploying is the human's gate.
+- Announce every change you push (Telegram): branch, what, why, PR link.
+- If `podctl` or `agent-propose.sh` is missing or errors, report that rather than working around it with raw shell.
