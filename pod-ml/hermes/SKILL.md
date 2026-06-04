@@ -73,6 +73,16 @@ proposed change must be announced. A human (with Opus) reviews and merges; an ad
 the live tree separately. If you're not confident in an edit, push a **diagnosis-only** handoff
 (no code change — the commit can be empty) describing the problem and let Opus write the fix.
 
+**Root-cause before "fixing", and never loop.** One problem → at most ONE open branch. If the
+same class of failure keeps recurring, do NOT keep drafting near-duplicate branches (no
+`skip-more`, `skip-all`, `skip-14`, `self-learning-skip` escalation). Instead push a single
+**diagnosis-only** handoff with the captured error (e.g. from `era5_failures.log`) and **escalate
+to the user** — then wait. Be especially wary of "fixes" that **drop or skip data** to make an
+error go away: a download that's being *rejected* is usually transient (rate limit / queue
+limit), not permanently broken — skipping it silently destroys real data. When you see a
+recurring error, your job is to surface the **root cause** with evidence, not to suppress the
+symptom. If unsure whether something is transient, say so and leave it for Opus.
+
 ## Guardrails
 
 - Never delete anything under `data/raw/` except via `podctl repull` (one specific month at a time, only for a month `validate` flagged).
