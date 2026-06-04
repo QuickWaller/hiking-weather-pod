@@ -1,23 +1,21 @@
-"""Grid-based model training using full ERA5 grid + static features.
+"""Grid-based model training: pool every NZ ERA5 cell instead of 5 probe points.
 
-Instead of 5 probe points, train on ALL NZ grid cells (8000+ locations).
-This gives the model geographic context and 100x more data.
+Each (timestep, grid-cell) pair is one training row. Stacking thousands of cells
+gives the model geographic variety — elevation, climate zone, and 20-year
+climatology per cell — so it can learn "dry lee cells rain less" instead of
+memorising "rain is frequent" from a handful of wet points.
 
-Workflow:
-  1. Load ERA5 gridded data (full NZ, 2010-2022) from Pangeo Zarr
-  2. Load elevation per cell from DEM
-  3. Compute 20yr climatology per cell
-  4. Reshape grids to (time, cells) format
-  5. Add elevation + zone as extra columns
-  6. Train LightGBM on all cells pooled together
-  7. Validate on 2024 and generate per-cell skill maps
+Pipeline:
+  1. Load ERA5 grid for NZ from ARCO-ERA5 (load_era5_zarr.load_era5_nz)
+  2. Regrid the DEM onto the ERA5 lat/lon grid (different native resolutions)
+  3. Compute per-cell climatology (mean over the training years)
+  4. Stack (time, cell) -> rows: dynamic features + static features
+  5. Build labels per cell with forward_window_max ALONG TIME (no cross-cell leak)
+  6. Train one LightGBM per (threshold, horizon) on the pooled rows
 
-Benefits:
-  - Model learns "dry cells have less rain" (fixes Christchurch bias)
-  - Uses full ERA5 dataset (not 5 points) -> 100x more training data
-  - Static features are pod-queryable (elevation via DEM lookup)
-  - Generates per-cell skill maps (which regions are predictable)
-  - Single model for all of NZ (better generalization)
+Memory note: one NZ year is ~8760 h x ~2600 cells ~= 23M rows. ``n_cells_sample``
+draws a random subset of cells (full time series each, so windowing stays valid)
+to keep training tractable; raise it for the final model.
 """
 
 from __future__ import annotations
@@ -26,198 +24,205 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from lightgbm import LGBMClassifier
+from numpy.lib.stride_tricks import sliding_window_view
 
-from podml.features import HORIZONS_H, THRESHOLDS_MM_HR
+from podml.labels import HORIZONS_H, THRESHOLDS_MM_HR
 from podml.load_era5_zarr import load_era5_nz
-from podml.labels import forward_window_max
 from podml.static_features import elevation_to_zones, load_dem_grid
 
+# Feature columns in a fixed order (dynamic first, then static per-cell).
+FEATURE_COLS = [
+    "sp_hPa", "t2m_C", "rh", "month", "hour_utc",
+    "elevation", "zone", "precip_mean", "pressure_mean", "temp_mean",
+]
 
-def compute_climatology_from_era5(
-    ds: xr.Dataset,
-    var_names: dict | None = None,
-) -> dict:
-    """Compute 20-year climatology from ERA5 dataset.
 
-    Args:
-        ds: ERA5 xarray Dataset with time dimension
-        var_names: mapping {'precip': 'tp', 'pressure': 'sp', 'temp': 't2m'}
+def _forward_window_max_2d(x: np.ndarray, h: int) -> np.ndarray:
+    """forward_window_max applied independently down axis 0 (per cell/column).
 
-    Returns:
-        dict with keys 'precip_mean', 'pressure_mean', 'temp_mean'
-        Each value is (lat, lon) array
+    x: (n_time, n_cells). Returns (n_time, n_cells) where out[T, c] =
+    max(x[T+1 .. T+h, c]); the last h rows are NaN (incomplete future).
+    Windowing never crosses the column boundary, so cells stay independent.
     """
-    if var_names is None:
-        var_names = {"precip": "tp", "pressure": "sp", "temp": "t2m"}
+    x = np.asarray(x, dtype="float64")
+    n = x.shape[0]
+    out = np.full_like(x, np.nan)
+    if n > h:
+        # sliding_window_view over time -> (n_time-h+1, n_cells, h); max over window.
+        wmax = sliding_window_view(x, h, axis=0).max(axis=-1)  # (n_time-h+1, n_cells)
+        out[: n - h] = wmax[1 : n - h + 1]
+    return out
 
-    clim = {}
-    for key, var in var_names.items():
+
+def compute_climatology_from_era5(ds: xr.Dataset) -> dict[str, np.ndarray]:
+    """Per-cell climatology (mean over time) for precip/pressure/temp.
+
+    Returns dict {precip_mean, pressure_mean, temp_mean} each shaped (n_lat, n_lon).
+    """
+    out: dict[str, np.ndarray] = {}
+    for key, var in {"precip": "tp", "pressure": "sp", "temp": "t2m"}.items():
         if var in ds.data_vars:
-            mean = ds[var].mean(dim="time")
-            clim[f"{key}_mean"] = mean.values
-        else:
-            print(f"  Warning: {var} not found in dataset")
-
-    return clim
+            out[f"{key}_mean"] = ds[var].mean(dim="time").values
+    return out
 
 
-def reshape_grid_to_features(
+def grid_to_xy(
     ds: xr.Dataset,
-    dem: xr.DataArray,
-    climatology: dict,
-) -> pd.DataFrame:
-    """Reshape ERA5 grid to (time, cells) feature format.
+    dem_on_grid: xr.DataArray,
+    climatology: dict[str, np.ndarray],
+    horizons: list[int] = HORIZONS_H,
+    thresholds: list[float] = THRESHOLDS_MM_HR,
+) -> tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
+    """Stack the grid into (features, labels, times) with one row per (time, cell).
 
     Args:
-        ds: ERA5 Dataset (lat, lon, time)
-        dem: DEM DataArray (lat, lon)
-        climatology: dict with climate variables
+        ds: ERA5 Dataset with short-named vars (sp, t2m, d2m, tp) on time/lat/lon.
+        dem_on_grid: elevation already interpolated onto ds's (lat, lon) grid.
+        climatology: per-cell means from compute_climatology_from_era5 (n_lat, n_lon).
 
     Returns:
-        DataFrame with shape (time, cells) and columns:
-        - sp_hPa, t2m_C, rh, month, hour_utc (dynamic)
-        - elevation, zone, precip_mean, pressure_mean, temp_mean (static)
+        X: features DataFrame (n_time*n_cells, len(FEATURE_COLS)).
+        y: label DataFrame, columns ge{thr}_h{h}, same rows as X.
+        times: datetime64 array aligned to X rows (for year-based splits).
+
+    Row order is C-order over (n_time, n_cells): row = t*n_cells + c. Every array
+    below is flattened the same way, so features, labels and times stay aligned.
     """
-    # Reshape grid to (time, cells)
-    n_time = len(ds.time)
-    n_lat = len(ds.lat)
-    n_lon = len(ds.lon)
-    n_cells = n_lat * n_lon
+    ds = ds.transpose("time", "lat", "lon")
+    n_time = ds.sizes["time"]
+    n_cells = ds.sizes["lat"] * ds.sizes["lon"]
 
-    print(f"  Grid shape: {n_lat} lat x {n_lon} lon x {n_time} time = {n_cells * n_time} samples")
-
-    # Extract variables and reshape
-    sp_hpa = ds["sp"].values.reshape(n_time, n_cells) / 100.0  # Pa -> hPa
-    t2m_c = ds["t2m"].values.reshape(n_time, n_cells) - 273.15  # K -> C
-    d2m_c = ds["d2m"].values.reshape(n_time, n_cells) - 273.15
-
-    # Compute RH from temp and dewpoint (simplified Magnus formula)
+    sp = ds["sp"].values.reshape(n_time, n_cells) / 100.0    # Pa -> hPa
+    t2m = ds["t2m"].values.reshape(n_time, n_cells) - 273.15  # K -> C
+    d2m = ds["d2m"].values.reshape(n_time, n_cells) - 273.15
     a, b = 17.625, 243.04
-    rh = 100.0 * np.exp(a * d2m_c / (b + d2m_c)) / np.exp(a * t2m_c / (b + t2m_c))
-    rh = np.clip(rh, 0.0, 100.0)
+    rh = np.clip(
+        100.0 * np.exp(a * d2m / (b + d2m)) / np.exp(a * t2m / (b + t2m)), 0.0, 100.0
+    )
 
-    # Extract time features
-    times = pd.to_datetime(ds.time.values)
-    months = times.month.values.reshape(n_time, 1)
-    hours = times.hour.values.reshape(n_time, 1)
+    times = pd.to_datetime(ds["time"].values)
+    month = np.repeat(times.month.to_numpy(), n_cells)
+    hour = np.repeat(times.hour.to_numpy(), n_cells)
 
-    # Extract static features (same for all time)
-    dem_flat = dem.values.reshape(n_cells)
-    zones = elevation_to_zones(dem_flat)
+    elev_cells = dem_on_grid.values.reshape(n_cells)
+    zone_cells = elevation_to_zones(elev_cells)
 
-    # Build DataFrame
-    df = pd.DataFrame({
-        "sp_hPa": sp_hpa,
-        "t2m_C": t2m_c,
-        "rh": rh,
-        "month": np.tile(months, (1, n_cells)),
-        "hour_utc": np.tile(hours, (1, n_cells)),
-        "elevation": np.tile(dem_flat, (n_time, 1)),
-        "zone": np.tile(zones, (n_time, 1)),
-    })
+    X = pd.DataFrame({
+        "sp_hPa": sp.reshape(-1),
+        "t2m_C": t2m.reshape(-1),
+        "rh": rh.reshape(-1),
+        "month": month,
+        "hour_utc": hour,
+        "elevation": np.tile(elev_cells, n_time),
+        "zone": np.tile(zone_cells, n_time),
+        "precip_mean": np.tile(climatology["precip_mean"].reshape(n_cells), n_time),
+        "pressure_mean": np.tile(climatology["pressure_mean"].reshape(n_cells), n_time),
+        "temp_mean": np.tile(climatology["temp_mean"].reshape(n_cells), n_time),
+    })[FEATURE_COLS]
 
-    # Add climatology (constant per cell)
-    for key, clim_vals in climatology.items():
-        df[key] = np.tile(clim_vals.reshape(n_cells), (n_time, 1))
+    tp_mm = np.clip(ds["tp"].values.reshape(n_time, n_cells) * 1000.0, 0.0, None)
+    y = pd.DataFrame(index=X.index)
+    for h in horizons:
+        fmax = _forward_window_max_2d(tp_mm, h)  # (n_time, n_cells)
+        fflat = fmax.reshape(-1)
+        for thr in thresholds:
+            lab = (fflat >= thr).astype("float64")
+            lab[np.isnan(fflat)] = np.nan
+            y[f"ge{thr}_h{h}"] = lab
 
-    df.index = times
+    times_row = np.repeat(times.to_numpy(), n_cells)
+    return X, y, times_row
 
-    print(f"  Feature matrix: {df.shape}")
-    return df
+
+def _dem_on_era5_grid(ds: xr.Dataset) -> xr.DataArray:
+    """Interpolate the native DEM onto ds's (lat, lon) grid (linear, nearest fill)."""
+    dem = load_dem_grid()
+    on_grid = dem.interp(lat=ds["lat"], lon=ds["lon"], method="linear")
+    # Edge cells can fall outside the DEM extent -> fill with nearest.
+    if np.isnan(on_grid.values).any():
+        on_grid = on_grid.fillna(dem.interp(lat=ds["lat"], lon=ds["lon"], method="nearest"))
+    return on_grid
 
 
 def train_grid_model(
-    train_years: range = range(2010, 2023),
+    train_years: range = range(2021, 2022),
     test_year: int = 2024,
+    n_cells_sample: int | None = 400,
+    seed: int = 42,
 ) -> dict:
-    """Train LightGBM on full NZ grid (all cells pooled).
-
-    Implementation using Pangeo Zarr if available, else CDS download.
+    """Train one LightGBM per (threshold, horizon) on pooled NZ grid cells.
 
     Args:
-        train_years: years for training (default: 2010-2022)
-        test_year: year for testing (default: 2024)
+        train_years: years to train on (inclusive range).
+        test_year: held-out year for evaluation.
+        n_cells_sample: random subset of grid cells (None = all). Each sampled cell
+            keeps its full time series, so labels stay leak-free.
+        seed: RNG seed for cell sampling.
 
     Returns:
-        dict with models, metrics, skill maps
+        dict with status, trained models, and per-model train/test row counts.
     """
-    print("=== Grid-Based Model Training ===\n")
+    print("=== Grid-based training ===\n")
+    print(f"1. Loading ERA5 grid: train {min(train_years)}-{max(train_years)}, test {test_year}")
+    # Load ONLY the years we use (train years + test year), each cached on its own,
+    # rather than the contiguous span — avoids pulling unused middle years.
+    years = sorted(set(train_years) | {test_year})
+    ds = xr.concat([load_era5_nz(start_year=y, end_year=y) for y in years], dim="time").load()
 
-    # Load ERA5 grid for training years
-    print("1. Loading ERA5 grid from Pangeo Zarr...")
-    try:
-        ds_train = load_era5_nz(
-            start_year=min(train_years),
-            end_year=max(train_years),
-        )
-        if ds_train is None:
-            raise RuntimeError("Failed to load ERA5 from Pangeo")
-    except Exception as e:
-        print(f"  Failed: {e}")
-        print("  Fallback: use download_era5 --full (slow, requires CDS auth)")
-        return {"status": "failed", "reason": str(e)}
+    print("2. Regridding DEM onto ERA5 grid...")
+    dem_on_grid = _dem_on_era5_grid(ds)
 
-    # Load DEM
-    print("\n2. Loading DEM...")
-    dem = load_dem_grid()
-    n_cells = dem.shape[0] * dem.shape[1]
-    print(f"  DEM shape: {dem.shape} ({n_cells} cells)")
+    print("3. Climatology (train years only, to avoid test leakage)...")
+    ds_train_clim = ds.sel(time=ds["time"].dt.year.isin(list(train_years)))
+    climatology = compute_climatology_from_era5(ds_train_clim)
 
-    # Compute climatology
-    print("\n3. Computing 20-year climatology...")
-    climatology = compute_climatology_from_era5(ds_train)
+    print("4. Stacking grid to rows...")
+    X, y, times = grid_to_xy(ds, dem_on_grid, climatology)
+    years_row = pd.DatetimeIndex(times).year.to_numpy()
+    print(f"   full matrix: {X.shape}")
 
-    # Reshape to feature format
-    print("\n4. Reshaping grid to feature matrix...")
-    features = reshape_grid_to_features(ds_train, dem, climatology)
+    # Cell subsample: keep whole-time-series for a random subset of cells.
+    if n_cells_sample is not None:
+        n_cells = ds.sizes["lat"] * ds.sizes["lon"]
+        rng = np.random.default_rng(seed)
+        keep_cells = np.zeros(n_cells, dtype=bool)
+        keep_cells[rng.choice(n_cells, size=min(n_cells_sample, n_cells), replace=False)] = True
+        n_time = len(times) // n_cells
+        cell_mask = np.tile(keep_cells, n_time)
+        X, y, years_row = X[cell_mask].reset_index(drop=True), y[cell_mask].reset_index(drop=True), years_row[cell_mask]
+        print(f"   sampled {n_cells_sample} cells -> {X.shape}")
 
-    # Build labels
-    print("\n5. Building labels...")
-    precip = ds_train["tp"].values * 1000.0  # m -> mm
-    labels_dict = {}
-    for h in HORIZONS_H:
-        fmax = forward_window_max(precip.reshape(-1), h)  # Linearize
-        for thr in THRESHOLDS_MM_HR:
-            col = f"ge{thr}_h{h}"
-            lab = (fmax >= thr).astype("float64")
-            lab[np.isnan(fmax)] = np.nan
-            labels_dict[col] = lab
+    train_mask = np.isin(years_row, list(train_years))
+    test_mask = years_row == test_year
 
-    labels = pd.DataFrame(labels_dict, index=features.index)
-
-    print(f"  Labels shape: {labels.shape}")
-
-    # Train models
-    print("\n6. Training LightGBM models...")
-    models = {}
-
+    print("5. Training LightGBM per (threshold, horizon)...")
+    models, counts = {}, {}
     for thr in THRESHOLDS_MM_HR:
         for h in HORIZONS_H:
             col = f"ge{thr}_h{h}"
-            data = features.join(labels[[col]]).dropna()
-
-            if len(data) > 100 and 0 < data[col].mean() < 1:
-                X = data[features.columns]
-                y = data[col]
-
+            tr = X[train_mask].join(y.loc[train_mask, col]).dropna()
+            n_test = int((~np.isnan(y.loc[test_mask, col].to_numpy())).sum())
+            if len(tr) > 100 and 0 < tr[col].mean() < 1:
                 model = LGBMClassifier(
-                    n_estimators=100,
-                    learning_rate=0.1,
-                    num_leaves=31,
-                    verbose=-1,
-                    random_state=42,
+                    n_estimators=100, learning_rate=0.1, num_leaves=31,
+                    verbose=-1, random_state=seed,
                 )
-                model.fit(X, y)
+                model.fit(tr[FEATURE_COLS], tr[col])
                 models[col] = model
-
-                print(f"  {col}: trained on {len(data)} samples")
+                counts[col] = {"n_train": len(tr), "n_test": n_test, "pos_rate": float(tr[col].mean())}
+                print(f"   {col}: train={len(tr)} test={n_test} pos={tr[col].mean():.3f}")
             else:
-                print(f"  {col}: skipped (insufficient data)")
+                print(f"   {col}: skipped (insufficient/degenerate)")
 
     return {
         "status": "success",
         "models": models,
-        "n_features": len(features.columns),
-        "n_cells": n_cells,
-        "n_samples": len(features),
+        "counts": counts,
+        "n_features": len(FEATURE_COLS),
+        "n_cells_sample": n_cells_sample,
     }
+
+
+if __name__ == "__main__":
+    result = train_grid_model()
+    print(f"\nStatus: {result['status']} | models trained: {len(result['models'])}")

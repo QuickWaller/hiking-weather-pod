@@ -1,42 +1,65 @@
-"""Load ERA5-Land from Pangeo Zarr (cloud-optimized, no download needed).
+"""Load ERA5 for NZ from Google's ARCO-ERA5 Zarr store, with a local disk cache.
 
-Pangeo hosts ERA5 as a Zarr store on Google Cloud Storage. No auth required,
-lazy evaluation, only reads the data you slice.
+ARCO-ERA5 (Analysis-Ready, Cloud-Optimized ERA5) is published by Google Research
+on a public GCS bucket — anonymous access (``token="anon"``). It is chunked at one
+timestep per chunk, so pulling a multi-year NZ slice means tens of thousands of
+tiny network reads and is slow. We therefore pull each year ONCE and cache it as a
+local NetCDF; every later call reads from disk at local speed.
 
-Workflow:
-  1. Open remote Zarr store (GCS bucket)
-  2. Slice to NZ domain (lat/lon bounds)
-  3. Select variables (sp, t2m, d2m)
-  4. Load into xarray Dataset
+  Store : gs://gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3
+  Span  : 1940 .. present, hourly, 0.25° global
+  Cache : data/raw/era5_grid/era5_nz_<start>_<end>_<vars>.nc
+  Ref   : https://github.com/google-research/arco-era5
 
-Benefits:
-  - No download — directly read from cloud
-  - Lazy evaluation — only compute what you use
-  - Scales to any region/date range
-  - Free (public bucket)
+ARCO uses long CF names (``2m_temperature``) and ``latitude``/``longitude`` coords;
+we rename to the pod-ml short names (``t2m``/``sp``/``d2m``/``tp`` on ``lat``/``lon``/
+``time``) so that ARCO-specific naming is confined to this module.
 
-Usage:
-    # Load 2010 data for NZ (takes ~30s first time, then cached)
-    ds = load_era5_nz(start_year=2010, end_year=2010)
-
-    # Check what you got
-    print(ds)  # dimensions, coordinates, data_vars
-
-    # Access variables
-    precip = ds['tp']  # total precipitation (m)
-    pressure = ds['sp']  # surface pressure (Pa)
-    temp = ds['t2m']  # 2m temperature (K)
+Requires: xarray, zarr, gcsfs (in pyproject; installed in the VM venv).
 """
 
 from __future__ import annotations
 
 import xarray as xr
 
-# Pangeo ERA5 Zarr store (Google Cloud Storage, public bucket, verified)
-# Full global hourly ERA5 from 1940–2024
-# Source: https://github.com/pangeo-data/pangeo-datastore
-PANGEO_ERA5_HOURLY = "gs://gcp-public-data-era5/full_hourly_zarr"
-PANGEO_ERA5_DAILY = "gs://gcp-public-data-era5/full_daily_zarr"
+from podml.config import DATA_RAW
+
+# Public ARCO-ERA5 Zarr store (Google Research, anonymous GCS access — verified).
+ARCO_ERA5 = "gs://gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3"
+ERA5_GRID_CACHE = DATA_RAW / "era5_grid"
+
+# ARCO long CF name -> pod-ml short name (matches labels.py / features.py).
+_VAR_RENAME = {
+    "surface_pressure": "sp",
+    "2m_temperature": "t2m",
+    "2m_dewpoint_temperature": "d2m",
+    "total_precipitation": "tp",
+}
+_COORD_RENAME = {"latitude": "lat", "longitude": "lon"}
+_SHORT_TO_LONG = {v: k for k, v in _VAR_RENAME.items()}
+
+_DEFAULT_VARS = ["sp", "t2m", "d2m", "tp"]
+_DEFAULT_DOMAIN = {"south": -47.0, "north": -34.0, "west": 166.0, "east": 178.0}
+
+
+def _cache_path(start_year: int, end_year: int, variables: list[str]):
+    tag = "-".join(sorted(variables))
+    return ERA5_GRID_CACHE / f"era5_nz_{start_year}_{end_year}_{tag}.nc"
+
+
+def _pull_from_arco(
+    start_year: int, end_year: int, variables: list[str], domain: dict
+) -> xr.Dataset:
+    """Fetch the NZ slice straight from ARCO-ERA5 (slow; the bit we cache)."""
+    long_vars = [_SHORT_TO_LONG[v] for v in variables]
+    ds = xr.open_zarr(ARCO_ERA5, chunks=None, storage_options={"token": "anon"})
+    subset = ds[long_vars].sel(
+        # latitude descends (north first); longitude is 0..360 so 166..178 is direct.
+        latitude=slice(domain["north"], domain["south"]),
+        longitude=slice(domain["west"], domain["east"]),
+        time=slice(f"{start_year}-01-01", f"{end_year}-12-31"),
+    )
+    return subset.rename({**_VAR_RENAME, **_COORD_RENAME})
 
 
 def load_era5_nz(
@@ -44,91 +67,44 @@ def load_era5_nz(
     end_year: int = 2022,
     variables: list[str] | None = None,
     domain: dict | None = None,
+    use_cache: bool = True,
 ) -> xr.Dataset:
-    """Load ERA5-Land data for NZ domain from Pangeo Zarr.
+    """Load ERA5 for the NZ domain (short-named vars), cached to local NetCDF.
 
     Args:
-        start_year, end_year: year range (inclusive)
-        variables: ERA5 variables to load (default: sp, t2m, d2m)
-        domain: NZ bounding box (default: -47 to -34 S, 166 to 178 E)
+        start_year, end_year: year range (inclusive).
+        variables: pod-ml short names (default: sp, t2m, d2m, tp).
+        domain: NZ bounding box (default: 34-47 S, 166-178 E).
+        use_cache: read/write the on-disk cache. Disabled automatically for a
+            non-default domain (the cache key only encodes years + variables).
 
     Returns:
-        xarray.Dataset with hourly data for the specified region/years
-
-    Note:
-        First load will be slower (Pangeo caches). Subsequent loads are fast.
-        Requires: xarray, zarr, gcsfs (pip install)
-
-    Example:
-        >>> ds = load_era5_nz(start_year=2010, end_year=2010)
-        >>> print(ds)  # inspect
-        >>> temp = ds['t2m'].sel(time=slice('2010-06', '2010-08'))  # summer
+        xarray.Dataset on ``time``/``lat``/``lon``. Cache hits are lazy
+        (``open_dataset``); a fresh ARCO pull is materialised before caching.
     """
-    if variables is None:
-        variables = ["sp", "t2m", "d2m"]
+    variables = variables or list(_DEFAULT_VARS)
+    domain = domain or dict(_DEFAULT_DOMAIN)
+    cacheable = use_cache and domain == _DEFAULT_DOMAIN
 
-    if domain is None:
-        domain = {"south": -47.0, "north": -34.0, "west": 166.0, "east": 178.0}
+    if cacheable:
+        path = _cache_path(start_year, end_year, variables)
+        if path.exists():
+            print(f"  ERA5 {start_year}-{end_year}: cache hit -> {path.name}")
+            return xr.open_dataset(path)
 
-    print(f"Loading ERA5-Land from Pangeo Zarr: {start_year}–{end_year}, NZ domain")
-    print(f"  Domain: {domain}")
-    print(f"  Variables: {variables}")
+    print(f"  ERA5 {start_year}-{end_year}: pulling from ARCO (vars={variables})...")
+    ds = _pull_from_arco(start_year, end_year, variables, domain)
 
-    # Implementation approach depends on Pangeo's exact Zarr structure
-    # Option 1: Direct Zarr store (if available)
-    # Option 2: zarr via xarray's open_dataset()
-    # Option 3: Use intake-esm catalog (if available)
-
-    try:
-        # Open Pangeo ERA5 hourly Zarr store (verified, public, no auth needed)
-        print("\n  Opening Pangeo ERA5 Zarr store...")
-        print(f"  URL: {PANGEO_ERA5_HOURLY}")
-
-        # Requires: pip install zarr gcsfs
-        ds = xr.open_zarr(PANGEO_ERA5_HOURLY, consolidated=True)
-
-        # Subset to NZ domain and time range
-        subset = ds[variables].sel(
-            lat=slice(domain["south"], domain["north"]),
-            lon=slice(domain["west"], domain["east"]),
-            time=slice(f"{start_year}-01-01", f"{end_year}-12-31"),
-        )
-
-        print(f"  ✓ Loaded: {dict(subset.dims)}")
-        return subset
-
-    except Exception as e:
-        print(f"\n✗ Failed: {e}")
-        print("\nFallback: python -m podml.download_era5 --full (requires ~/.cdsapirc)")
-        return None  # type: ignore[return-value]
-
-
-def load_era5_local(
-    data_dir: str,
-    start_year: int = 2010,
-    end_year: int = 2022,
-    domain: dict | None = None,
-) -> xr.Dataset:
-    """Load pre-downloaded ERA5-Land NetCDF files from disk.
-
-    Use this if Pangeo Zarr is not available or too slow.
-
-    Args:
-        data_dir: directory with era5land_ts_*.nc files (from download_era5.py)
-        start_year, end_year: year range
-        domain: NZ bounding box
-
-    Returns:
-        xarray.Dataset combined across multiple point timeseries
-    """
-    print(f"Loading ERA5 from local files: {data_dir}")
-    print("Not yet implemented — use Pangeo Zarr or download_era5 instead")
-    return None  # type: ignore[return-value]
+    if cacheable:
+        ds = ds.load()  # materialise before writing
+        ERA5_GRID_CACHE.mkdir(parents=True, exist_ok=True)
+        path = _cache_path(start_year, end_year, variables)
+        ds.to_netcdf(path)
+        print(f"  cached -> {path.name} ({dict(ds.sizes)})")
+    return ds
 
 
 if __name__ == "__main__":
-    # Quick test
-    print("=== ERA5-Land Zarr Loader ===\n")
-    ds = load_era5_nz(start_year=2020, end_year=2020)
-    if ds is not None:
-        print(f"\nLoaded dataset:\n{ds}")
+    print("=== ARCO-ERA5 NZ loader (smoke test: 2024, cached) ===\n")
+    ds = load_era5_nz(start_year=2024, end_year=2024)
+    print(ds)
