@@ -40,6 +40,30 @@ Each dataset reports: `pct` (% of expected files), `running` (a pull is active),
 3. Periodically `podctl validate all` — any month under `problems` is corrupt/incomplete; `podctl repull <ds> <month>` each one, then `podctl restart <ds>` to fetch them now.
 4. Summarise to the user only what changed or what you did.
 
+## ERA5 "rejected" months are CDS queue throttling — NOT a failure to fix
+
+ERA5 downloads through CDS, which caps how many requests you may have **queued per dataset** (a
+handful). Over that cap, CDS returns a `400` whose real message is *"the job has been rejected —
+Number queued requests for this dataset is temporarily limited."* This is **transient throttling,
+not a broken month and not missing data.** The months are fine; they download once a queue slot
+frees. The downloader already waits this out automatically (patient retry), and ERA5 runs 4
+workers to keep the ~4-slot queue full.
+
+**When ERA5 shows rejections/denials, or the user asks why it's slow/denied:** run
+
+```
+podctl cds-queue
+```
+
+It snapshots the CDS job queue (`accepted`/`running`/`successful`/`rejected`). If you see any
+`accepted`/`running`/`successful`, it's **progressing/throttled** — report that and do nothing;
+the `rejected` count is harmless overflow. Only escalate if it shows **nothing** queued or
+succeeding (then suspect auth/`.cdsapirc` or a CDS outage — message the user with the snapshot).
+
+**Never** treat rejected ERA5 months as something to skip or "fix" by dropping them — that
+destroys good data. (This already happened once: rejected months were misread as permanently
+broken and a skip-loop nearly deleted real data. Don't repeat it. Check `podctl cds-queue` first.)
+
 ## When to message the user (don't stay silent on these)
 
 - A dataset has been **genuinely stalled** (per the rule above) and a restart didn't revive it.

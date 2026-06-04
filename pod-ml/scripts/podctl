@@ -25,6 +25,7 @@ READ (no side effects):
   podctl validate [gpm|era5|all]         deep integrity check of downloaded months (JSON)
   podctl ps                              show running download processes
   podctl logs <gpm|era5|hang|weekly> [N] tail N (default 40) lines of a log
+  podctl cds-queue                       CDS job queue snapshot (accepted/running/successful/rejected)
 
 ACT (appended to podctl_audit.log):
   podctl restart <gpm|era5|all>          kill any running pull for that dataset, relaunch via watchdog
@@ -61,6 +62,33 @@ case "$cmd" in
   validate)
     if [ -n "${1:-}" ] && [ "$1" != all ]; then exec "$PY" -m podml.validate --json --dataset "$1"; fi
     exec "$PY" -m podml.validate --json
+    ;;
+  cds-queue)
+    # ERA5 "the job has been rejected / queued requests temporarily limited" is CDS's TRANSIENT
+    # per-dataset queue cap, NOT a per-month failure. This snapshots the account's CDS jobs so
+    # you can confirm it's just throttling (some accepted/running/successful) rather than stuck.
+    CDS_RC="$REPO/.cdsapirc" exec "$PY" - <<'PYEOF'
+import os, re, json, urllib.request
+from collections import Counter
+rc = open(os.environ["CDS_RC"]).read()
+url = re.search(r"url:\s*(\S+)", rc).group(1).rstrip("/")
+key = re.search(r"key:\s*(\S+)", rc).group(1)
+req = urllib.request.Request(url + "/retrieve/v1/jobs?limit=200", headers={"PRIVATE-TOKEN": key})
+try:
+    d = json.load(urllib.request.urlopen(req, timeout=25))
+except Exception as e:
+    print("CDS jobs query failed:", e); raise SystemExit(2)
+jobs = d.get("jobs", d) if isinstance(d, dict) else d
+n = len(jobs) if isinstance(jobs, list) else "?"
+c = Counter(j.get("status") for j in jobs) if isinstance(jobs, list) else Counter()
+acc, run, ok = c.get("accepted", 0), c.get("running", 0), c.get("successful", 0)
+rej, fail = c.get("rejected", 0), c.get("failed", 0)
+print(f"CDS jobs (last {n}): accepted={acc} running={run} successful={ok} rejected={rej} failed={fail}")
+if (acc + run + ok) > 0:
+    print("VERDICT: progressing/throttled. 'rejected' = harmless queue overflow. Do NOT skip months.")
+else:
+    print("VERDICT: nothing queued/succeeding — investigate (auth/.cdsapirc, or CDS service down).")
+PYEOF
     ;;
   ps)
     pgrep -af 'podml\.download_(gpm_harmony|era5_grid)' || echo "no downloads running"
