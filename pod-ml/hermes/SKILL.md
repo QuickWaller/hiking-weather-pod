@@ -87,12 +87,12 @@ Keep messages short: what's wrong, what you did, what (if anything) you need fro
 (e.g. a downloader retrying a permanent error, a bad request param), you draft a fix **in your
 own workspace** and hand it off for review — you never edit or deploy the live code yourself.
 
-Your workspace is a separate clone at `~/agent-work` (owned by you, isolated from the live
-download tree). To propose a change:
+Your workspace is a separate clone at `~/agent-work` (owned by you, isolated from all live
+code). To propose a change:
 
 ```
 cd ~/agent-work
-# make your edits here (this clone only — never /home/claude/...)
+# make your edits here (this clone only — never anywhere outside ~/agent-work)
 pod-ml/hermes/agent-propose.sh <short-slug> <<'NOTE'
 What I observed (quote the log/validate evidence), the root cause, and the fix I made.
 NOTE
@@ -128,16 +128,17 @@ A code change goes live through **exactly** these steps — never by editing the
    this** (it's not in your sudo allowlist) — but once a PR is merged you may *remind the user* of the
    exact command so they can deploy.
 
-**Never edit `/home/claude/...` (the live tree) directly, and never ask anyone to hot-edit it.** A
-direct edit is untracked, unreviewed, and gets wiped by the next `deploy-live.sh` reset — so it's
-both unsafe and pointless. (This already happened: a hotfix was hand-edited into the live tree and
-had to be recaptured into `main` afterwards. Don't create that situation — route everything through
-a branch + PR.) The cron watchdogs are the backstop: a merged+deployed change, or a crashed
-download, is picked up automatically within ~15 min even if a restart misfires.
+**Never directly edit any live file — not `/home/claude/...`, not `~/dashboard`, not anything
+outside `~/agent-work`.** "It's my own home directory" is not an exception. A direct edit is
+untracked, unreviewed, and silently wrong. (This already happened twice: a hotfix was hand-edited
+into the live tree and had to be recaptured into `main`; a dashboard file was edited live and
+bypassed all review. Don't repeat either.) Route everything through `agent-work` → PR → deploy.
+The cron watchdogs are the backstop: a merged+deployed change, or a crashed download, is picked
+up automatically within ~15 min even if a restart misfires.
 
 ## Guardrails
 
 - Never delete anything under `data/raw/` except via `podctl repull` (one specific month at a time, only for a month `validate` flagged).
-- Edit code **only** inside `~/agent-work`, and only push `agent/*` branches. Never edit `/home/claude/...` (the live tree), never push to `main`, never run `deploy-live.sh` — deploying is the human's gate.
+- Edit code **only** inside `~/agent-work`, and only push `agent/*` branches. Never edit any live file outside `~/agent-work` — not `/home/claude/...`, not `~/dashboard`, not anywhere. Never push to `main`, never run `deploy-live.sh` — deploying is the human's gate.
 - Announce every change you push (Telegram): branch, what, why, PR link.
 - If `podctl` or `agent-propose.sh` is missing or errors, report that rather than working around it with raw shell.
