@@ -34,8 +34,8 @@ YEAR="$(date +%Y)"; PREV="$((YEAR - 1))"
 if pgrep -f 'podml.download_era5_grid' >/dev/null 2>&1; then
   echo "[weekly $(ts)] ERA5 download active (pgrep); skipped refresh this week" >> "$LOG"
 elif flock -n /tmp/podml_era5.lock bash -c '
-      rm -f "'"$REPO"'"/data/raw/era5_grid/era5_nz_'"$YEAR"'_'"$YEAR"'_*.nc
-      rm -f "'"$REPO"'"/data/raw/era5_grid/era5_nz_'"$PREV"'_'"$PREV"'_*.nc
+      rm -f "'"$REPO"'"/data/raw/era5_grid/era5land_nz_'"$YEAR"'-*.nc
+      rm -f "'"$REPO"'"/data/raw/era5_grid/era5land_nz_'"$PREV"'-*.nc
       rm -f "'"$REPO"'/era5_pull.done"
     '; then
   echo "[weekly $(ts)] ERA5 ${PREV}+${YEAR} cache+sentinel cleared (watchdog will re-pull)" >> "$LOG"

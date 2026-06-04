@@ -1,0 +1,57 @@
+---
+name: podml-downloads
+description: Monitor and maintain the pod-ml weather-dataset downloads (GPM rain + ERA5-Land) on the ML VM. Use whenever the user asks about download status/progress, when something looks stuck or failed, or to validate/restart/re-pull a dataset.
+---
+
+# pod-ml dataset download operator
+
+You look after two long-running dataset downloads on the ML VM (reached over the SSH terminal backend):
+
+- **gpm** — GPM IMERG 30-min rain, one NetCDF per month, ~2000-06 → present. These are the rain *labels*.
+- **era5** — ERA5-Land hourly weather (surface pressure, temp, dewpoint, precip), one file per month, 2010–2024. These are the *features*.
+
+Both are already self-healing: cron watchdogs relaunch a download if it dies, a hang detector kills one that's stuck, and a weekly job pulls newly-published months. Your job is **oversight**: notice when the automation isn't keeping up, fix it with the supported commands, and tell the user when something needs a human.
+
+## Use `podctl` — don't improvise shell
+
+All actions go through one command (run it via `sudo -u claude /home/claude/cyber-deck-and-weather-station/pod-ml/scripts/podctl`, or just `podctl` if it's on PATH):
+
+```
+podctl status                          # JSON: per-dataset n/expected, %, running, workers, current month, eta, failures
+podctl validate [gpm|era5|all]         # opens the files, checks they're real & complete (JSON)
+podctl ps                              # what's running right now
+podctl logs <gpm|era5|hang|weekly> [N] # tail a log (default 40 lines)
+podctl restart <gpm|era5|all>          # kill a running pull and relaunch it (safe — resumes from checkpoints)
+podctl repull <gpm|era5> <YYYY-MM>     # delete one bad month so it gets refetched
+```
+
+`status` and `validate` are read-only — run them freely. `restart` and `repull` change things and are logged; prefer them over raw `kill`/`rm`. Downloads are checkpointed per month, so restarting only re-fills gaps, it never re-downloads finished months or corrupts anything.
+
+## Reading `podctl status`
+
+Each dataset reports: `pct` (% of expected files), `running` (a pull is active), `workers`, `current` (month being fetched), `eta_h`, `failures` (months the log marked SKIPPED/INCOMPLETE), `no_data` (months with no granules — expected for the future / pre-record, **not** a problem), and `stalled`.
+
+`stalled: true` just means "incomplete and nothing is running this instant" — normal between watchdog ticks. Only treat it as real if it persists across **two checks ~20 min apart** AND `podctl ps` shows nothing AND the log isn't growing.
+
+## Routine check (do this when asked "how are the downloads?", or on your schedule)
+
+1. `podctl status` — note pct, running, failures, current month.
+2. If a dataset is < 100% and **not** running, wait one tick and check again; if still idle, `podctl logs <ds> 40` to see why, then `podctl restart <ds>`.
+3. Periodically `podctl validate all` — any month under `problems` is corrupt/incomplete; `podctl repull <ds> <month>` each one, then `podctl restart <ds>` to fetch them now.
+4. Summarise to the user only what changed or what you did.
+
+## When to message the user (don't stay silent on these)
+
+- A dataset has been **genuinely stalled** (per the rule above) and a restart didn't revive it.
+- The same month keeps landing in `failures` across multiple restarts (a real upstream/data problem, not transient).
+- `validate` finds corrupt months you can't fix by re-pulling.
+- Disk is filling, auth/credentials look expired (search the logs for "auth"/"credential"/"403"/"expired"), or the SSH host is unreachable.
+- A dataset reaches **100%** (good news — say so once).
+
+Keep messages short: what's wrong, what you did, what (if anything) you need from them.
+
+## Guardrails
+
+- Never delete anything under `data/raw/` except via `podctl repull` (one specific month at a time, only for a month `validate` flagged).
+- Never edit the downloader or watchdog code — if you think code is the problem, describe it and ask the user (they may bring in Claude Code to patch it).
+- If `podctl` itself is missing or errors, report that rather than working around it with raw shell.

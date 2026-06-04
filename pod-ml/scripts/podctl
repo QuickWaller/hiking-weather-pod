@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# podctl — operator vocabulary for the pod-ml dataset downloads.
+#
+# Thin, auditable wrappers over the machinery that already exists (watchdogs, hang_check,
+# status_server, podml.validate). The Hermes agent drives these over SSH; humans can too.
+# Read commands are side-effect-free; mutating commands (restart/repull) append to
+# podctl_audit.log so there's always a record of what the agent did.
+#
+# The agent has a full shell, but THESE are the supported, safe verbs — prefer them.
+set -euo pipefail
+
+REPO="${PODML_REPO:-/home/claude/cyber-deck-and-weather-station/pod-ml}"
+PY="$REPO/.venv/bin/python"
+AUDIT="$REPO/podctl_audit.log"
+
+audit() { echo "[$(date -Is)] ${SUDO_USER:-$(whoami)} (as $(whoami)): $*" >> "$AUDIT"; }
+die()   { echo "podctl: $*" >&2; exit 2; }
+
+usage() {
+  cat <<'EOF'
+podctl — manage the pod-ml dataset downloads
+
+READ (no side effects):
+  podctl status                          JSON: counts, %, running, workers, eta, failures
+  podctl validate [gpm|era5|all]         deep integrity check of downloaded months (JSON)
+  podctl ps                              show running download processes
+  podctl logs <gpm|era5|hang|weekly> [N] tail N (default 40) lines of a log
+
+ACT (appended to podctl_audit.log):
+  podctl restart <gpm|era5|all>          kill any running pull for that dataset, relaunch via watchdog
+  podctl repull <gpm|era5> <YYYY-MM>     delete that month so it gets refetched, then kick the watchdog
+
+Exit: 0 ok · 1 validate found bad months · 2 usage/error
+EOF
+}
+
+ds_pattern()  { case "$1" in gpm) echo 'podml.download_gpm_harmony';; era5) echo 'podml.download_era5_grid';; *) die "unknown dataset '$1'";; esac; }
+ds_watchdog() { case "$1" in gpm) echo "$REPO/scripts/gpm_watchdog.sh";; era5) echo "$REPO/scripts/era5_watchdog.sh";; *) die "unknown dataset '$1'";; esac; }
+ds_done()     { case "$1" in gpm) echo "$REPO/gpm_pull.done";; era5) echo "$REPO/era5_pull.done";; *) die "unknown dataset '$1'";; esac; }
+
+# Kill a dataset's whole process group (workers included), by PID — never `pkill -f PATTERN`,
+# which would self-match this script's own command line. Checkpointed, so killing is safe.
+kill_ds() {
+  local ds="$1" pat pid pgid
+  pat="$(ds_pattern "$ds")"
+  pid="$(pgrep -f "$pat" | head -1 || true)"
+  if [ -z "$pid" ]; then echo "$ds: not running"; return 0; fi
+  pgid="$(ps -o pgid= -p "$pid" | tr -d ' ')"
+  audit "kill $ds pid=$pid pgid=$pgid"
+  kill -TERM "-$pgid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+  sleep 5
+  kill -9 "-$pgid" 2>/dev/null || true
+  echo "$ds: killed pid $pid (pgid $pgid)"
+}
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  status)
+    exec "$PY" "$REPO/scripts/status_server.py" --json
+    ;;
+  validate)
+    if [ -n "${1:-}" ] && [ "$1" != all ]; then exec "$PY" -m podml.validate --json --dataset "$1"; fi
+    exec "$PY" -m podml.validate --json
+    ;;
+  ps)
+    pgrep -af 'podml\.download_(gpm_harmony|era5_grid)' || echo "no downloads running"
+    ;;
+  logs)
+    name="${1:-}"; n="${2:-40}"
+    case "$name" in
+      gpm)    f="$REPO/gpm_pull.log";;
+      era5)   f="$REPO/era5_pull.log";;
+      hang)   f="$REPO/hang_check.log";;
+      weekly) f="$REPO/weekly_topup.log";;
+      *) die "logs <gpm|era5|hang|weekly> [N]";;
+    esac
+    tail -n "$n" "$f" 2>/dev/null || echo "no log yet: $f"
+    ;;
+  restart)
+    ds="${1:?restart <gpm|era5|all>}"
+    if [ "$ds" = all ]; then targets=(gpm era5); else targets=("$ds"); fi
+    for t in "${targets[@]}"; do
+      kill_ds "$t"
+      audit "restart $t (kick watchdog)"
+      "$(ds_watchdog "$t")" || true
+      echo "$t: watchdog kicked (relaunches detached, resumes from checkpoints)"
+    done
+    ;;
+  repull)
+    ds="${1:?repull <gpm|era5> <YYYY-MM>}"; ym="${2:?repull <gpm|era5> <YYYY-MM>}"
+    [[ "$ym" =~ ^[0-9]{4}-[0-9]{2}$ ]] || die "month must be YYYY-MM"
+    case "$ds" in
+      gpm)  file="$REPO/data/raw/gpm_grid/gpm_${ym}.nc";;
+      era5) file="$REPO/data/raw/era5_grid/era5land_nz_${ym}.nc";;
+      *) die "repull <gpm|era5> <YYYY-MM>";;
+    esac
+    if [ -f "$file" ]; then
+      audit "repull $ds $ym (rm $file)"
+      rm -f "$file"
+      echo "deleted $file"
+    else
+      echo "no existing file for $ds $ym — it'll just be fetched"
+    fi
+    rm -f "$(ds_done "$ds")"   # clear sentinel so the watchdog actually re-runs
+    audit "repull $ds $ym (cleared sentinel, kick watchdog)"
+    "$(ds_watchdog "$ds")" || true
+    echo "$ds $ym queued for refetch. If a pull is mid-run it lands on the next pass;"
+    echo "use 'podctl restart $ds' to force it now (safe — checkpointed)."
+    ;;
+  ""|-h|--help|help) usage ;;
+  *) die "unknown command '$cmd' (try: podctl help)" ;;
+esac

@@ -1,0 +1,39 @@
+# Hermes Agent config for the pod-ml download operator.
+# Goes in ~/.hermes/config.yaml on the HERMES VM. Secrets live in ~/.hermes/.env (see below).
+# Docs: https://hermes-agent.nousresearch.com/docs/user-guide/configuration
+
+# --- LLM: DeepSeek (OpenAI-compatible endpoint) ---
+model:
+  default: deepseek-chat
+  provider: custom
+  base_url: https://api.deepseek.com/v1
+  api_key: ${DEEPSEEK_API_KEY}
+
+# --- Terminal backend: run all shell on the ML VM over SSH ---
+# The agent logs in as the unprivileged hermes-pod-ml account; `podctl` (a PATH shim that
+# sudo's to the download owner) is how it actually operates the downloads. See setup-account.sh.
+terminal:
+  backend: ssh
+  persistent_shell: true
+  cwd: /home/hermes-pod-ml
+  timeout: 180
+  ssh_host: ${ML_VM_HOST}       # e.g. 192.168.2.156
+  ssh_user: hermes-pod-ml
+  ssh_port: 22
+  ssh_key: ~/.ssh/hermes_pod_ml_ed25519
+
+# --- Telegram gateway: lock to YOUR chat + user id ---
+telegram:
+  token: ${TELEGRAM_BOT_TOKEN}
+  allowed_chat_ids:
+    - 000000000      # <-- replace with your Telegram chat id
+  allowed_user_ids:
+    - 000000000      # <-- replace with your Telegram user id
+
+# ~/.hermes/.env on the Hermes VM:
+#   DEEPSEEK_API_KEY=sk-...
+#   TELEGRAM_BOT_TOKEN=...
+#   ML_VM_HOST=192.168.2.156
+#
+# The podml-downloads skill (hermes/SKILL.md) goes in the agent's skill library, e.g.
+#   ~/.hermes/skills/podml-downloads/SKILL.md
