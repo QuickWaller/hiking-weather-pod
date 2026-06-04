@@ -6,7 +6,7 @@ climatology per cell — so it can learn "dry lee cells rain less" instead of
 memorising "rain is frequent" from a handful of wet points.
 
 Pipeline:
-  1. Load ERA5 grid for NZ from ARCO-ERA5 (load_era5_zarr.load_era5_nz)
+  1. Load cached NZ ERA5-Land grid (era5_load.load_era5_nz)
   2. Regrid the DEM onto the ERA5 lat/lon grid (different native resolutions)
   3. Compute per-cell climatology (mean over the training years)
   4. Stack (time, cell) -> rows: dynamic features + static features
@@ -26,8 +26,8 @@ import xarray as xr
 from lightgbm import LGBMClassifier
 from numpy.lib.stride_tricks import sliding_window_view
 
+from podml.era5_load import load_era5_nz
 from podml.labels import HORIZONS_H, THRESHOLDS_MM_HR
-from podml.load_era5_zarr import load_era5_nz
 from podml.static_features import elevation_to_zones, load_dem_grid
 
 # Feature columns in a fixed order (dynamic first, then static per-cell).
@@ -62,7 +62,7 @@ def compute_climatology_from_era5(ds: xr.Dataset) -> dict[str, np.ndarray]:
     out: dict[str, np.ndarray] = {}
     for key, var in {"precip": "tp", "pressure": "sp", "temp": "t2m"}.items():
         if var in ds.data_vars:
-            out[f"{key}_mean"] = ds[var].mean(dim="time").values
+            out[f"{key}_mean"] = ds[var].mean(dim="valid_time").values
     return out
 
 
@@ -88,8 +88,8 @@ def grid_to_xy(
     Row order is C-order over (n_time, n_cells): row = t*n_cells + c. Every array
     below is flattened the same way, so features, labels and times stay aligned.
     """
-    ds = ds.transpose("time", "lat", "lon")
-    n_time = ds.sizes["time"]
+    ds = ds.transpose("valid_time", "lat", "lon")
+    n_time = ds.sizes["valid_time"]
     n_cells = ds.sizes["lat"] * ds.sizes["lon"]
 
     sp = ds["sp"].values.reshape(n_time, n_cells) / 100.0    # Pa -> hPa
@@ -100,7 +100,7 @@ def grid_to_xy(
         100.0 * np.exp(a * d2m / (b + d2m)) / np.exp(a * t2m / (b + t2m)), 0.0, 100.0
     )
 
-    times = pd.to_datetime(ds["time"].values)
+    times = pd.to_datetime(ds["valid_time"].values)
     month = np.repeat(times.month.to_numpy(), n_cells)
     hour = np.repeat(times.hour.to_numpy(), n_cells)
 
@@ -167,30 +167,30 @@ def train_grid_model(
     # Load ONLY the years we use (train years + test year), each cached on its own,
     # rather than the contiguous span — avoids pulling unused middle years.
     years = sorted(set(train_years) | {test_year})
-    ds = xr.concat([load_era5_nz(start_year=y, end_year=y) for y in years], dim="time").load()
+    ds = xr.concat([load_era5_nz(start_year=y, end_year=y) for y in years], dim="valid_time")
+
+    # Cell subsample BEFORE materialising. The 0.1° grid is ~16k cells (~2 GB/year),
+    # so stride the lat/lon grid down to ~n_cells_sample cells — this keeps a regular
+    # grid (DEM regrid + grid_to_xy work unchanged) and the full time series per cell
+    # (labels stay leak-free), then load only the small subset.
+    if n_cells_sample is not None:
+        n_cells = ds.sizes["lat"] * ds.sizes["lon"]
+        stride = max(1, round((n_cells / n_cells_sample) ** 0.5))
+        ds = ds.isel(lat=slice(0, None, stride), lon=slice(0, None, stride))
+        print(f"   strided {n_cells} -> {ds.sizes['lat'] * ds.sizes['lon']} cells (stride {stride})")
+    ds = ds.load()
 
     print("2. Regridding DEM onto ERA5 grid...")
     dem_on_grid = _dem_on_era5_grid(ds)
 
     print("3. Climatology (train years only, to avoid test leakage)...")
-    ds_train_clim = ds.sel(time=ds["time"].dt.year.isin(list(train_years)))
+    ds_train_clim = ds.sel(valid_time=ds["valid_time"].dt.year.isin(list(train_years)))
     climatology = compute_climatology_from_era5(ds_train_clim)
 
     print("4. Stacking grid to rows...")
     X, y, times = grid_to_xy(ds, dem_on_grid, climatology)
     years_row = pd.DatetimeIndex(times).year.to_numpy()
-    print(f"   full matrix: {X.shape}")
-
-    # Cell subsample: keep whole-time-series for a random subset of cells.
-    if n_cells_sample is not None:
-        n_cells = ds.sizes["lat"] * ds.sizes["lon"]
-        rng = np.random.default_rng(seed)
-        keep_cells = np.zeros(n_cells, dtype=bool)
-        keep_cells[rng.choice(n_cells, size=min(n_cells_sample, n_cells), replace=False)] = True
-        n_time = len(times) // n_cells
-        cell_mask = np.tile(keep_cells, n_time)
-        X, y, years_row = X[cell_mask].reset_index(drop=True), y[cell_mask].reset_index(drop=True), years_row[cell_mask]
-        print(f"   sampled {n_cells_sample} cells -> {X.shape}")
+    print(f"   matrix: {X.shape}")
 
     train_mask = np.isin(years_row, list(train_years))
     test_mask = years_row == test_year
@@ -214,10 +214,26 @@ def train_grid_model(
             else:
                 print(f"   {col}: skipped (insufficient/degenerate)")
 
+    # Mean feature importance across models — shows whether the STATIC features
+    # (elevation/zone/*_mean) actually get used once cells vary geographically.
+    importance = {}
+    if models:
+        agg = np.zeros(len(FEATURE_COLS))
+        for m in models.values():
+            agg += m.feature_importances_
+        agg /= len(models)
+        importance = dict(zip(FEATURE_COLS, agg))
+        print("\nMean feature importance (gain) — static features marked *:")
+        static = {"elevation", "zone", "precip_mean", "pressure_mean", "temp_mean"}
+        for feat, val in sorted(importance.items(), key=lambda kv: -kv[1]):
+            mark = " *" if feat in static else ""
+            print(f"  {feat:<14} {val:8.0f}{mark}")
+
     return {
         "status": "success",
         "models": models,
         "counts": counts,
+        "importance": importance,
         "n_features": len(FEATURE_COLS),
         "n_cells_sample": n_cells_sample,
     }

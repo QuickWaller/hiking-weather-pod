@@ -22,12 +22,12 @@ def _toy_grid(tp_mm: np.ndarray):
     lon = np.array([170.0, 171.0])[:n_lon]
     ds = xr.Dataset(
         {
-            "sp": (("time", "lat", "lon"), np.full(tp_mm.shape, 101325.0)),
-            "t2m": (("time", "lat", "lon"), np.full(tp_mm.shape, 283.15)),
-            "d2m": (("time", "lat", "lon"), np.full(tp_mm.shape, 280.15)),
-            "tp": (("time", "lat", "lon"), tp_mm / 1000.0),  # mm -> m
+            "sp": (("valid_time", "lat", "lon"), np.full(tp_mm.shape, 101325.0)),
+            "t2m": (("valid_time", "lat", "lon"), np.full(tp_mm.shape, 283.15)),
+            "d2m": (("valid_time", "lat", "lon"), np.full(tp_mm.shape, 280.15)),
+            "tp": (("valid_time", "lat", "lon"), tp_mm / 1000.0),  # mm -> m
         },
-        coords={"time": t, "lat": lat, "lon": lon},
+        coords={"valid_time": t, "lat": lat, "lon": lon},
     )
     elev = np.array([[100.0, 200.0], [300.0, 2500.0]])[:n_lat, :n_lon]
     dem = xr.DataArray(elev, dims=("lat", "lon"), coords={"lat": lat, "lon": lon})

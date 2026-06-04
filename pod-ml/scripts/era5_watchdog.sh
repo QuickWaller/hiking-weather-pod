@@ -18,7 +18,9 @@ DONE="$REPO/era5_pull.done"
 LOG="$REPO/era5_pull.log"
 LOCK="/tmp/podml_era5.lock"
 START_YEAR=2010
-END_YEAR="$(date +%Y)"          # forward-looking: backfill through the current year
+END_YEAR=2024                   # training span (2010-2022 train, 2024 test); fixed so
+                               # we don't spin on months CDS hasn't published yet
+WORKERS=4                       # parallel CDS requests (beats slow single-stream download)
 
 # 1. Already finished a clean full pass — nothing to do.
 [ -f "$DONE" ] && exit 0
@@ -34,7 +36,7 @@ echo "[watchdog $(date -Is)] relaunching ERA5 grid download ($START_YEAR-$END_YE
 setsid bash -c '
   source "'"$REPO"'/.venv/bin/activate"
   cd "'"$REPO"'"
-  if flock -n "'"$LOCK"'" python -m podml.download_era5_grid --start-year '"$START_YEAR"' --end-year '"$END_YEAR"'; then
+  if flock -n "'"$LOCK"'" python -m podml.download_era5_grid --start-year '"$START_YEAR"' --end-year '"$END_YEAR"' --workers '"$WORKERS"'; then
     touch "'"$DONE"'"
     echo "[watchdog '"$(date -Is)"'] ERA5 download complete, sentinel set" >> "'"$LOG"'"
   fi

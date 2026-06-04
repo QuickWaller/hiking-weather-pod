@@ -10,6 +10,7 @@ dependencies = [
     "harmony-py",      # NASA Harmony bbox-subsetting (GPM rain labels)
     # reading gridded data
     "xarray",
+    "dask",            # lazy/strided loading of the cached ERA5-Land grid
     "netcdf4",
     "h5py",            # IMERG is HDF5
     # core
