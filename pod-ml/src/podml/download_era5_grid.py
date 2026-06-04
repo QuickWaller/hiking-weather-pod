@@ -43,19 +43,17 @@ VARIABLES = [
 CACHE = DATA_RAW / "era5_grid"
 _COORD_RENAME = {"latitude": "lat", "longitude": "lon"}  # valid_time already matches convention
 _DROP = ["number", "expver"]
-# CDS sets a dynamic per-user concurrency limit and REJECTS requests over it (~4 slots
-# observed). That's CDS's model ("it queues/limits, you retry"), so retry rejected
-# months with backoff — lets a slot free up instead of deferring to the next run.
-ERA5_MAX_ATTEMPTS = 5
-ERA5_BACKOFF_SEC = 20  # grows linearly: 20s, 40s, 60s, 80s
-# Months that CDS permanently rejects (accepted→rejected, not transient).
-# Rather than wasting retries every watchdog cycle, skip them explicitly.
-# Revisit when CDS publishes these months or we find alternate sources.
-CDS_SKIP_MONTHS: set[tuple[int, int]] = {
-    (2010, 9),
-    (2010, 10),
-    (2010, 12),
-}
+# Generic/unknown transient errors: a few quick retries with growing backoff.
+ERA5_MAX_ATTEMPTS = 8
+ERA5_BACKOFF_SEC = 30  # grows linearly: 30s, 60s, 90s, ...
+# CDS limits how many requests you may have QUEUED per dataset and rejects submissions over
+# that cap with a 400 "the job has been rejected / queued requests temporarily limited". That
+# is TRANSIENT — it clears as our other jobs drain — NOT a per-month problem. So we wait it
+# out (long backoff, many attempts) rather than failing the month. (Learned the hard way: it
+# was misread as "permanently rejected months" and a skip-list nearly cost us real data.)
+RATE_LIMIT_HINTS = ("temporarily limited", "has been rejected", "queued requests")
+RATE_LIMIT_MAX_ATTEMPTS = 40
+RATE_LIMIT_BACKOFF_SEC = 60  # per try; the queue usually frees within a few minutes
 
 # Full, untruncated failure records (CDS error body + traceback) land here, so a 400 is
 # actually diagnosable; stdout/era5_pull.log keeps only a one-line summary. Gitignored.
@@ -99,16 +97,20 @@ def _record_failure(year: int, month: int, exc: Exception) -> str:
     return summary
 
 
+def _is_rate_limited(exc: Exception) -> bool:
+    """True if this is CDS's transient queue-limit rejection (not a real per-month failure)."""
+    text = str(exc).lower()
+    resp = getattr(exc, "response", None)
+    if resp is not None:
+        text += " " + (getattr(resp, "text", "") or "").lower()
+    return any(hint in text for hint in RATE_LIMIT_HINTS)
+
+
 def download_month(year: int, month: int) -> str:
     """Fetch+normalise+cache one month. No-op (fast) if already cached."""
     path = month_cache_path(year, month)
     if path.exists():
         return f"[{year}-{month:02d}] cached"
-    # KNOWN-BAD interim skip: CDS returns a persistent 400 for these (see CDS_SKIP_MONTHS).
-    # Documented data gap — to investigate, drop the month from the set and rerun; the full
-    # CDS error is now captured in era5_failures.log instead of being lost.
-    if (year, month) in CDS_SKIP_MONTHS:
-        return f"[{year}-{month:02d}] SKIPPED (known CDS reject — see CDS_SKIP_MONTHS)"
     CACHE.mkdir(parents=True, exist_ok=True)
     # Temp files must NOT end in .nc, or the cache glob in era5_load would match a
     # half-written file. Write the final atomically via os.replace.
@@ -126,7 +128,8 @@ def download_month(year: int, month: int) -> str:
     }
     t0 = time.time()
     last_exc: Exception | None = None
-    for attempt in range(1, ERA5_MAX_ATTEMPTS + 1):
+    tries = rate_waits = 0
+    while True:
         try:
             _client().retrieve("reanalysis-era5-land", request, str(raw))
             # Normalise to the project convention, write to a temp, then atomically publish.
@@ -137,15 +140,26 @@ def download_month(year: int, month: int) -> str:
             ds.close()
             os.replace(wrt, path)  # atomic: the final .nc only ever appears complete
             raw.unlink(missing_ok=True)
-            return f"[{year}-{month:02d}] {time.time() - t0:.0f}s {path.stat().st_size / 1e6:.0f}MB (try {attempt})"
-        except Exception as exc:  # noqa: BLE001 — CDS rejection / transient; retry below
+            return f"[{year}-{month:02d}] {time.time() - t0:.0f}s {path.stat().st_size / 1e6:.0f}MB"
+        except Exception as exc:  # noqa: BLE001 — classify + retry below
             last_exc = exc
             raw.unlink(missing_ok=True)
             wrt.unlink(missing_ok=True)
-            if attempt < ERA5_MAX_ATTEMPTS:
-                time.sleep(ERA5_BACKOFF_SEC * attempt)
+            # CDS queue-limit rejection: transient, just be patient — never give up early.
+            if _is_rate_limited(exc):
+                rate_waits += 1
+                if rate_waits > RATE_LIMIT_MAX_ATTEMPTS:
+                    break
+                time.sleep(RATE_LIMIT_BACKOFF_SEC)
+                continue
+            # Genuine/unknown error: a few growing-backoff retries, then fail — NOT skip. A
+            # later watchdog run retries the month, so nothing is permanently abandoned.
+            tries += 1
+            if tries >= ERA5_MAX_ATTEMPTS:
+                break
+            time.sleep(ERA5_BACKOFF_SEC * tries)
     summary = _record_failure(year, month, last_exc) if last_exc else "unknown error"
-    raise RuntimeError(f"{ERA5_MAX_ATTEMPTS} attempts failed — {summary}")
+    raise RuntimeError(f"failed after {tries} retries / {rate_waits} rate-limit waits — {summary}")
 
 
 def main() -> int:
