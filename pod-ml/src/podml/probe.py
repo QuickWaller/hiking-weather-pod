@@ -78,15 +78,18 @@ def probe_point(name: str, cfg: dict, importances: list | None = None,
     else:
         feats_eval = feats_train
 
-    # Load labels from selected source (ERA5 = optimistic, GPM = honest)
+    # Load labels: ERA5 for training (2010–2022), selected source for testing (2024).
+    # This tests whether ERA5-trained models transfer to honest labels.
+    labels_train = build_labels(ds, horizons=HORIZONS_H, thresholds=THRESHOLDS_MM_HR)
     if label_source == "gpm":
         pt = cfg["probe_points"][name]
-        labels = build_labels_gpm(lat=pt["lat"], lon=pt["lon"],
-                                  horizons=HORIZONS_H, thresholds=THRESHOLDS_MM_HR)
+        labels_test = build_labels_gpm(lat=pt["lat"], lon=pt["lon"],
+                                       horizons=HORIZONS_H, thresholds=THRESHOLDS_MM_HR)
     else:
-        labels = build_labels(ds, horizons=HORIZONS_H, thresholds=THRESHOLDS_MM_HR)
-    train_data = feats_train.join(labels)
-    eval_data = feats_eval.join(labels)
+        labels_test = labels_train
+
+    train_data = feats_train.join(labels_train)
+    eval_data = feats_eval.join(labels_test)
     train_mask = train_data.index.year.isin(list(TRAIN_YEARS))
     test_mask = eval_data.index.year == TEST_YEAR
 
