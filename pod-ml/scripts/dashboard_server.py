@@ -95,17 +95,25 @@ def _parse_era5():
 
 def _parse_era5_workers():
     """Parse [W..] [...] lines to reconstruct per-worker state."""
-    lines = _tail(REPO / "era5_pull.log", n=600)
-    seen: set[tuple[str, str]] = set()
+    # Walk backwards: each [W..] line is the *latest* stage for that worker
+    seen: set[str] = set()  # worker IDs we've already captured their latest state
     workers: list[dict] = []
     for line in reversed(lines):
         line = line.strip()
         m = re.match(r"\[(W..)\] \[(\d{4}-\d{2})\] (.+)", line)
         if not m: continue
         wid, month, rest = m.group(1), m.group(2), m.group(3)
-        key = (wid, month)
-        if key in seen: continue
-        seen.add(key)
+        if wid in seen:
+            continue  # already captured this worker's latest state
+        # Skip FAILED — they're done, not active
+        if "FAILED:" in rest:
+            continue
+        # Skip completed — they're done
+        if "cached" in rest:
+            continue
+        if "s" in rest and "MB" in rest:
+            continue
+        seen.add(wid)
         if rest.startswith("started"):
             stage, extra = "started", ""
         elif rest.startswith("submitting"):
