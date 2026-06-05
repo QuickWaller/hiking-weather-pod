@@ -95,6 +95,7 @@ def _parse_era5():
 
 def _parse_era5_workers():
     """Parse [W..] [...] lines to reconstruct per-worker state."""
+    lines = _tail(REPO / "era5_pull.log", n=600)
     # Walk backwards: each [W..] line is the *latest* stage for that worker
     seen: set[str] = set()  # worker IDs we've already captured their latest state
     workers: list[dict] = []
