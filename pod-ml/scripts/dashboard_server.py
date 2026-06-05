@@ -263,137 +263,617 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
     def log_message(self, *_): pass
 
-HTML = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>pod-ml · live</title>
+HTML = r"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>pod-ml ops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#090c10;--card:#0d1117;--border:#21262d;--text:#c9d1d9;--muted:#8b949e;--green:#3fb950;--red:#f85149;--amber:#e3b341;--blue:#58a6ff}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,sans-serif;padding:24px;max-width:1100px;margin:0 auto}
-h1{font-size:20px;font-weight:600;margin-bottom:20px;display:flex;align-items:center;gap:12px}
-h1 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-h1 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:auto}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px}
-.card h2{font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.card h2 .status{width:10px;height:10px;border-radius:50%}
-.card h2 .status.on{background:var(--green);box-shadow:0 0 8px var(--green)}
-.card h2 .status.off{background:var(--muted)}
-.progress{margin:8px 0 4px}
-.progress-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;position:relative}
-.progress-fill{height:100%;border-radius:4px;transition:width .6s ease;position:relative}
-.progress-fill.green{background:linear-gradient(90deg,#238636,var(--green))}
-.progress-fill.blue{background:linear-gradient(90deg,#1f6feb,var(--blue))}
-.progress-fill.red{background:linear-gradient(90deg,#da3633,var(--red))}
-.progress-fill::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.1) 50%,transparent 100%);animation:shimmer 2s infinite}
-@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
-.stat{text-align:center;padding:8px;background:rgba(255,255,255,.03);border-radius:6px}
-.stat .val{font-size:18px;font-weight:600;font-family:monospace}
-.stat .lbl{font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase}
-.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:12px;font-weight:500}
-.badge.ok{background:rgba(63,185,80,.15);color:var(--green)}
-.badge.warn{background:rgba(227,179,65,.15);color:var(--amber)}
-.badge.err{background:rgba(248,81,73,.15);color:var(--red)}
-.badge.neutral{background:rgba(139,148,158,.15);color:var(--muted)}
-.activity{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px}
-.activity h2{font-size:15px;margin-bottom:12px}
-.activity-list{max-height:300px;overflow-y:auto}
-.activity-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
-.activity-item .ds{font-family:monospace;font-size:11px;padding:2px 6px;border-radius:4px;font-weight:600}
-.activity-item .ds.gpm{background:rgba(88,166,255,.2);color:var(--blue)}
-.activity-item .ds.era5{background:rgba(63,185,80,.2);color:var(--green)}
-.activity-item .month{font-family:monospace;font-size:12px;color:var(--text)}
-.activity-item .msg{color:var(--muted);flex:1}
-.footer{text-align:center;color:var(--muted);font-size:11px;padding:16px 0}
-.full{grid-column:1/-1}
-.failures{margin-top:8px}
-.failure-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;font-family:monospace}
-.failure-row .mo{color:var(--red);font-weight:600}
-.failure-row .reason{color:var(--muted)}
-.month-grid{border-collapse:collapse;margin-top:4px;width:100%}
-.month-grid td,.month-grid th{padding:1px 2px;font-size:11px;text-align:center}
-.month-grid th{color:var(--muted);font-weight:400}
-.month-grid .yr{color:var(--muted);font-size:11px;white-space:nowrap;padding:2px 6px;text-align:left}
-.month-grid .cnt{color:var(--muted);font-size:11px;padding:2px 8px}
-.month-grid .cell{width:14px;height:14px;border-radius:2px;display:inline-block;cursor:pointer}
-.month-grid .cell:hover{outline:1px solid rgba(255,255,255,.4)}
-@media(max-width:700px){.grid{grid-template-columns:1fr}}
-</style></head><body>
-<h1><span class="dot"></span>pod-ml · live downloads<small id="clock">—</small></h1>
-<div class="grid" id="cards"></div>
-<div class="grid" id="grids"></div>
-<div class="activity" id="activity"><h2>📡 Recent Activity</h2><div class="activity-list" id="feed"></div></div>
-<div class="activity" id="workers-box"><h2>🔧 ERA5 Active Workers</h2><div class="activity-list" id="era5-workers"></div></div>
-<div class="footer">auto-refresh 5s · dashboard by pod-ops agent</div>
-<script>
-const $=s=>document.querySelector(s);
-const $$=s=>document.querySelectorAll(s);
-async function poll(){try{const r=await fetch('/api');return await r.json()}catch(e){return null}}
-function fmtAge(m){if(m===null||m===undefined)return'—';if(m<1)return'just now';if(m<60)return Math.round(m)+'m ago';return Math.round(m/60)+'h ago'}
-function fmtEta(h){if(h===null||h===undefined)return'—';if(h<1)return'<1h';if(h<24)return h.toFixed(1)+'h';return(h/24).toFixed(1)+'d'}
-function fmtPct(v){return v.toFixed(1)+'%'}
-function cardHTML(id,name,note,ds){
-  const pct=ds.pct, run=ds.running, w=ds.workers||0;
-  const age=fmtAge(ds.recent_age_min), eta=fmtEta(ds.eta_h);
-  const color=pct>=100?'blue':(run?'green':(ds.failures&&ds.failures.length?'red':'blue'));
-  const badgeCls=run?'ok':((ds.failures&&ds.failures.length)?'err':'neutral');
-  const badgeText=run?`● ${w} workers`:(ds.failures&&ds.failures.length?`⚠ ${ds.failures.length} failures`:(pct>=100?'✓ done':'○ idle'));
-  let cur=ds.current||'';
-  if(cur==='in-flight')cur='submitting…';
-  const curHTML=cur?`<div style="font-size:11px;color:var(--muted);margin-top:2px">→ ${cur}</div>`:'';
-  let failHTML='';
-  if(ds.failures&&ds.failures.length){
-    failHTML='<div class="failures">'+ds.failures.slice(0,5).map(([mo,r])=>`<div class="failure-row"><span class="mo">${mo}</span><span class="reason">${r}</span></div>`).join('')+'</div>';
-  }
-  return `<div class="card">
-    <h2><span class="status ${run?'on':'off'}"></span>${name}<span class="badge ${badgeCls}" style="margin-left:auto">${badgeText}</span></h2>
-    <div style="color:var(--muted);font-size:12px;margin-bottom:8px">${note}</div>
-    <div class="progress"><div class="progress-bar"><div class="progress-fill ${color}" style="width:${Math.min(pct,100)}%"></div></div>
-    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:12px"><span style="font-weight:600">${ds.n}/${ds.expected} ${fmtPct(pct)}</span><span style="color:var(--muted)">${eta==='—'&&pct<100?(run?'retrying…':'stalled'):eta}</span></div></div>
-    <div class="stats">
-      <div class="stat"><div class="val">${ds.files_last_hr}</div><div class="lbl">files/hr</div></div>
-      <div class="stat"><div class="val">${w}</div><div class="lbl">workers</div></div>
-      <div class="stat"><div class="val">${age}</div><div class="lbl">last file</div></div>
+:root {
+  --bg: #0b0b0d;
+  --surface: #111115;
+  --surface2: #17171c;
+  --border: #222228;
+  --border2: #2a2a32;
+  --text: #d8d8e0;
+  --muted: #606070;
+  --dim: #3a3a48;
+  --green: #00e676;
+  --green-dim: rgba(0,230,118,.08);
+  --amber: #ffab00;
+  --amber-dim: rgba(255,171,0,.08);
+  --red: #ff3d3d;
+  --red-dim: rgba(255,61,61,.08);
+  --blue: #40c4ff;
+  --blue-dim: rgba(64,196,255,.08);
+  --purple: #b388ff;
+  --purple-dim: rgba(179,136,255,.08);
+  --mono: 'IBM Plex Mono', monospace;
+  --display: 'Syne', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 13px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100vh;
+  padding: 0;
+}
+
+/* ── top bar ── */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+#topbar .title {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#topbar .title .pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 10px var(--green);
+  animation: blink 2.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+.topstat {
+  display: flex; flex-direction: column;
+  padding: 0 16px;
+  border-left: 1px solid var(--border);
+}
+.topstat .ts-val { font-size: 13px; font-weight: 600; color: var(--text); }
+.topstat .ts-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 1px; }
+#topbar .clock { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+/* ── layout ── */
+#main { padding: 20px 28px; max-width: 1280px; margin: 0 auto; }
+.row { display: grid; gap: 14px; margin-bottom: 14px; }
+.row.two { grid-template-columns: 1fr 1fr; }
+.row.one { grid-template-columns: 1fr; }
+@media(max-width:900px){ .row.two { grid-template-columns: 1fr; } }
+
+/* ── panel ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-head .ph-label {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.panel-head .ph-title {
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: .01em;
+}
+.panel-head .ph-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border: 1px solid;
+}
+.ph-badge.running { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+.ph-badge.idle    { color: var(--muted); border-color: var(--dim); background: transparent; }
+.ph-badge.error   { color: var(--red);   border-color: var(--red);   background: var(--red-dim); }
+.ph-badge.warn    { color: var(--amber); border-color: var(--amber); background: var(--amber-dim); }
+.panel-body { padding: 16px; }
+
+/* ── progress ── */
+.prog-row {
+  display: flex; align-items: baseline; gap: 10px;
+  margin-bottom: 8px;
+}
+.prog-pct {
+  font-size: 36px; font-weight: 300; line-height: 1;
+  letter-spacing: -.02em;
+}
+.prog-pct.green { color: var(--green); }
+.prog-pct.blue  { color: var(--blue); }
+.prog-pct.amber { color: var(--amber); }
+.prog-pct.red   { color: var(--red); }
+.prog-frac {
+  font-size: 12px; color: var(--muted);
+  display: flex; flex-direction: column; gap: 1px;
+}
+.prog-track {
+  height: 3px; background: var(--border2);
+  position: relative; overflow: hidden;
+  margin-bottom: 14px;
+}
+.prog-fill {
+  position: absolute; top: 0; left: 0; height: 100%;
+  transition: width .8s cubic-bezier(.4,0,.2,1);
+}
+.prog-fill.green  { background: var(--green); }
+.prog-fill.blue   { background: var(--blue); }
+.prog-fill.amber  { background: var(--amber); }
+.prog-fill.red    { background: var(--red); }
+.prog-fill::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);
+  animation: sweep 2.5s linear infinite;
+}
+@keyframes sweep { from{transform:translateX(-100%)} to{transform:translateX(300%)} }
+
+/* ── stat grid ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.stat-cell {
+  background: var(--surface);
+  padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sc-val { font-size: 17px; font-weight: 500; color: var(--text); }
+.sc-val.accent { color: var(--green); }
+.sc-val.warn   { color: var(--amber); }
+.sc-val.err    { color: var(--red); }
+.sc-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+/* ── failures ── */
+.fail-list { margin-top: 4px; }
+.fail-item {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 5px 0; border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+.fail-mo { color: var(--red); font-weight: 600; white-space: nowrap; min-width: 60px; }
+.fail-reason { color: var(--muted); word-break: break-all; }
+
+/* ── workers table ── */
+.workers-table { width: 100%; border-collapse: collapse; }
+.workers-table th {
+  text-align: left; padding: 6px 10px;
+  font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 1px solid var(--border);
+}
+.workers-table td {
+  padding: 8px 10px; font-size: 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.workers-table tr:last-child td { border-bottom: none; }
+.workers-table tr:hover td { background: var(--surface2); }
+.wid { color: var(--blue); font-weight: 600; }
+.wmonth { color: var(--text); }
+.wstage { display: inline-flex; align-items: center; gap: 6px; }
+.wstage-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.wstage.submitting .wstage-dot { background: var(--blue); animation: blink 1s infinite; }
+.wstage.started    .wstage-dot { background: var(--blue); }
+.wstage.rate       .wstage-dot { background: var(--amber); animation: blink 2s infinite; }
+.wstage.maint      .wstage-dot { background: var(--amber); }
+.wstage.error      .wstage-dot { background: var(--red); animation: blink .8s infinite; }
+.wstage.working    .wstage-dot { background: var(--green); animation: blink 1.5s infinite; }
+.wstage.text { font-size: 12px; }
+.wstage.submitting .wstage-text { color: var(--blue); }
+.wstage.rate       .wstage-text { color: var(--amber); }
+.wstage.maint      .wstage-text { color: var(--amber); }
+.wstage.error      .wstage-text { color: var(--red); }
+.wstage.working    .wstage-text { color: var(--green); }
+.welapsed { color: var(--muted); text-align: right; font-size: 11px; }
+
+/* ── month grid ── */
+.mgrid-wrap { overflow-x: auto; padding-bottom: 4px; }
+.mgrid {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+.mgrid th, .mgrid td { padding: 2px 3px; text-align: center; }
+.mgrid th { font-size: 10px; color: var(--dim); font-weight: 400; letter-spacing: .04em; }
+.mgrid .mg-yr {
+  font-size: 11px; color: var(--muted); font-weight: 500;
+  text-align: right; padding-right: 8px; white-space: nowrap; width: 44px;
+}
+.mgrid .mg-cnt {
+  font-size: 11px; color: var(--muted);
+  text-align: left; padding-left: 6px; width: 28px;
+}
+.mgrid .mg-cell {
+  width: 20px; height: 20px;
+  display: inline-block;
+  cursor: default;
+  position: relative;
+  transition: opacity .15s;
+}
+.mgrid .mg-cell:hover { opacity: .7; }
+.mgrid-legend {
+  display: flex; gap: 16px; padding: 8px 0 4px;
+  flex-wrap: wrap;
+}
+.ml-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; color: var(--muted);
+}
+.ml-swatch { width: 12px; height: 12px; }
+
+/* ── activity ── */
+.act-list { display: flex; flex-direction: column; }
+.act-item {
+  display: grid;
+  grid-template-columns: 44px 68px 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.act-item:last-child { border-bottom: none; }
+.act-ds {
+  font-size: 10px; font-weight: 600; letter-spacing: .06em;
+  padding: 2px 5px; text-align: center;
+}
+.act-ds.gpm  { color: var(--purple); background: var(--purple-dim); }
+.act-ds.era5 { color: var(--green);  background: var(--green-dim); }
+.act-month { color: var(--text); font-weight: 500; }
+.act-msg { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="title">
+    <span class="pulse"></span>
+    POD-ML OPS
+  </div>
+  <div class="topstat">
+    <span class="ts-val" id="tb-total">—</span>
+    <span class="ts-lbl">months total</span>
+  </div>
+  <div class="topstat">
+    <span class="ts-val" id="tb-disk">—</span>
+    <span class="ts-lbl">disk free</span>
+  </div>
+  <div class="topstat">
+    <span class="ts-val" id="tb-diskpct">—</span>
+    <span class="ts-lbl">disk used</span>
+  </div>
+  <div class="topstat">
+    <span class="ts-val" id="tb-uptime">—</span>
+    <span class="ts-lbl">uptime</span>
+  </div>
+  <span class="clock" id="clock">—</span>
+</div>
+
+<div id="main">
+  <div class="row two" id="ds-row">
+    <!-- ERA5 card -->
+    <div class="panel" id="era5-panel">
+      <div class="panel-head">
+        <div>
+          <div class="ph-label">ERA5-Land / CDS</div>
+          <div class="ph-title">Surface features · 2010–2024</div>
+        </div>
+        <span class="ph-badge idle" id="era5-badge">idle</span>
+      </div>
+      <div class="panel-body">
+        <div class="prog-row">
+          <div class="prog-pct green" id="era5-pct">—%</div>
+          <div class="prog-frac">
+            <span id="era5-frac">—/—</span>
+            <span style="color:var(--muted)">months</span>
+          </div>
+        </div>
+        <div class="prog-track"><div class="prog-fill green" id="era5-bar" style="width:0"></div></div>
+        <div class="stat-grid" id="era5-stats">
+          <div class="stat-cell"><div class="sc-val" id="e-workers">—</div><div class="sc-lbl">workers</div></div>
+          <div class="stat-cell"><div class="sc-val" id="e-rate">—</div><div class="sc-lbl">files/hr</div></div>
+          <div class="stat-cell"><div class="sc-val" id="e-last">—</div><div class="sc-lbl">last file</div></div>
+          <div class="stat-cell"><div class="sc-val" id="e-eta">—</div><div class="sc-lbl">ETA</div></div>
+        </div>
+        <div id="era5-current" style="font-size:11px;color:var(--muted);margin-bottom:10px;display:none">→ <span id="era5-cur-text"></span></div>
+        <div id="era5-fails" class="fail-list"></div>
+      </div>
     </div>
-    ${curHTML}${failHTML}
+
+    <!-- GPM card -->
+    <div class="panel" id="gpm-panel">
+      <div class="panel-head">
+        <div>
+          <div class="ph-label">GPM IMERG / Harmony</div>
+          <div class="ph-title">Rain labels · 2000–2026</div>
+        </div>
+        <span class="ph-badge idle" id="gpm-badge">idle</span>
+      </div>
+      <div class="panel-body">
+        <div class="prog-row">
+          <div class="prog-pct blue" id="gpm-pct">—%</div>
+          <div class="prog-frac">
+            <span id="gpm-frac">—/—</span>
+            <span style="color:var(--muted)">months</span>
+          </div>
+        </div>
+        <div class="prog-track"><div class="prog-fill blue" id="gpm-bar" style="width:0"></div></div>
+        <div class="stat-grid" id="gpm-stats">
+          <div class="stat-cell"><div class="sc-val" id="g-workers">—</div><div class="sc-lbl">workers</div></div>
+          <div class="stat-cell"><div class="sc-val" id="g-rate">—</div><div class="sc-lbl">files/hr</div></div>
+          <div class="stat-cell"><div class="sc-val" id="g-last">—</div><div class="sc-lbl">last file</div></div>
+          <div class="stat-cell"><div class="sc-val" id="g-eta">—</div><div class="sc-lbl">ETA</div></div>
+        </div>
+        <div id="gpm-current" style="font-size:11px;color:var(--muted);margin-bottom:10px;display:none">→ <span id="gpm-cur-text"></span></div>
+        <div id="gpm-fails" class="fail-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ERA5 workers -->
+  <div class="row one">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="ph-title">ERA5 Workers</div>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto" id="w-count">0 active</span>
+      </div>
+      <div class="panel-body" style="padding:0">
+        <table class="workers-table">
+          <thead><tr>
+            <th style="width:52px">ID</th>
+            <th>Batch</th>
+            <th>Stage</th>
+            <th>Elapsed</th>
+          </tr></thead>
+          <tbody id="era5-workers-body">
+            <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px">no active workers</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Month grids -->
+  <div class="row two" id="grids-row"></div>
+
+  <!-- Activity -->
+  <div class="row one">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="ph-title">Recent Activity</div>
+      </div>
+      <div class="panel-body" style="padding:0 16px">
+        <div class="act-list" id="act-list">
+          <div style="color:var(--muted);padding:12px 0;font-size:12px">waiting…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+async function poll() {
+  try { const r = await fetch('/api'); return await r.json(); } catch { return null; }
+}
+
+function fmtAge(m) {
+  if (m == null) return '—';
+  if (m < 2) return 'now';
+  if (m < 60) return Math.round(m) + 'm ago';
+  return (m/60).toFixed(1) + 'h ago';
+}
+function fmtEta(h) {
+  if (h == null) return '—';
+  if (h < 1) return '<1h';
+  if (h < 48) return h.toFixed(1) + 'h';
+  return (h/24).toFixed(1) + 'd';
+}
+function fmtDisk(statvfs) {
+  if (!statvfs) return {free:'—',pct:'—'};
+  const total = statvfs.f_blocks * statvfs.f_bsize;
+  const free  = statvfs.f_bavail * statvfs.f_bsize;
+  const used  = total - free;
+  const pct   = (used/total*100).toFixed(0) + '%';
+  const gb    = (free/1e9).toFixed(0) + 'G free';
+  return {free: gb, pct};
+}
+function fmtUptime(s) {
+  if (!s) return '—';
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+  return h + 'h ' + m + 'm';
+}
+
+function stageClass(stage) {
+  const s = stage.toLowerCase();
+  if (s.includes('submitting')) return 'submitting';
+  if (s.includes('rate-limited') || s.includes('maintenance')) return s.includes('maintenance') ? 'maint' : 'rate';
+  if (s.includes('error') || s.includes('failed') || s.includes('licence')) return 'error';
+  if (s.includes('started') || s.includes('working')) return 'working';
+  return 'working';
+}
+
+function updateDataset(id, ds, accentCls) {
+  const pct = ds.pct || 0;
+  const run = ds.running;
+  const fails = (ds.failures || []).length;
+  const stalled = !run && pct < 100 && ds.recent_age_min > 60;
+
+  $('#' + id + '-pct').textContent = pct.toFixed(1) + '%';
+  $('#' + id + '-frac').textContent = ds.n + '/' + ds.expected;
+  $('#' + id + '-bar').style.width = Math.min(pct, 100) + '%';
+
+  const badge = $('#' + id + '-badge');
+  if (pct >= 100) {
+    badge.textContent = 'complete'; badge.className = 'ph-badge running';
+  } else if (!run && fails > 0) {
+    badge.textContent = fails + ' failed'; badge.className = 'ph-badge error';
+  } else if (stalled) {
+    badge.textContent = 'stalled'; badge.className = 'ph-badge warn';
+  } else if (run) {
+    badge.textContent = 'running'; badge.className = 'ph-badge running';
+  } else {
+    badge.textContent = 'idle'; badge.className = 'ph-badge idle';
+  }
+
+  const pre = id === 'era5' ? 'e' : 'g';
+  const eta = fmtEta(ds.eta_h);
+  const etaEl = $('#' + pre + '-eta');
+  etaEl.textContent = eta;
+  etaEl.className = 'sc-val' + (eta === '—' && pct < 100 ? ' warn' : '');
+
+  const lastEl = $('#' + pre + '-last');
+  const ageStr = fmtAge(ds.recent_age_min);
+  lastEl.textContent = ageStr;
+  lastEl.className = 'sc-val' + (ds.recent_age_min > 90 ? ' warn' : '');
+
+  const rateEl = $('#' + pre + '-rate');
+  rateEl.textContent = ds.files_last_hr || '0';
+  rateEl.className = 'sc-val' + (run && !ds.files_last_hr ? ' warn' : run ? ' accent' : '');
+
+  $('#' + pre + '-workers').textContent = ds.workers || 0;
+
+  const curEl = $('#' + id + '-current');
+  if (ds.current) {
+    curEl.style.display = 'block';
+    $('#' + id + '-cur-text').textContent = ds.current === 'in-flight' ? 'submitting to CDS…' : ds.current;
+  } else {
+    curEl.style.display = 'none';
+  }
+
+  const failEl = $('#' + id + '-fails');
+  if (fails) {
+    failEl.innerHTML = ds.failures.slice(0, 8).map(([mo, r]) =>
+      `<div class="fail-item"><span class="fail-mo">${mo}</span><span class="fail-reason">${r.slice(0, 80)}</span></div>`
+    ).join('');
+  } else {
+    failEl.innerHTML = '';
+  }
+}
+
+function updateWorkers(workers) {
+  const tbody = $('#era5-workers-body');
+  $('#w-count').textContent = workers.length + ' active';
+  if (!workers.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px;font-size:12px">no active workers</td></tr>';
+    return;
+  }
+  tbody.innerHTML = workers.map(w => {
+    const sc = stageClass(w.stage);
+    const elapsed = w.elapsed_s < 60 ? Math.round(w.elapsed_s) + 's' :
+                    (w.elapsed_s/60).toFixed(1) + 'm';
+    return `<tr>
+      <td class="wid">${w.id}</td>
+      <td class="wmonth">${w.month}</td>
+      <td><span class="wstage ${sc}"><span class="wstage-dot"></span><span class="wstage-text">${w.stage}</span></span></td>
+      <td class="welapsed">${elapsed}</td>
+    </tr>`;
+  }).join('');
+}
+
+function gridHTML(ds, title, cells) {
+  if (!cells || !cells.length) return '';
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MSHORT = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+  const legend = [['var(--green)','done'],['var(--red)','failed'],['var(--amber)','no data'],['var(--border2)','missing']]
+    .map(([c,l]) => `<div class="ml-item"><div class="ml-swatch" style="background:${c}"></div>${l}</div>`).join('');
+  const head = '<th class="mg-yr"></th>' + MSHORT.map(m=>`<th>${m}</th>`).join('') + '<th class="mg-cnt"></th>';
+  const rows = cells.map(r => {
+    const tds = r.cells.map(c => {
+      const clr = c.color === '#3fb950' ? 'var(--green)' :
+                  c.color === '#f85149' ? 'var(--red)' :
+                  c.color === '#e3b341' ? 'var(--amber)' :
+                  c.color === '#161b22' ? 'var(--bg)' : 'var(--border2)';
+      return `<td><div class="mg-cell" title="${c.ym}: ${c.tip}" style="background:${clr}"></div></td>`;
+    }).join('');
+    const doneStyle = r.done === 12 ? 'color:var(--green);font-weight:600' : '';
+    return `<tr><td class="mg-yr">${r.year}</td>${tds}<td class="mg-cnt" style="${doneStyle}">${r.done}</td></tr>`;
+  }).join('');
+  return `<div class="panel">
+    <div class="panel-head"><div class="ph-title">${title}</div></div>
+    <div class="panel-body">
+      <div class="mgrid-legend">${legend}</div>
+      <div class="mgrid-wrap"><table class="mgrid"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>
+    </div>
   </div>`;
 }
-function gridHTML(title,data){
-  if(!data||!data.length)return'';
-  const MONTHS=['J','F','M','A','M','J','J','A','S','O','N','D'];
-  let h='<th class="yr">yr</th>'+MONTHS.map(m=>`<th>${m}</th>`).join('')+'<th class="cnt">✓</th>';
-  const rows=data.map(r=>{
-    let cells='<td class="yr">'+r.year+'</td>';
-    r.cells.forEach(c=>{cells+=`<td><span class="cell" title="${c.ym}: ${c.tip}" style="background:${c.color}"></span></td>`});
-    cells+='<td class="cnt">'+r.done+'</td>';
-    return'<tr>'+cells+'</tr>';
-  }).join('');
-  return`<div class="card full"><h2>${title}</h2><div style="display:flex;gap:12px;margin-bottom:6px">${[['#3fb950','done'],['#f85149','failed'],['#e3b341','no data'],['#30363d','missing']].map(([c,l])=>`<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:2px;background:${c};display:inline-block"></span>${l}</span>`).join('')}</div><table class="month-grid"><tr>${h}</tr>${rows}</table></div>`;
+
+function updateActivity(activity) {
+  const el = $('#act-list');
+  if (!activity || !activity.length) {
+    el.innerHTML = '<div style="color:var(--muted);padding:12px 0;font-size:12px">waiting for activity…</div>';
+    return;
+  }
+  el.innerHTML = activity.slice().reverse().map(a =>
+    `<div class="act-item">
+      <span class="act-ds ${a.ds}">${a.ds.toUpperCase()}</span>
+      <span class="act-month">${a.month}</span>
+      <span class="act-msg">${a.msg}</span>
+    </div>`
+  ).join('');
 }
-function render(data){
-  if(!data)return;
-  const d=data.datasets;
-  const cards=$('#cards');
-  cards.innerHTML=
-    cardHTML('era5','ERA5-Land','features · 2010–2024 · CDS',d.era5)+
-    cardHTML('gpm','GPM IMERG','rain labels · 2000–2026 · Harmony',d.gpm);
-  const grids=$('#grids');
-  grids.innerHTML=
-    gridHTML('GPM completed months',data.grids.gpm)+
-    gridHTML('ERA5 completed months',data.grids.era5);
-  const feed=$('#feed');
-  const act=data.activity||[];
-  feed.innerHTML=act.slice().reverse().map(a=>`<div class="activity-item"><span class="ds ${a.ds}">${a.ds.toUpperCase()}</span><span class="month">${a.month}</span><span class="msg">${a.msg}</span></div>`).join('')||'<div style="color:var(--muted);font-size:13px">waiting for activity…</div>';
-  const wbox=$('#era5-workers');
-  const workers=data.era5_workers||[];
-  const colors={started:'#58a6ff',submitting:'#79c0ff','rate-limited':'#e3b341',FAILED:'#f85149',complete:'#3fb950'};
-  wbox.innerHTML=workers.length?workers.map(w=>{const b=w.stage.split(' ')[0];return`<div class="activity-item"><span style="font-family:monospace;font-size:12px;color:var(--blue);min-width:30px">${w.id}</span><span class="month">${w.month}</span><span style="font-size:12px;color:${colors[b]||'#8b949e'}">${w.stage}</span><span style="font-size:11px;color:var(--muted);margin-left:auto">~${w.elapsed_s.toFixed(0)}s</span></div>`}).join(''):'<div style="color:var(--muted);font-size:13px">no active workers</div>';
-  const now=new Date();
-  $('#clock').textContent=now.toLocaleTimeString();
+
+function render(data) {
+  if (!data) return;
+  const d = data.datasets;
+
+  // topbar
+  const total = (d.era5.n || 0) + (d.gpm.n || 0);
+  const totalExp = (d.era5.expected || 0) + (d.gpm.expected || 0);
+  $('#tb-total').textContent = total + '/' + totalExp;
+  const dk = fmtDisk(data.disk);
+  $('#tb-disk').textContent = dk.free;
+  const diskPctEl = $('#tb-diskpct');
+  diskPctEl.textContent = dk.pct;
+  $('#tb-uptime').textContent = fmtUptime(data.uptime);
+
+  updateDataset('era5', d.era5, 'green');
+  updateDataset('gpm',  d.gpm,  'blue');
+  updateWorkers(data.era5_workers || []);
+
+  const gridsEl = $('#grids-row');
+  gridsEl.innerHTML =
+    gridHTML('era5', 'ERA5 · months downloaded', data.grids && data.grids.era5) +
+    gridHTML('gpm',  'GPM · months downloaded',  data.grids && data.grids.gpm);
+
+  updateActivity(data.activity);
+
+  const now = new Date();
+  $('#clock').textContent = now.toLocaleTimeString('en-NZ', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
-(async function loop(){render(await poll());setTimeout(loop,5000)})();
-</script></body></html>"""
+
+(async function loop() {
+  render(await poll());
+  setTimeout(loop, 5000);
+})();
+</script>
+</body>
+</html>"""
 
 if __name__ == "__main__":
     import sys
