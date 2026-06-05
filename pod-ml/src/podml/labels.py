@@ -16,16 +16,19 @@ from numpy.lib.stride_tricks import sliding_window_view
 
 # Rain-intensity thresholds (mm/hr): light+ (any rain), moderate+, heavy+.
 THRESHOLDS_MM_HR = [0.5, 2.5, 7.6]
-HORIZONS_H = [6, 12, 24, 48]
+HORIZONS_H = [0, 6, 12, 24, 48]
 
 
 def forward_window_max(x: np.ndarray, h: int) -> np.ndarray:
     """Max over the next ``h`` samples strictly after each index.
 
     out[T] = max(x[T+1 .. T+H]); NaN for the last H samples (incomplete future).
-    The *strictly after* part is what keeps the current hour out of the label (no leakage).
+    Special case h=0: returns x[T] (nowcast — is it raining right now?). No NaN tail.
+    Features at T are pressure/temp/humidity history, never precip, so no circular leakage.
     """
     x = np.asarray(x, dtype="float64")
+    if h == 0:
+        return x.copy()
     n = x.size
     out = np.full(n, np.nan)
     if n > h:

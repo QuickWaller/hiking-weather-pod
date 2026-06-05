@@ -161,6 +161,12 @@ def build_grid(start: str, end: str, client, collection, bbox) -> None:
                     banked = True
                     break
             except Exception as exc:  # noqa: BLE001 — transient Harmony error; retry below
+                if "no matching granules" in str(exc).lower():
+                    # IMERG Final lags ~3.5 months — recent months permanently have no data.
+                    # Retrying wastes 15min/restart and clutters dashboard failures; skip immediately.
+                    print(f"[{yr}-{mo:02d}] no granules available (IMERG Final lag) — skipping", flush=True)
+                    last_exc = None
+                    break
                 last_exc = exc
                 print(f"[{yr}-{mo:02d}] attempt {attempt} failed: {str(exc)[:80]}", flush=True)
             if attempt < GPM_MAX_ATTEMPTS:

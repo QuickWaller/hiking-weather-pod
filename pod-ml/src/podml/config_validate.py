@@ -179,8 +179,8 @@ class ConfigValidator:
         if not HORIZONS_H:
             self.errors.append("HORIZONS_H not defined")
         else:
-            if not all(h > 0 for h in HORIZONS_H):
-                self.errors.append("HORIZONS_H must be positive")
+            if not all(h >= 0 for h in HORIZONS_H):
+                self.errors.append("HORIZONS_H must be non-negative (0 = nowcast)")
             else:
                 self.info.append(f"Horizons: {HORIZONS_H} hours ✓")
 

@@ -54,3 +54,24 @@ def test_build_labels_threshold_and_window():
 def test_build_labels_columns_cover_all_combos():
     df = build_labels(_toy_ds([0.0] * 60), horizons=[6, 12], thresholds=[0.5, 2.5])
     assert set(df.columns) == {"ge0.5_h6", "ge2.5_h6", "ge0.5_h12", "ge2.5_h12"}
+
+
+def test_forward_max_nowcast_h0():
+    # h=0: returns x itself, no NaN tail (no forward window needed for nowcast)
+    out = forward_window_max([0.0, 3.0, 1.0, 5.0], 0)
+    np.testing.assert_array_equal(out, [0.0, 3.0, 1.0, 5.0])
+    assert not np.any(np.isnan(out))
+
+
+def test_build_labels_nowcast_column():
+    # h=0 label = is it raining AT time T (not in the next H hours)
+    df = build_labels(_toy_ds([0, 0, 5, 0, 0, 0]), horizons=[0], thresholds=[2.5])
+    col = "ge2.5_h0"
+    assert df[col].iloc[2] == 1.0   # spike at T=2 → nowcast fires
+    assert df[col].iloc[0] == 0.0   # dry hour → no label
+    assert not df[col].isna().any() # no NaN tail — nowcast never looks ahead
+
+
+def test_default_horizons_include_nowcast():
+    from podml.labels import HORIZONS_H
+    assert 0 in HORIZONS_H
