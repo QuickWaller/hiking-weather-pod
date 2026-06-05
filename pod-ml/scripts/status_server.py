@@ -156,9 +156,8 @@ def _parse_era5_workers(log_path: Path) -> list[dict]:
     Only returns workers seen in the last 10 minutes.
     """
     lines = _tail(log_path, n=600)
-    now = time.time()
-    # Walk backwards: each [W..] line is the *latest* stage for that worker+month combo
-    seen: set[tuple[str, str]] = set()  # (worker_id, month)
+    # Walk backwards: each [W..] line is the *latest* stage for that worker
+    seen: set[str] = set()  # worker IDs we've already captured their latest state
     workers: list[dict] = []
     for line in reversed(lines):
         line = line.strip()
@@ -166,10 +165,14 @@ def _parse_era5_workers(log_path: Path) -> list[dict]:
         if not m:
             continue
         wid, month, rest = m.group(1), m.group(2), m.group(3)
-        key = (wid, month)
-        if key in seen:
+        if wid in seen:
+            continue  # already captured this worker's latest state
+        # Skip FAILED, cached, complete — they're done, not active
+        if "FAILED:" in rest or "cached" in rest:
             continue
-        seen.add(key)
+        if "s" in rest and "MB" in rest:
+            continue
+        seen.add(wid)
 
         # Extract stage
         if rest.startswith("started"):
