@@ -292,7 +292,7 @@ HTML = r"""<!doctype html>
   --purple: #b388ff;
   --purple-dim: rgba(179,136,255,.08);
   --mono: 'IBM Plex Mono', monospace;
-  --display: 'Syne', sans-serif;
+  --display: 'IBM Plex Mono', monospace;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 13px; }
