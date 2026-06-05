@@ -270,7 +270,7 @@ HTML = r"""<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>pod-ml ops</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #0b0b0d;
@@ -292,7 +292,7 @@ HTML = r"""<!doctype html>
   --purple: #b388ff;
   --purple-dim: rgba(179,136,255,.08);
   --mono: 'IBM Plex Mono', monospace;
-  --display: 'Syne', sans-serif;
+  --display: 'IBM Plex Mono', monospace;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 13px; }
@@ -317,10 +317,10 @@ body {
   z-index: 10;
 }
 #topbar .title {
-  font-family: var(--display);
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: .02em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .2em;
+  text-transform: uppercase;
   color: #fff;
   display: flex;
   align-items: center;
@@ -362,19 +362,17 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .panel-head .ph-label {
-  font-family: var(--display);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .12em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--muted);
 }
 .panel-head .ph-title {
-  font-family: var(--display);
-  font-size: 14px;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: .01em;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text);
+  letter-spacing: .02em;
 }
 .panel-head .ph-badge {
   margin-left: auto;
