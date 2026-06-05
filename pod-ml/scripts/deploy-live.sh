@@ -33,7 +33,9 @@ case "$SVC" in
 esac
 
 # Always restart the dashboard server so the new HTML is served immediately.
-pkill -f dashboard_server 2>/dev/null || true
+# Dashboard must be owned by the same user running this script (claude) so future
+# deploys can kill and restart it without needing interactive sudo.
+pkill -u "$(whoami)" -f dashboard_server 2>/dev/null || true
 sleep 1
 setsid python3 "$REPO/pod-ml/scripts/dashboard_server.py" \
   </dev/null >>"$REPO/pod-ml/dashboard_server.log" 2>&1 &
