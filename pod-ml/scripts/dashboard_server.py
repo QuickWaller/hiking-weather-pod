@@ -204,6 +204,34 @@ def _month_grid(files, year_start, year_end, failures, no_data):
         rows.append({"year": yr, "done": yr_done, "cells": cells})
     return rows
 
+def _hourly_rate(files, hours=48):
+    """Count files completed per hour bucket over the last `hours` hours.
+
+    Uses file mtime as the completion timestamp — accurate because files are
+    written atomically (temp + rename) so mtime = the moment the month landed.
+    Returns list of {ts, count} dicts newest-last, covering every hour in the
+    window even if count is 0 (so the chart has a full x-axis).
+    """
+    now = time.time()
+    cutoff = now - hours * 3600
+    # floor each file's mtime to the start of its hour
+    buckets: dict[int, int] = {}
+    for f in files:
+        mt = os.path.getmtime(f)
+        if mt >= cutoff:
+            bucket = int(mt // 3600) * 3600
+            buckets[bucket] = buckets.get(bucket, 0) + 1
+    # fill every hour in the window so the chart x-axis is continuous
+    start_bucket = int(cutoff // 3600) * 3600
+    current_bucket = int(now // 3600) * 3600
+    result = []
+    b = start_bucket
+    while b <= current_bucket:
+        result.append({"ts": b, "count": buckets.get(b, 0)})
+        b += 3600
+    return result
+
+
 def api_data():
     era5_s = _stats(str(RAW / "era5_grid" / "era5land_nz_*.nc"), 180)
     gpm_s = _stats(str(RAW / "gpm_grid" / "gpm_*.nc"), 295)
@@ -245,6 +273,10 @@ def api_data():
             "era5": _month_grid(era5_s["files"], 2010, 2026, era5_log["failures"], []),
         },
         "disk": os.statvfs(str(RAW)),
+        "hourly": {
+            "gpm":  _hourly_rate(gpm_s["files"]),
+            "era5": _hourly_rate(era5_s["files"]),
+        },
     }
 
 class Handler(BaseHTTPRequestHandler):
@@ -654,6 +686,26 @@ body {
     </div>
   </div>
 
+  <!-- Throughput chart -->
+  <div class="row one">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="ph-title">Throughput — months downloaded per hour (48h)</div>
+        <div style="display:flex;gap:16px;margin-left:auto;align-items:center;font-size:11px">
+          <span style="display:flex;align-items:center;gap:5px;color:var(--blue)">
+            <span style="width:10px;height:3px;background:var(--blue);display:inline-block"></span>GPM
+          </span>
+          <span style="display:flex;align-items:center;gap:5px;color:var(--green)">
+            <span style="width:10px;height:3px;background:var(--green);display:inline-block"></span>ERA5
+          </span>
+        </div>
+      </div>
+      <div class="panel-body" style="padding:16px">
+        <canvas id="throughput-chart" height="120" style="width:100%;display:block"></canvas>
+      </div>
+    </div>
+  </div>
+
   <!-- Month grids -->
   <div class="row two" id="grids-row"></div>
 
@@ -843,6 +895,94 @@ function updateActivity(activity) {
   ).join('');
 }
 
+function drawChart(hourly) {
+  const canvas = $('#throughput-chart');
+  if (!canvas) return;
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = 120 * devicePixelRatio;
+  canvas.style.height = '120px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = 120;
+
+  const gpm  = (hourly && hourly.gpm)  || [];
+  const era5 = (hourly && hourly.era5) || [];
+  if (!gpm.length) return;
+
+  // merge x-axis from both series
+  const tsSet = new Set([...gpm.map(d=>d.ts), ...era5.map(d=>d.ts)]);
+  const ticks = [...tsSet].sort((a,b)=>a-b);
+  const gpmMap  = Object.fromEntries(gpm.map(d=>[d.ts, d.count]));
+  const era5Map = Object.fromEntries(era5.map(d=>[d.ts, d.count]));
+
+  const maxCount = Math.max(1, ...ticks.map(t => Math.max(gpmMap[t]||0, era5Map[t]||0)));
+  const n = ticks.length;
+  const pad = { top: 8, bottom: 28, left: 28, right: 8 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+  const barW = Math.max(1, chartW / n - 1);
+
+  // background
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();
+  ctx.fillRect(0, 0, W, H);
+
+  // grid lines
+  const gridSteps = 3;
+  ctx.strokeStyle = 'rgba(255,255,255,.06)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= gridSteps; i++) {
+    const y = pad.top + chartH - (i / gridSteps) * chartH;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + chartW, y); ctx.stroke();
+    if (i > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,.25)';
+      ctx.font = `${9 * devicePixelRatio / devicePixelRatio}px IBM Plex Mono, monospace`;
+      ctx.textAlign = 'right';
+      ctx.fillText(Math.round(maxCount * i / gridSteps), pad.left - 4, y + 3);
+    }
+  }
+
+  // bars — GPM (blue, back) and ERA5 (green, front), side by side
+  const slotW = chartW / n;
+  const bw = Math.max(1, slotW * 0.38);
+  ticks.forEach((ts, i) => {
+    const x = pad.left + i * slotW;
+
+    const gc = gpmMap[ts] || 0;
+    if (gc > 0) {
+      const bh = (gc / maxCount) * chartH;
+      ctx.fillStyle = 'rgba(64,196,255,.7)';
+      ctx.fillRect(x + 1, pad.top + chartH - bh, bw, bh);
+    }
+
+    const ec = era5Map[ts] || 0;
+    if (ec > 0) {
+      const bh = (ec / maxCount) * chartH;
+      ctx.fillStyle = 'rgba(0,230,118,.7)';
+      ctx.fillRect(x + bw + 2, pad.top + chartH - bh, bw, bh);
+    }
+  });
+
+  // x-axis hour labels — every 6h
+  ctx.fillStyle = 'rgba(255,255,255,.3)';
+  ctx.font = `9px IBM Plex Mono, monospace`;
+  ctx.textAlign = 'center';
+  ticks.forEach((ts, i) => {
+    const d = new Date(ts * 1000);
+    if (d.getHours() % 6 === 0) {
+      const x = pad.left + (i + 0.5) * slotW;
+      ctx.fillText(d.getHours() + 'h', x, H - 8);
+    }
+  });
+
+  // x-axis baseline
+  ctx.strokeStyle = 'rgba(255,255,255,.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.left, pad.top + chartH);
+  ctx.lineTo(pad.left + chartW, pad.top + chartH);
+  ctx.stroke();
+}
+
 function render(data) {
   if (!data) return;
   const d = data.datasets;
@@ -867,10 +1007,15 @@ function render(data) {
     gridHTML('gpm',  'GPM · months downloaded',  data.grids && data.grids.gpm);
 
   updateActivity(data.activity);
+  _lastHourly = data.hourly;
+  drawChart(data.hourly);
 
   const now = new Date();
   $('#clock').textContent = now.toLocaleTimeString('en-NZ', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
+
+let _lastHourly = null;
+window.addEventListener('resize', () => { if (_lastHourly) drawChart(_lastHourly); });
 
 (async function loop() {
   render(await poll());
