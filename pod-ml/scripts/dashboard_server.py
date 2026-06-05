@@ -108,6 +108,8 @@ def _parse_era5_workers():
         seen.add(key)
         if rest.startswith("started"):
             stage, extra = "started", ""
+        elif rest.startswith("submitting"):
+            stage, extra = "submitting", ""
         elif "rate-limited retry" in rest:
             stage = "rate-limited"
             rm = re.search(r"retry (\d+/\d+)", rest)
@@ -369,7 +371,7 @@ function render(data){
   feed.innerHTML=act.slice().reverse().map(a=>`<div class="activity-item"><span class="ds ${a.ds}">${a.ds.toUpperCase()}</span><span class="month">${a.month}</span><span class="msg">${a.msg}</span></div>`).join('')||'<div style="color:var(--muted);font-size:13px">waiting for activity…</div>';
   const wbox=$('#era5-workers');
   const workers=data.era5_workers||[];
-  const colors={started:'#58a6ff','rate-limited':'#e3b341',FAILED:'#f85149',complete:'#3fb950'};
+  const colors={started:'#58a6ff',submitting:'#79c0ff','rate-limited':'#e3b341',FAILED:'#f85149',complete:'#3fb950'};
   wbox.innerHTML=workers.length?workers.map(w=>{const b=w.stage.split(' ')[0];return`<div class="activity-item"><span style="font-family:monospace;font-size:12px;color:var(--blue);min-width:30px">${w.id}</span><span class="month">${w.month}</span><span style="font-size:12px;color:${colors[b]||'#8b949e'}">${w.stage}</span><span style="font-size:11px;color:var(--muted);margin-left:auto">~${w.elapsed_s.toFixed(0)}s</span></div>`}).join(''):'<div style="color:var(--muted);font-size:13px">no active workers</div>';
   const now=new Date();
   $('#clock').textContent=now.toLocaleTimeString();

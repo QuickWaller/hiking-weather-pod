@@ -174,6 +174,8 @@ def _parse_era5_workers(log_path: Path) -> list[dict]:
         # Extract stage
         if rest.startswith("started"):
             stage, extra = "started", ""
+        elif rest.startswith("submitting"):
+            stage, extra = "submitting", ""
         elif "rate-limited retry" in rest:
             stage = "rate-limited"
             rm = re.search(r"retry (\d+/\d+)", rest)
@@ -288,7 +290,7 @@ def _era5_workers_html(workers: list[dict]) -> str:
     if not workers:
         return "<p style='color:#484f58;font-size:12px;margin-top:8px'>No active workers in the last 10 min.</p>"
     stage_colors = {
-        "started": "#58a6ff", "rate-limited": "#e3b341",
+        "started": "#58a6ff", "submitting": "#79c0ff", "rate-limited": "#e3b341",
         "FAILED": "#f85149", "complete": "#3fb950",
     }
     rows = ""
