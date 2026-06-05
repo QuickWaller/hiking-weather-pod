@@ -72,7 +72,7 @@ def _parse_era5():
     failures, workers, cds_status = {}, None, None
     for line in lines:
         line = line.strip()
-        m = re.search(r"ERA5-Land CDS: \d+ months, (\d+) parallel", line)
+        m = re.search(r"ERA5-Land CDS: .+, (\d+) parallel", line)
         if m: workers = int(m.group(1))
         m = re.match(r"(?:\[W..\] )?\[(\d{4}-\d{2})\] FAILED: (.+)", line)
         if m:
@@ -101,9 +101,12 @@ def _parse_era5_workers():
     workers: list[dict] = []
     for line in reversed(lines):
         line = line.strip()
-        m = re.match(r"\[(W..)\] \[(\d{4}-\d{2})\] (.+)", line)
+        # Match both old [W00] [YYYY-MM] and new [W00] YYYY-[MM+MM+MM] formats
+        m = re.match(r"\[(W..)\] (\S+) (.+)", line)
         if not m: continue
         wid, month, rest = m.group(1), m.group(2), m.group(3)
+        # Skip non-worker lines caught by the broad regex (e.g. startup banners)
+        if not re.match(r"\[?\d{4}", month): continue
         if wid in seen:
             continue  # already captured this worker's latest state
         # Skip FAILED — they're done, not active
@@ -123,6 +126,10 @@ def _parse_era5_workers():
             stage = "rate-limited"
             rm = re.search(r"retry (\d+/\d+)", rest)
             extra = f" {rm.group(1)}" if rm else ""
+        elif re.search(r"error \d+/\d+:", rest):
+            stage = "error"
+            em = re.search(r"error (\d+/\d+):", rest)
+            extra = f" {em.group(1)}" if em else ""
         elif "cached" in rest:
             continue
         elif "FAILED:" in rest:
@@ -160,7 +167,7 @@ def _activity():
         m = re.match(r"(?:\[W..\] )?\[(\d{4}-\d{2})\] cached", line)
         if m:
             entries.append({"ds": "era5", "month": m.group(1), "msg": "Already cached"})
-        m = re.match(r"\[(W..)\] \[(\d{4}-\d{2})\] rate-limited retry (\d+/\d+)", line)
+        m = re.match(r"\[(W..)\] (\S+) rate-limited retry (\d+/\d+)", line)
         if m:
             entries.append({"ds": "era5", "month": m.group(2), "msg": f"W{m.group(1)} rate-limited, retry {m.group(3)}"})
     return entries[-15:]
