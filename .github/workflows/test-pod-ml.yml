@@ -1,0 +1,31 @@
+name: pod-ml tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ["pod-ml/**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pod-ml
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pod-ml/pyproject.toml
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: ruff check src/ tests/ test/
+
+      - name: Tests
+        run: pytest tests/ test/ -v --tb=short
