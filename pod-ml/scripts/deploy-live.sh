@@ -31,3 +31,10 @@ case "$SVC" in
   none)         echo "code updated; no service restart requested (restart when ready)" ;;
   *)            echo "unknown service '$SVC' (use: gpm|era5|all|none)"; exit 2 ;;
 esac
+
+# Always restart the dashboard server so the new HTML is served immediately.
+pkill -f dashboard_server 2>/dev/null || true
+sleep 1
+setsid python3 "$REPO/pod-ml/scripts/dashboard_server.py" \
+  </dev/null >>"$REPO/pod-ml/dashboard_server.log" 2>&1 &
+echo "dashboard: restarted (pid $!)"
