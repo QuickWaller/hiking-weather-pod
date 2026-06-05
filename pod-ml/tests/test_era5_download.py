@@ -2,7 +2,8 @@
 
 Mocks the CDS client — no real API calls. Pins the behaviours Nepter modifies:
   - _is_rate_limited: RATE_LIMIT_HINTS matching (PRs #1, #14)
-  - download_month: rate-limit vs genuine-error branching + log lines (PR #14)
+  - download_batch: rate-limit vs genuine-error branching + log lines (PR #14),
+                    cached-month skip, multi-month batching
   - _record_failure: writes full context to FAILURE_LOG
 """
 from __future__ import annotations
@@ -16,7 +17,7 @@ from podml.download_era5_grid import (
     RATE_LIMIT_MAX_ATTEMPTS,
     _is_rate_limited,
     _record_failure,
-    download_month,
+    download_batch,
 )
 
 
@@ -59,30 +60,33 @@ class TestIsRateLimited:
         assert _is_rate_limited(Exception("some random failure")) is False
 
 
-def _patch_download(tmp_path):
-    """Context-manager stack of patches needed to exercise download_month in isolation."""
-    import contextlib
-    cache = tmp_path / "cache"
-    cache.mkdir()
-    return contextlib.ExitStack(), cache, [
-        patch("podml.download_era5_grid.CACHE", cache),
-        patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "failures.log"),
-        patch("podml.download_era5_grid.time.sleep"),
-    ]
-
-
-class TestDownloadMonthRetry:
-    def test_returns_cached_immediately(self, tmp_path):
+class TestDownloadBatch:
+    def test_returns_cached_immediately_for_all_cached(self, tmp_path, capsys):
         cache = tmp_path / "cache"
         cache.mkdir()
-        # Pre-create the cache file so download_month should skip without calling _client.
-        cached = cache / "era5land_nz_2020-01.nc"
-        cached.touch()
+        # Pre-create both month files
+        (cache / "era5land_nz_2020-01.nc").touch()
+        (cache / "era5land_nz_2020-02.nc").touch()
         with patch("podml.download_era5_grid.CACHE", cache), \
              patch("podml.download_era5_grid._client") as mock_factory:
-            result = download_month(2020, 1)
-        assert "cached" in result
+            results = download_batch([(2020, 1), (2020, 2)])
         mock_factory.assert_not_called()
+        assert all("cached" in r for r in results)
+
+    def test_skips_cached_months_within_batch(self, tmp_path):
+        cache = tmp_path / "cache"
+        cache.mkdir()
+        # Only month 1 is cached; month 2 should still be requested
+        (cache / "era5land_nz_2020-01.nc").touch()
+        with patch("podml.download_era5_grid.CACHE", cache), \
+             patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
+             patch("podml.download_era5_grid.time.sleep"), \
+             patch("podml.download_era5_grid._client") as mock_factory:
+            mock_factory.return_value.retrieve.side_effect = Exception("some failure")
+            with pytest.raises(RuntimeError):
+                download_batch([(2020, 1), (2020, 2)])
+        # retrieve was called (month 2 needed fetching)
+        mock_factory.return_value.retrieve.assert_called()
 
     def test_rate_limit_prints_retry_log_line(self, tmp_path, capsys):
         cache = tmp_path / "cache"
@@ -93,9 +97,8 @@ class TestDownloadMonthRetry:
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = Exception("temporarily limited")
             with pytest.raises(RuntimeError):
-                download_month(2020, 1)
-        out = capsys.readouterr().out
-        assert "rate-limited retry" in out
+                download_batch([(2020, 1)])
+        assert "rate-limited retry" in capsys.readouterr().out
 
     def test_rate_limit_exhausts_after_max_attempts(self, tmp_path):
         cache = tmp_path / "cache"
@@ -106,8 +109,7 @@ class TestDownloadMonthRetry:
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = Exception("temporarily limited")
             with pytest.raises(RuntimeError, match="rate-limit waits"):
-                download_month(2020, 1)
-            # RATE_LIMIT_MAX_ATTEMPTS retries + the initial attempt that triggers break
+                download_batch([(2020, 1)])
             assert mock_factory.return_value.retrieve.call_count == RATE_LIMIT_MAX_ATTEMPTS + 1
 
     def test_genuine_error_prints_error_log_line(self, tmp_path, capsys):
@@ -120,7 +122,7 @@ class TestDownloadMonthRetry:
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = Exception("some unknown failure")
             with pytest.raises(RuntimeError):
-                download_month(2020, 1)
+                download_batch([(2020, 1)])
         out = capsys.readouterr().out
         assert "error" in out and f"/{ERA5_MAX_ATTEMPTS}" in out
 
@@ -133,12 +135,10 @@ class TestDownloadMonthRetry:
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = Exception("some unknown failure")
             with pytest.raises(RuntimeError, match="failed after"):
-                download_month(2020, 1)
+                download_batch([(2020, 1)])
             assert mock_factory.return_value.retrieve.call_count == ERA5_MAX_ATTEMPTS
 
-    def test_rate_limit_and_genuine_errors_are_counted_separately(self, tmp_path, capsys):
-        # Rate-limit errors should NOT burn through ERA5_MAX_ATTEMPTS.
-        # Hit rate-limit twice, then genuine errors to exhaustion — genuine tries = ERA5_MAX_ATTEMPTS.
+    def test_rate_limit_and_genuine_errors_counted_separately(self, tmp_path):
         cache = tmp_path / "cache"
         cache.mkdir()
         rate_exc = Exception("temporarily limited")
@@ -149,8 +149,9 @@ class TestDownloadMonthRetry:
              patch("podml.download_era5_grid.time.sleep"), \
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = side_effects
-            with pytest.raises(RuntimeError, match="2 rate-limit waits") as exc_info:
-                download_month(2020, 1)
+            with pytest.raises(RuntimeError) as exc_info:
+                download_batch([(2020, 1)])
+        assert "2 rate-limit waits" in str(exc_info.value)
         assert f"{ERA5_MAX_ATTEMPTS} retries" in str(exc_info.value)
 
 
