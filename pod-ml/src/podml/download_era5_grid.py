@@ -105,6 +105,27 @@ def _is_rate_limited(exc: Exception) -> bool:
     return any(hint in text for hint in RATE_LIMIT_HINTS)
 
 
+def _classify_403(exc: Exception) -> str | None:
+    """Classify a 403 response — three distinct CDS cases, only one is retriable.
+
+    Returns:
+        "license"     — terms not accepted; must be fixed manually in the CDS web UI.
+        "maintenance" — dataset temporarily closed; safe to retry later with backoff.
+        None          — not a 403 (caller should use normal classification).
+    """
+    resp = getattr(exc, "response", None)
+    if resp is None:
+        return None
+    if getattr(resp, "status_code", None) != 403:
+        return None
+    body = ((getattr(resp, "text", "") or "") + " " + str(exc)).lower()
+    if "licen" in body:  # licence / license
+        return "license"
+    if "temporarily closed" in body or "maintenance" in body:
+        return "maintenance"
+    return "maintenance"  # unknown 403 — treat as transient; log will surface it
+
+
 def download_batch(batch: list[tuple[int, int]]) -> list[str]:
     """Fetch a batch of months (all same year) in one CDS request, split into per-month files.
 
@@ -166,12 +187,21 @@ def download_batch(batch: list[tuple[int, int]]) -> list[str]:
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
             raw.unlink(missing_ok=True)
-            if _is_rate_limited(exc):
+            # 403 has three distinct meanings — classify before deciding retry strategy.
+            forbidden = _classify_403(exc)
+            if forbidden == "license":
+                # Terms not accepted in CDS web UI — will never self-heal; stop immediately.
+                msg = f"[W{wid}] {tag} LICENCE ERROR — accept terms at cds.climate.copernicus.eu then restart"
+                print(msg, flush=True)
+                raise RuntimeError(msg) from exc
+            if forbidden == "maintenance" or _is_rate_limited(exc):
+                # Dataset temporarily closed or per-user queue cap — both transient, wait out.
                 rate_waits += 1
                 if rate_waits > RATE_LIMIT_MAX_ATTEMPTS:
                     break
                 delay = RATE_LIMIT_BACKOFF_SEC + random.randint(0, 60)
-                print(f"[W{wid}] {tag} rate-limited retry {rate_waits}/{RATE_LIMIT_MAX_ATTEMPTS} "
+                label = "403-maintenance" if forbidden else "rate-limited"
+                print(f"[W{wid}] {tag} {label} retry {rate_waits}/{RATE_LIMIT_MAX_ATTEMPTS} "
                       f"(waiting {delay}s)", flush=True)
                 time.sleep(delay)
                 continue
