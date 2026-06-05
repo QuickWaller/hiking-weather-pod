@@ -15,6 +15,7 @@ import pytest
 from podml.download_era5_grid import (
     ERA5_MAX_ATTEMPTS,
     RATE_LIMIT_MAX_ATTEMPTS,
+    _classify_403,
     _is_rate_limited,
     _record_failure,
     download_batch,
@@ -49,6 +50,10 @@ class TestIsRateLimited:
     def test_false_for_generic_http_error(self):
         assert _is_rate_limited(Exception("500 Internal Server Error")) is False
 
+    def test_false_for_403(self):
+        # 403 is NOT handled by _is_rate_limited — it goes through _classify_403 instead.
+        assert _is_rate_limited(Exception("403 Client Error: Forbidden")) is False
+
     def test_checks_response_text_not_just_exc_str(self):
         # Rate-limit hint may appear only in the HTTP response body, not in str(exc).
         exc = Exception("HTTP 400")
@@ -58,6 +63,38 @@ class TestIsRateLimited:
 
     def test_no_response_attribute_does_not_crash(self):
         assert _is_rate_limited(Exception("some random failure")) is False
+
+
+class TestClassify403:
+    def _make_403(self, body: str) -> Exception:
+        exc = Exception("403 Client Error: Forbidden")
+        exc.response = MagicMock()
+        exc.response.status_code = 403
+        exc.response.text = body
+        return exc
+
+    def test_license_body(self):
+        assert _classify_403(self._make_403("required licences not accepted")) == "license"
+
+    def test_license_us_spelling(self):
+        assert _classify_403(self._make_403("required licenses not accepted")) == "license"
+
+    def test_maintenance_body(self):
+        assert _classify_403(self._make_403("Download form temporarily closed due to maintenance")) == "maintenance"
+
+    def test_unknown_403_treated_as_maintenance(self):
+        # Unknown 403 reason — treated as transient so we don't silently abandon months.
+        assert _classify_403(self._make_403("some other 403 reason")) == "maintenance"
+
+    def test_non_403_returns_none(self):
+        exc = Exception("500 Internal Server Error")
+        exc.response = MagicMock()
+        exc.response.status_code = 500
+        exc.response.text = ""
+        assert _classify_403(exc) is None
+
+    def test_no_response_returns_none(self):
+        assert _classify_403(Exception("connection error")) is None
 
 
 class TestDownloadBatch:
@@ -87,6 +124,42 @@ class TestDownloadBatch:
                 download_batch([(2020, 1), (2020, 2)])
         # retrieve was called (month 2 needed fetching)
         mock_factory.return_value.retrieve.assert_called()
+
+    def _make_403(self, body: str) -> Exception:
+        exc = Exception("403 Client Error: Forbidden")
+        exc.response = MagicMock()
+        exc.response.status_code = 403
+        exc.response.text = body
+        return exc
+
+    def test_403_licence_raises_immediately_without_retrying(self, tmp_path, capsys):
+        # License 403 must stop immediately — it will never self-heal; retrying burns time.
+        cache = tmp_path / "cache"
+        cache.mkdir()
+        licence_exc = self._make_403("required licences not accepted")
+        with patch("podml.download_era5_grid.CACHE", cache), \
+             patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
+             patch("podml.download_era5_grid.time.sleep"), \
+             patch("podml.download_era5_grid._client") as mock_factory:
+            mock_factory.return_value.retrieve.side_effect = licence_exc
+            with pytest.raises(RuntimeError, match="LICENCE ERROR"):
+                download_batch([(2020, 1)])
+        # Only one attempt — no retries on licence errors
+        assert mock_factory.return_value.retrieve.call_count == 1
+        assert "LICENCE ERROR" in capsys.readouterr().out
+
+    def test_403_maintenance_retries_like_rate_limit(self, tmp_path):
+        cache = tmp_path / "cache"
+        cache.mkdir()
+        maint_exc = self._make_403("temporarily closed due to maintenance")
+        with patch("podml.download_era5_grid.CACHE", cache), \
+             patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
+             patch("podml.download_era5_grid.time.sleep"), \
+             patch("podml.download_era5_grid._client") as mock_factory:
+            mock_factory.return_value.retrieve.side_effect = maint_exc
+            with pytest.raises(RuntimeError, match="rate-limit waits"):
+                download_batch([(2020, 1)])
+        assert mock_factory.return_value.retrieve.call_count == RATE_LIMIT_MAX_ATTEMPTS + 1
 
     def test_rate_limit_prints_retry_log_line(self, tmp_path, capsys):
         cache = tmp_path / "cache"
