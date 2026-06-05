@@ -43,7 +43,7 @@ VARIABLES = [
     "surface_pressure", "2m_temperature", "2m_dewpoint_temperature", "total_precipitation",
 ]
 CACHE = DATA_RAW / "era5_grid"
-BATCH_SIZE = 3          # months per CDS job (all same year); CDS allows up to a full year
+BATCH_SIZE = 1          # months per CDS job (all same year); 3-month batches now hit CDS cost limits
                         # for the NZ box (~25 MB/month), but 3 keeps memory bounded at ~560 MB
                         # per worker and retries don't lose more than 3 months on failure.
 _COORD_RENAME = {"latitude": "lat", "longitude": "lon"}
