@@ -144,6 +144,7 @@ def download_month(year: int, month: int) -> str:
     tries = rate_waits = 0
     while True:
         try:
+            print(f"[W{wid}] [{year}-{month:02d}] submitting (attempt {rate_waits + tries + 1})", flush=True)
             _client().retrieve("reanalysis-era5-land", request, str(raw))
             # Normalise to the project convention, write to a temp, then atomically publish.
             ds = xr.open_dataset(raw)
