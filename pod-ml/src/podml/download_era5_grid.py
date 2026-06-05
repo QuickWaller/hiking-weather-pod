@@ -51,9 +51,11 @@ ERA5_BACKOFF_SEC = 30  # grows linearly: 30s, 60s, 90s, ...
 # CDS limits how many requests you may have QUEUED per dataset and rejects submissions over
 # that cap with a 400 "the job has been rejected / queued requests temporarily limited". That
 # is TRANSIENT — it clears as our other jobs drain — NOT a per-month problem. So we wait it
-# out (long backoff, many attempts) rather than failing the month. (Learned the hard way: it
+# it out (long backoff, many attempts) rather than failing the month. (Learned the hard way: it
 # was misread as "permanently rejected months" and a skip-list nearly cost us real data.)
-RATE_LIMIT_HINTS = ("temporarily limited", "has been rejected", "queued requests")
+# N.B. the cdsapi library raises Exception("Unknown API state [rejected]") when CDS rejects
+# (NOT "has been rejected"), so "rejected" alone must also be a hint.
+RATE_LIMIT_HINTS = ("temporarily limited", "has been rejected", "queued requests", "rejected")
 RATE_LIMIT_MAX_ATTEMPTS = 40
 RATE_LIMIT_BACKOFF_SEC = 120  # base per try; jittered below so workers don't retry in lockstep
 
@@ -80,7 +82,9 @@ def _client():
     os.environ.setdefault("CDSAPI_RC", str(ROOT / ".cdsapirc"))
     import cdsapi
 
-    return cdsapi.Client()
+    # Default retry_max=500 means a hung poll could loop for ~16 hours (500×120s sleep).
+    # Cap at 5 retries / 30s timeout / 30s sleep → worst-case hang ~5 minutes per call.
+    return cdsapi.Client(retry_max=5, timeout=30, sleep_max=30)
 
 
 def _record_failure(year: int, month: int, exc: Exception) -> str:
@@ -172,6 +176,7 @@ def download_month(year: int, month: int) -> str:
             # Genuine/unknown error: a few growing-backoff retries, then fail — NOT skip. A
             # later watchdog run retries the month, so nothing is permanently abandoned.
             tries += 1
+            print(f"[W{wid}] [{year}-{month:02d}] error {tries}/{ERA5_MAX_ATTEMPTS}: {exc}", flush=True)
             if tries >= ERA5_MAX_ATTEMPTS:
                 break
             time.sleep(ERA5_BACKOFF_SEC * tries)
