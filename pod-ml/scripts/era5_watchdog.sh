@@ -20,10 +20,11 @@ LOCK="/tmp/podml_era5.lock"
 START_YEAR=2010
 END_YEAR=2024                   # training span (2010-2022 train, 2024 test); fixed so
                                # we don't spin on months CDS hasn't published yet
-WORKERS=4                       # CDS caps QUEUED requests per dataset at ~4 (see `podctl cds-queue`).
-                               # 4 workers keep that queue full for max throughput; the per-month
-                               # patient retry in download_era5_grid absorbs the overflow rejections
-                               # (they're transient queue throttling, not failures — never skip them).
+WORKERS=3                       # CDS allows ~2 concurrent active jobs per account for ERA5-Land.
+                               # Each worker now requests 3 months per CDS job (BATCH_SIZE=3),
+                               # so 2 active slots × 3 months = 6 months per processing cycle
+                               # vs the old 2 months/cycle. 3 workers ensures a slot is always
+                               # ready to fill when one completes, without spamming the queue.
 
 # 1. Already finished a clean full pass — nothing to do.
 [ -f "$DONE" ] && exit 0
