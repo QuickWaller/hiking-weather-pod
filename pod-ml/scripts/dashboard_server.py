@@ -292,7 +292,7 @@ HTML = r"""<!doctype html>
   --purple: #b388ff;
   --purple-dim: rgba(179,136,255,.08);
   --mono: 'IBM Plex Mono', monospace;
-  --display: 'IBM Plex Mono', monospace;
+  --display: 'Syne', sans-serif;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 13px; }
@@ -694,8 +694,15 @@ function fmtEta(h) {
 }
 function fmtDisk(statvfs) {
   if (!statvfs) return {free:'—',pct:'—'};
-  const total = statvfs.f_blocks * statvfs.f_bsize;
-  const free  = statvfs.f_bavail * statvfs.f_bsize;
+  let total, free;
+  if (Array.isArray(statvfs)) {
+    // os.statvfs() serializes as list: [f_bsize, f_frsize, f_blocks, f_bfree, f_bavail, ...]
+    total = statvfs[2] * statvfs[0];  // f_blocks * f_bsize
+    free  = statvfs[4] * statvfs[0];  // f_bavail * f_bsize
+  } else {
+    total = statvfs.f_blocks * statvfs.f_bsize;
+    free  = statvfs.f_bavail * statvfs.f_bsize;
+  }
   const used  = total - free;
   const pct   = (used/total*100).toFixed(0) + '%';
   const gb    = (free/1e9).toFixed(0) + 'G free';
