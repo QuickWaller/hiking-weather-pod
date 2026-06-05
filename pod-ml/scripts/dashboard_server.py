@@ -7,7 +7,7 @@ from pathlib import Path
 
 REPO = Path("/home/claude/cyber-deck-and-weather-station/pod-ml")
 RAW = REPO / "data" / "raw"
-PORT = 8080
+PORT = 8000
 STARTED = time.time()
 
 def _tail(path, n=2000):
