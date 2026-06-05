@@ -49,12 +49,13 @@ Each dataset reports: `pct` (% of expected files), `running` (a pull is active),
 
 ## ERA5 "rejected" months are CDS queue throttling — NOT a failure to fix
 
-ERA5 downloads through CDS, which caps how many requests you may have **queued per dataset** (a
-handful). Over that cap, CDS returns a `400` whose real message is *"the job has been rejected —
-Number queued requests for this dataset is temporarily limited."* This is **transient throttling,
-not a broken month and not missing data.** The months are fine; they download once a queue slot
-frees. The downloader already waits this out automatically (patient retry), and ERA5 runs 4
-workers to keep the ~4-slot queue full.
+ERA5 downloads through CDS, which caps concurrent active jobs at **~2 per account** for
+`reanalysis-era5-land`. Over that cap, CDS returns a `400` whose real message is *"the job has
+been rejected — Number queued requests for this dataset is temporarily limited."* This is
+**transient throttling, not a broken month and not missing data.** The months are fine; they
+download once a queue slot frees. The downloader already waits this out automatically (patient
+retry). ERA5 runs **3 workers, each requesting 3 months per CDS job** — so 2 active slots deliver
+6 months per processing cycle, and the 3rd worker fills a slot the moment one completes.
 
 **When ERA5 shows rejections/denials, or the user asks why it's slow/denied:** run
 
@@ -92,6 +93,10 @@ code). To propose a change:
 
 ```
 cd ~/agent-work
+git fetch origin
+git checkout main
+git reset --hard origin/main   # ALWAYS sync first — edits on a stale base produce PRs
+                                # that re-introduce already-fixed bugs
 # make your edits here (this clone only — never anywhere outside ~/agent-work)
 pod-ml/hermes/agent-propose.sh <short-slug> <<'NOTE'
 What I observed (quote the log/validate evidence), the root cause, and the fix I made.
