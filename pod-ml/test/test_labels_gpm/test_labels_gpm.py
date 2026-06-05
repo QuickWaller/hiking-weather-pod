@@ -139,9 +139,10 @@ class TestBuildLabelsGpm:
             # Check index
             assert df.index.name == "valid_time"
             assert isinstance(df.index, pd.DatetimeIndex)
-            # Check columns (12 = 3 thresholds × 4 horizons)
-            assert len(df.columns) == 12
-            expected_cols = {f"ge{t}_h{h}" for t in [0.5, 2.5, 7.6] for h in [6, 12, 24, 48]}
+            # Check columns: 3 thresholds × 5 horizons (0=nowcast, 6, 12, 24, 48)
+            from podml.labels import HORIZONS_H, THRESHOLDS_MM_HR
+            assert len(df.columns) == len(THRESHOLDS_MM_HR) * len(HORIZONS_H)
+            expected_cols = {f"ge{t}_h{h}" for t in THRESHOLDS_MM_HR for h in HORIZONS_H}
             assert set(df.columns) == expected_cols
 
     def test_binary_values(self):
