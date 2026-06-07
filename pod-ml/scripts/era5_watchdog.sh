@@ -40,7 +40,7 @@ echo "[watchdog $(date -Is)] relaunching ERA5 grid download ($START_YEAR-$END_YE
 setsid bash -c '
   source "'"$REPO"'/.venv/bin/activate"
   cd "'"$REPO"'"
-  if flock -n "'"$LOCK"'" python -m podml.download_era5_grid --start-year '"$START_YEAR"' --end-year '"$END_YEAR"' --workers '"$WORKERS"'; then
+  if flock -n "'"$LOCK"'" python -m podml.download_era5_grid --group core --start-year '"$START_YEAR"' --end-year '"$END_YEAR"' --workers '"$WORKERS"'; then
     touch "'"$DONE"'"
     echo "[watchdog '"$(date -Is)"'] ERA5 download complete, sentinel set" >> "'"$LOG"'"
   fi
