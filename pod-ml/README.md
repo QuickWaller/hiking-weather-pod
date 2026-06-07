@@ -6,11 +6,11 @@ ML pipeline for NZ weather prediction + real-time pod validation.
 
 | Dataset | Location | Status |
 |---|---|---|
-| ERA5-Land `core` grid | VM `data/raw/era5_grid/core/` | ✅ Done — 180 months (2010–2024), sp/t2m/d2m/tp |
-| ERA5-Land `more_labels_1` | VM `data/raw/era5_grid/more_labels_1/` | ⏳ Not started — snowfall + surface_runoff |
-| GPM IMERG rain labels | VM `data/raw/gpm_grid/` | ⏳ Downloading — 2000–2024 |
+| ERA5-Land `core` grid | VM `data/raw/era5_grid/core/` | ✅ Done — 180/180 months (2010–2024), sp/t2m/d2m/tp |
+| ERA5-Land `more_labels_1` | VM `data/raw/era5_grid/more_labels_1/` | ⏳ Downloading — 6/180 months, ETA ~29h, snowfall + surface_runoff |
+| GPM IMERG rain labels | VM `data/raw/gpm_grid/` | ⏳ Downloading — 98/295 (33%), ETA ~197h |
 | DEM (ETOPO 2022) | Local `data/raw/dem_nz.nc` | ✅ Done — static, one-time |
-| Open-Meteo validation | VM `data/raw/openmeteo/` | ✅ Live — hourly cron, 5 probe points |
+| Open-Meteo validation | VM `data/raw/openmeteo/` | On-demand — query after hikes via `fetch_openmeteo.py` |
 
 ## Directory Layout
 

@@ -44,7 +44,7 @@ flowchart TD
 
 **Status (2026-06-07):**
 - DEM done (`data/raw/dem_nz.nc`)
-- ERA5 core grid done: 180 months (2010–2024) on VM at `data/raw/era5_grid/core/`
-- ERA5 `more_labels_1` (snowfall, surface_runoff): not yet started
-- GPM still downloading: `data/raw/gpm_grid/` — see [03 · Acquisition status](03-datasets.md#acquisition-status-2026-06-07)
+- ERA5 core grid done: 180/180 months (2010–2024) at `data/raw/era5_grid/core/`
+- ERA5 `more_labels_1` (snowfall, surface_runoff): downloading — 6/180 months, ETA ~29h
+- GPM downloading: 98/295 (33%), ETA ~197h — see [03 · Acquisition status](03-datasets.md#acquisition-status-2026-06-07)
 - **Next:** label builder (forward windows + horizon-0 nowcast + snow), then training table
