@@ -67,7 +67,7 @@ def _to_timestamp(tval) -> pd.Timestamp:
     return pd.Timestamp(tval)
 
 
-def _run_job(client, req, timeout_sec=1800):
+def _run_job(client, req, timeout_sec=3600):
     """Submit and resume through Harmony's preview-pause until the job is terminal or timeout."""
     job = client.submit(req)
     terminal = {"successful", "failed", "canceled", "complete_with_errors"}
@@ -115,67 +115,84 @@ def _acquire_lock() -> None:
     atexit.register(lambda: lock.unlink(missing_ok=True))
 
 
-def build_grid(start: str, end: str, client, collection, bbox) -> None:
-    """Download + store one NetCDF per month (skips months already on disk)."""
-    from harmony import Request
+def _process_month(yr: int, mo: int, collection, bbox) -> None:
+    """Download and store one month's NetCDF. Creates its own Harmony client (thread-safe)."""
+    from harmony import Client, Request
+
+    out = _grid_path(yr, mo)
+    if out.exists():
+        print(f"[{yr}-{mo:02d}] already stored, skipping", flush=True)
+        return
+
+    client = Client()
+    tmp = GRID_DIR / f"_tmp_{yr}{mo:02d}"
+    s = pd.Timestamp(yr, mo, 1)
+    e = (s + pd.offsets.MonthEnd(1)).replace(hour=23, minute=59)
+    banked = False
+    last_exc: Exception | None = None
+
+    for attempt in range(1, GPM_MAX_ATTEMPTS + 1):
+        shutil.rmtree(tmp, ignore_errors=True)
+        print(f"[{yr}-{mo:02d}] Harmony request (attempt {attempt}/{GPM_MAX_ATTEMPTS})...", flush=True)
+        try:
+            req = Request(collection=collection, spatial=bbox,
+                          temporal={"start": s.to_pydatetime(), "stop": e.to_pydatetime()})
+            job = _run_job(client, req)
+            tmp.mkdir(parents=True)
+            files = [f.result() for f in client.download_all(job, directory=str(tmp), overwrite=True)]
+            month = stack_month(files)
+            if month is None:
+                print(f"[{yr}-{mo:02d}] no usable granules — skipping", flush=True)
+                break  # genuinely empty — retrying won't help
+            steps, ngran = month.sizes["time"], len(files)
+            if steps < 0.95 * ngran:
+                print(f"[{yr}-{mo:02d}] INCOMPLETE {steps}/{ngran} steps — retrying", flush=True)
+                last_exc = RuntimeError(f"incomplete {steps}/{ngran} steps")
+            else:
+                # Write atomically (temp + rename) so an interrupted write never looks complete.
+                part = out.with_suffix(".nc.part")
+                month.to_netcdf(part, encoding={v: {"zlib": True, "complevel": 4} for v in month.data_vars})
+                part.replace(out)
+                print(f"[{yr}-{mo:02d}] {ngran} granules -> {steps} steps -> {out.name}", flush=True)
+                banked = True
+                break
+        except Exception as exc:  # noqa: BLE001 — transient Harmony error; retry below
+            if "no matching granules" in str(exc).lower():
+                # IMERG Final lags ~3.5 months — recent months permanently have no data.
+                print(f"[{yr}-{mo:02d}] no granules available (IMERG Final lag) — skipping", flush=True)
+                last_exc = None
+                break
+            last_exc = exc
+            print(f"[{yr}-{mo:02d}] attempt {attempt} failed: {str(exc)[:80]}", flush=True)
+        if attempt < GPM_MAX_ATTEMPTS:
+            time.sleep(GPM_BACKOFF_SEC * attempt)
+
+    shutil.rmtree(tmp, ignore_errors=True)
+    if not banked and last_exc is not None:
+        print(f"[{yr}-{mo:02d}] SKIPPED after {GPM_MAX_ATTEMPTS} attempts: {str(last_exc)[:80]}", flush=True)
+
+
+def build_grid(start: str, end: str, collection, bbox, month_workers: int = 1) -> None:
+    """Download + store one NetCDF per month. Newest-first; parallel when month_workers > 1."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     GRID_DIR.mkdir(parents=True, exist_ok=True)
-    # Newest month first, so recent years (what the probe needs) land soonest; old years backfill.
-    for yr, mo in reversed(list(month_range(start, end))):
-        out = _grid_path(yr, mo)
-        if out.exists():
-            print(f"[{yr}-{mo:02d}] already stored, skipping", flush=True)
-            continue
-        # PER-MONTH private temp dir: a stale/parallel run can never delete this month's granules mid-stack.
-        tmp = GRID_DIR / f"_tmp_{yr}{mo:02d}"
-        s = pd.Timestamp(yr, mo, 1)
-        e = (s + pd.offsets.MonthEnd(1)).replace(hour=23, minute=59)
-        banked = False
-        last_exc: Exception | None = None
-        for attempt in range(1, GPM_MAX_ATTEMPTS + 1):
-            shutil.rmtree(tmp, ignore_errors=True)
-            print(f"[{yr}-{mo:02d}] Harmony request (attempt {attempt}/{GPM_MAX_ATTEMPTS})...", flush=True)
+    # Newest month first so recent years land soonest; old years backfill behind them.
+    months = [
+        (yr, mo) for yr, mo in reversed(list(month_range(start, end)))
+        if not _grid_path(yr, mo).exists()
+    ]
+    if not months:
+        return
+
+    with ThreadPoolExecutor(max_workers=month_workers) as ex:
+        futures = {ex.submit(_process_month, yr, mo, collection, bbox): (yr, mo) for yr, mo in months}
+        for f in as_completed(futures):
+            yr, mo = futures[f]
             try:
-                req = Request(collection=collection, spatial=bbox,
-                              temporal={"start": s.to_pydatetime(), "stop": e.to_pydatetime()})
-                job = _run_job(client, req)
-                tmp.mkdir(parents=True)
-                files = [f.result() for f in client.download_all(job, directory=str(tmp), overwrite=True)]
-                month = stack_month(files)
-                if month is None:
-                    print(f"[{yr}-{mo:02d}] no usable granules — skipping", flush=True)
-                    break  # genuinely empty (recent past-Final / pre-2000) — retrying won't help
-                steps, ngran = month.sizes["time"], len(files)
-                if steps < 0.95 * ngran:
-                    # Integrity guard: each granule is one 30-min step, so steps should ≈ granules. A big
-                    # shortfall means granules went missing → don't bank a holey month; retry it.
-                    print(f"[{yr}-{mo:02d}] INCOMPLETE {steps}/{ngran} steps — retrying", flush=True)
-                    last_exc = RuntimeError(f"incomplete {steps}/{ngran} steps")
-                else:
-                    # Write atomically (temp + rename) so an interrupted write never leaves a half file
-                    # that looks complete to the `out.exists()` skip.
-                    part = out.with_suffix(".nc.part")
-                    month.to_netcdf(part, encoding={v: {"zlib": True, "complevel": 4} for v in month.data_vars})
-                    part.replace(out)
-                    print(f"[{yr}-{mo:02d}] {ngran} granules -> {steps} steps -> {out.name}", flush=True)
-                    banked = True
-                    break
-            except Exception as exc:  # noqa: BLE001 — transient Harmony error; retry below
-                if "no matching granules" in str(exc).lower():
-                    # IMERG Final lags ~3.5 months — recent months permanently have no data.
-                    # Retrying wastes 15min/restart and clutters dashboard failures; skip immediately.
-                    print(f"[{yr}-{mo:02d}] no granules available (IMERG Final lag) — skipping", flush=True)
-                    last_exc = None
-                    break
-                last_exc = exc
-                print(f"[{yr}-{mo:02d}] attempt {attempt} failed: {str(exc)[:80]}", flush=True)
-            if attempt < GPM_MAX_ATTEMPTS:
-                time.sleep(GPM_BACKOFF_SEC * attempt)
-        shutil.rmtree(tmp, ignore_errors=True)
-        if not banked and last_exc is not None:
-            # Exhausted retries — leave the month absent so a later run retries it cleanly.
-            print(f"[{yr}-{mo:02d}] SKIPPED after {GPM_MAX_ATTEMPTS} attempts: {str(last_exc)[:80]}",
-                  flush=True)
+                f.result()
+            except Exception as exc:  # noqa: BLE001
+                print(f"[{yr}-{mo:02d}] unexpected error: {exc}", flush=True)
 
 
 def extract_points(start: str, end: str, points: dict) -> pd.DataFrame:
@@ -197,7 +214,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="GPM HHR NZ grid via Harmony: store monthly + extract points.")
     ap.add_argument("--start", required=True, help="start month, YYYY-MM")
     ap.add_argument("--end", required=True, help="end month, YYYY-MM")
-    ap.add_argument("--workers", type=int, default=16, help="parallel download threads")
+    ap.add_argument("--workers", type=int, default=16, help="parallel download threads per Harmony job")
+    ap.add_argument("--month-workers", type=int, default=2, help="parallel months (Harmony jobs in flight)")
     ap.add_argument("--points-only", action="store_true",
                     help="skip downloading; just (re)extract the point CSV from existing monthly grids")
     args = ap.parse_args()
@@ -208,9 +226,10 @@ def main() -> None:
 
     if not args.points_only:
         _acquire_lock()  # one pull at a time — concurrent runs corrupt months
-        from harmony import BBox, Client, Collection
-        build_grid(args.start, args.end, Client(), Collection(id=gpm["harmony_collection_hhr"]),
-                   BBox(dom["west"], dom["south"], dom["east"], dom["north"]))
+        from harmony import BBox, Collection
+        build_grid(args.start, args.end, Collection(id=gpm["harmony_collection_hhr"]),
+                   BBox(dom["west"], dom["south"], dom["east"], dom["north"]),
+                   month_workers=args.month_workers)
 
     pts = extract_points(args.start, args.end, points)
     GRID_DIR.mkdir(parents=True, exist_ok=True)
