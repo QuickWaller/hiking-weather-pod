@@ -16,13 +16,13 @@ SVC="${1:-none}"
 
 git -C "$REPO" fetch origin --quiet
 
-# Compare working tree to origin/main, not HEAD. This tolerates the state left by
-# `podctl dashboard deploy` (which does `git checkout origin/main -- file`, updating
-# the working tree + index to origin/main while HEAD stays behind). Manual edits
-# that differ from origin/main still cause a refusal.
-if ! git -C "$REPO" diff origin/main --quiet; then
-  echo "REFUSING: live tree has changes not in origin/main — investigate before deploying:" >&2
-  git -C "$REPO" diff origin/main --name-only >&2
+# Refuse only if the working tree has unstaged edits (working tree vs index).
+# This catches manual edits to the live tree that would be silently lost by reset --hard.
+# It does NOT refuse when origin/main has advanced ahead of HEAD (normal deploy case),
+# nor when podctl dashboard deploy has staged a file that already matches origin/main.
+if ! git -C "$REPO" diff --quiet; then
+  echo "REFUSING: live tree has unstaged local edits — investigate before deploying:" >&2
+  git -C "$REPO" diff --name-only >&2
   exit 1
 fi
 
