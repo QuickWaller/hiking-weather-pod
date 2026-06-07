@@ -21,6 +21,8 @@ from podml.download_era5_grid import (
     download_batch,
 )
 
+_VARS = ["total_precipitation"]  # minimal variable list for tests
+
 
 class TestIsRateLimited:
     def test_temporarily_limited(self):
@@ -104,9 +106,8 @@ class TestDownloadBatch:
         # Pre-create both month files
         (cache / "era5land_nz_2020-01.nc").touch()
         (cache / "era5land_nz_2020-02.nc").touch()
-        with patch("podml.download_era5_grid.CACHE", cache), \
-             patch("podml.download_era5_grid._client") as mock_factory:
-            results = download_batch([(2020, 1), (2020, 2)])
+        with patch("podml.download_era5_grid._client") as mock_factory:
+            results = download_batch([(2020, 1), (2020, 2)], variables=_VARS, cache_dir=cache)
         mock_factory.assert_not_called()
         assert all("cached" in r for r in results)
 
@@ -115,13 +116,12 @@ class TestDownloadBatch:
         cache.mkdir()
         # Only month 1 is cached; month 2 should still be requested
         (cache / "era5land_nz_2020-01.nc").touch()
-        with patch("podml.download_era5_grid.CACHE", cache), \
-             patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
+        with patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
              patch("podml.download_era5_grid.time.sleep"), \
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = Exception("some failure")
             with pytest.raises(RuntimeError):
-                download_batch([(2020, 1), (2020, 2)])
+                download_batch([(2020, 1), (2020, 2)], variables=_VARS, cache_dir=cache)
         # retrieve was called (month 2 needed fetching)
         mock_factory.return_value.retrieve.assert_called()
 
@@ -137,13 +137,12 @@ class TestDownloadBatch:
         cache = tmp_path / "cache"
         cache.mkdir()
         licence_exc = self._make_403("required licences not accepted")
-        with patch("podml.download_era5_grid.CACHE", cache), \
-             patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
+        with patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
              patch("podml.download_era5_grid.time.sleep"), \
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = licence_exc
             with pytest.raises(RuntimeError, match="LICENCE ERROR"):
-                download_batch([(2020, 1)])
+                download_batch([(2020, 1)], variables=_VARS, cache_dir=cache)
         # Only one attempt — no retries on licence errors
         assert mock_factory.return_value.retrieve.call_count == 1
         assert "LICENCE ERROR" in capsys.readouterr().out
@@ -152,63 +151,58 @@ class TestDownloadBatch:
         cache = tmp_path / "cache"
         cache.mkdir()
         maint_exc = self._make_403("temporarily closed due to maintenance")
-        with patch("podml.download_era5_grid.CACHE", cache), \
-             patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
+        with patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
              patch("podml.download_era5_grid.time.sleep"), \
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = maint_exc
             with pytest.raises(RuntimeError, match="rate-limit waits"):
-                download_batch([(2020, 1)])
+                download_batch([(2020, 1)], variables=_VARS, cache_dir=cache)
         assert mock_factory.return_value.retrieve.call_count == RATE_LIMIT_MAX_ATTEMPTS + 1
 
     def test_rate_limit_prints_retry_log_line(self, tmp_path, capsys):
         cache = tmp_path / "cache"
         cache.mkdir()
-        with patch("podml.download_era5_grid.CACHE", cache), \
-             patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
+        with patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
              patch("podml.download_era5_grid.time.sleep"), \
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = Exception("temporarily limited")
             with pytest.raises(RuntimeError):
-                download_batch([(2020, 1)])
+                download_batch([(2020, 1)], variables=_VARS, cache_dir=cache)
         assert "rate-limited retry" in capsys.readouterr().out
 
     def test_rate_limit_exhausts_after_max_attempts(self, tmp_path):
         cache = tmp_path / "cache"
         cache.mkdir()
-        with patch("podml.download_era5_grid.CACHE", cache), \
-             patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
+        with patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
              patch("podml.download_era5_grid.time.sleep"), \
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = Exception("temporarily limited")
             with pytest.raises(RuntimeError, match="rate-limit waits"):
-                download_batch([(2020, 1)])
+                download_batch([(2020, 1)], variables=_VARS, cache_dir=cache)
             assert mock_factory.return_value.retrieve.call_count == RATE_LIMIT_MAX_ATTEMPTS + 1
 
     def test_genuine_error_prints_error_log_line(self, tmp_path, capsys):
         # PR #14 added this log line; before the fix workers vanished silently.
         cache = tmp_path / "cache"
         cache.mkdir()
-        with patch("podml.download_era5_grid.CACHE", cache), \
-             patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
+        with patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
              patch("podml.download_era5_grid.time.sleep"), \
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = Exception("some unknown failure")
             with pytest.raises(RuntimeError):
-                download_batch([(2020, 1)])
+                download_batch([(2020, 1)], variables=_VARS, cache_dir=cache)
         out = capsys.readouterr().out
         assert "error" in out and f"/{ERA5_MAX_ATTEMPTS}" in out
 
     def test_genuine_error_exhausts_after_max_attempts(self, tmp_path):
         cache = tmp_path / "cache"
         cache.mkdir()
-        with patch("podml.download_era5_grid.CACHE", cache), \
-             patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
+        with patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
              patch("podml.download_era5_grid.time.sleep"), \
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = Exception("some unknown failure")
             with pytest.raises(RuntimeError, match="failed after"):
-                download_batch([(2020, 1)])
+                download_batch([(2020, 1)], variables=_VARS, cache_dir=cache)
             assert mock_factory.return_value.retrieve.call_count == ERA5_MAX_ATTEMPTS
 
     def test_rate_limit_and_genuine_errors_counted_separately(self, tmp_path):
@@ -217,13 +211,12 @@ class TestDownloadBatch:
         rate_exc = Exception("temporarily limited")
         genuine_exc = Exception("unknown failure")
         side_effects = [rate_exc, rate_exc] + [genuine_exc] * ERA5_MAX_ATTEMPTS
-        with patch("podml.download_era5_grid.CACHE", cache), \
-             patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
+        with patch("podml.download_era5_grid.FAILURE_LOG", tmp_path / "fail.log"), \
              patch("podml.download_era5_grid.time.sleep"), \
              patch("podml.download_era5_grid._client") as mock_factory:
             mock_factory.return_value.retrieve.side_effect = side_effects
             with pytest.raises(RuntimeError) as exc_info:
-                download_batch([(2020, 1)])
+                download_batch([(2020, 1)], variables=_VARS, cache_dir=cache)
         assert "2 rate-limit waits" in str(exc_info.value)
         assert f"{ERA5_MAX_ATTEMPTS} retries" in str(exc_info.value)
 

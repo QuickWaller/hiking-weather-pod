@@ -29,23 +29,26 @@ time:
     end: "2022-06-07"
 
 era5_land:
-  # v1 (point-based skill probe): TIME-SERIES product — full hourly series at a single lat/lon.
-  # Request schema differs from gridded: location={longitude,latitude}, date=["YYYY-MM-DD/YYYY-MM-DD"].
-  timeseries_dataset: "reanalysis-era5-land-timeseries"
-  # v2 (gridded zoning): full spatial field, same underlying values. Switch to this for SKATER.
+  # Full NZ spatial grid, downloaded per-month via download_era5_grid.py.
+  # ERA5-Land gives SURFACE pressure — we reduce to sea level ourselves via the DEM.
+  # 2m dewpoint → relative humidity derived.
   gridded_dataset: "reanalysis-era5-land"
-  # ERA5-Land gives SURFACE pressure, not MSLP — we reduce to sea level ourselves via elevation.
-  # 2m dewpoint → relative humidity derived. (NB: CDS "Show API request code" omits surface_pressure —
-  # include it explicitly, it's the tendency backbone.) Verify all names against the real download.
-  candidate_variables:
-    - surface_pressure
-    - 2m_temperature
-    - 2m_dewpoint_temperature
-    - 10m_u_component_of_wind
-    - 10m_v_component_of_wind
-    - total_precipitation
-  static_needed:
-    - geopotential_or_orography   # for elevation → sea-level pressure reduction; confirm source
+
+# Variable groups for the gridded download.  Each group downloads independently to
+# data/raw/era5_grid/<group_name>/ and has its own checkpoint.  Run:
+#   python -m podml.download_era5_grid --group core
+#   python -m podml.download_era5_grid --group more_labels_1
+era5_grid_groups:
+  core:
+    variables:
+      - surface_pressure
+      - 2m_temperature
+      - 2m_dewpoint_temperature
+      - total_precipitation
+  more_labels_1:
+    variables:
+      - snowfall
+      - surface_runoff
 
 # Representative NZ land points spanning climate regimes — for the v1 point-based skill probe.
 # (ERA5-Land is land-only; these are land cells. Elevations approximate, for MSLP reduction.)

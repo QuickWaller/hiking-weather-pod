@@ -7,110 +7,102 @@ either feature parity (using variables the pod can't sense) or the tendency feat
 
 | Product (CDS id) | Grid | Cadence | Levels | Use for us? |
 |---|---|---|---|---|
-| ERA5-Land hourly (`reanalysis-era5-land`) | **0.1°** | hourly | **surface** | ✅ **FEATURES** |
+| ERA5-Land hourly (`reanalysis-era5-land`) | **0.1°** | hourly | **surface** | ✅ **FEATURES + SUPPLEMENTAL LABELS** |
 | ERA5 single levels (`reanalysis-era5-single-levels`) | 0.25° | hourly | surface | ⚠️ gust + MSLP + CAPE labels only |
 | ERA5 pressure levels (`...-pressure-levels`) | 0.25° | hourly | **upper air (37 lvls)** | ❌ pod can't sense upper air |
 | ERA5 *daily statistics* (any) | 0.25° | **daily** | — | ❌ daily erases pressure tendency |
 
 ## Why ERA5-Land for features
 
-- **0.1° (~9 km)** resolves NZ's terrain (valleys, coast, rain shadow) far better than 0.25°.
-- **Surface variables only** — matches what the pod's BME280 + GPS can actually measure, which is required
+- **0.1° (~11 km)** resolves NZ's terrain (valleys, coast, rain shadow) far better than 0.25°.
+- **Surface variables only** — matches what the pod's sensors + GPS can actually measure, which is required
   for feature parity (the model may only use inputs the pod can reproduce on-device).
 
-### Variables we pull (and what we derive)
+### Variable groups
 
-| Need | ERA5-Land variable | Note |
+Variables are downloaded in named groups via `python -m podml.download_era5_grid --group <name>`.
+Each group writes to `data/raw/era5_grid/<group>/era5land_nz_YYYY-MM.nc` with independent checkpointing.
+
+#### `core` — feature variables (downloaded: 2010–2024, 180 months)
+
+| ERA5-Land variable | Short name | Derived | Note |
+|---|---|---|---|
+| `surface_pressure` | `sp` | → MSLP via DEM | No MSLP in ERA5-Land — we reduce to sea level ourselves |
+| `2m_temperature` | `t2m` | K → °C | |
+| `2m_dewpoint_temperature` | `d2m` | → RH via Magnus formula | No direct RH in ERA5-Land |
+| `total_precipitation` | `tp` | accumulated m | GPM IMERG is the primary label; this is a cross-check |
+
+> **Wind (u10/v10) is not in the gridded download** — the pod has no anemometer, so wind is never a
+> feature. It may appear as a label-side variable from ERA5 single-levels (gusts) if needed.
+
+#### `more_labels_1` — supplemental label variables (not yet downloaded)
+
+| ERA5-Land variable | Short name | Use |
 |---|---|---|
-| Pressure | `surface_pressure` | **No MSLP in ERA5-Land** → we reduce to sea level via orography ourselves |
-| Temperature | `2m_temperature` | Kelvin → °C |
-| Humidity | `2m_dewpoint_temperature` | **No direct RH** → derive RH from T + Td |
-| Wind | `10m_u_component_of_wind`, `10m_v_component_of_wind` | mean wind (see gusts caveat) |
-| Precip (cross-check) | `total_precipitation` | accumulated; GPM IMERG is the primary label source |
-| Elevation | orography / surface geopotential | for the sea-level pressure reduction |
+| `snowfall` | `sf` | Snow severity label; alpine/sub-alpine sites |
+| `surface_runoff` | `sro` | Ground saturation proxy; future river-flooding model |
+
+Download when ready: `python -m podml.download_era5_grid --group more_labels_1`
 
 ## Labels come from elsewhere
 
-- **Precip** → **GPM IMERG** (better precip than ERA5-Land; verify timestamp convention for the
+- **Rain/storm** → **GPM IMERG** (better precip than ERA5-Land; verify timestamp convention for the
   strictly-after-T window).
-- **Wind gusts** → **ERA5 single levels** (`instantaneous_10m_wind_gust`) — **ERA5-Land has no gusts.**
-  Decision deferred to step 4 (label construction): use single-levels gusts, or proxy from ERA5-Land mean
-  wind. MSLP and CAPE also live here if we ever want them as *label-side* context (not pod features).
+- **Snow** → ERA5-Land `snowfall` (`more_labels_1` group above).
+- **Wind gusts** → **ERA5 single levels** (`instantaneous_10m_wind_gust`) — ERA5-Land has no gusts.
+  Decision deferred to step 4.
 
 ## What we explicitly do NOT use
 
 - **Pressure-level (upper-air) data** — the pod can't measure 500/850 hPa fields, so using them would break
   feature parity. They're only training-time info the device lacks → unusable at inference.
 - **Daily-aggregated products** — destroy the sub-daily pressure tendency that is our main signal.
+- **ERA5-Land time-series product** (`reanalysis-era5-land-timeseries`) — only exposes 18 variables (no
+  snowfall, no runoff) and delivers individual-point files. Superseded by the gridded download.
 
-## Step-2 verification results (2026-06-02)
+## Static data
 
-Pulled the 1-week June-2022 slice via the time-series endpoint and confirmed reality vs. the assumptions
-above. Outcome: **assumptions hold.**
+### Elevation (DEM) — ETOPO 2022
 
-- **Delivery format gotcha:** despite `data_format: netcdf`, the time-series endpoint returns a **`.zip`
-  of three per-group NetCDF files** (wind / 2m-temperature / pressure-precipitation). We extract + merge
-  on the shared coords (`compat="override"`) — handled in `download_era5.load_timeseries()`.
-- **Variables/units confirmed:** `sp` (Pa), `t2m`/`d2m` (K), `u10`/`v10` (m s⁻¹), `tp` (m, de-accumulated).
-  No `msl`, no gusts — as expected.
-- **Time coord:** `valid_time`, **hourly** (3600 s spacing), instantaneous for state variables. The
-  de-accumulated `tp` period convention (hour-ending vs -beginning) is **TBD at step 4** — matters only
-  for labels, and GPM is the primary label source anyway.
+`data/raw/dem_nz.nc` — one-time static file, NZ bounding box, OPeNDAP-subsetted (~MBs).
+
+- **30 arc-sec (~0.9 km)** resolution, aggregated to the 0.1° ERA5-Land grid in `sample_points.py`.
+- Used for: surface pressure → MSLP reduction; elevation feature; land-cell stratified sampling.
+- Negative values = ocean (bathymetry) → land mask = elevation > 0.
+
+### Open-Meteo (real-time + historical)
+
+- **Current:** cron job collecting hourly observations at 5 NZ probe points → `data/raw/openmeteo/*.csv`
+  (precip, pressure, temp, humidity). Used to cross-check ERA5 and validate the live model.
+- **Planned:** on-demand historical query for any hike route — Open-Meteo historical API (backed by ERA5)
+  goes back to 1950 at any lat/lon, hourly, free. After a hike, query the exact coordinates + time window
+  for instant post-hoc validation without pre-collecting fixed-point data.
+
+## Acquisition status (2026-06-07)
+
+| Dataset | Location | Status | Notes |
+|---|---|---|---|
+| ERA5-Land `core` grid | VM `data/raw/era5_grid/core/` | ✅ Done | 180 months, 2010–2024, sp/t2m/d2m/tp |
+| ERA5-Land `more_labels_1` | VM `data/raw/era5_grid/more_labels_1/` | ⏳ Not started | snowfall + surface_runoff |
+| GPM IMERG labels | VM `data/raw/gpm_grid/` | ⏳ Downloading | ~1 400 files, 2000–2024, still in progress |
+| DEM (ETOPO 2022) | Local `data/raw/dem_nz.nc` | ✅ Done | Static, one-time |
+| Open-Meteo validation | VM `data/raw/openmeteo/` | ✅ Live | 5 probe points, hourly cron |
 
 ### ⚠️ ERA5-Land is land-only — coastal cells are NaN-masked
 
-The original West-Coast probe point (Hokitika, −42.72/170.97 → snapped −42.7/171.0) came back **all-NaN**:
-a 9 km cell on NZ's razor-thin West Coast is mostly Tasman Sea, so ERA5-Land masks it. Christchurch,
-Mt Cook, Auckland, and Milford were all fine (168/168). Fix: relocated the West-Coast point inland to a
-valid foothills cell (−42.70/171.10).
+The original West-Coast probe point (Hokitika, −42.72/170.97 → snapped −42.7/171.0) came back all-NaN:
+a 9 km cell on NZ's razor-thin West Coast is mostly Tasman Sea. Relocated inland to −42.70/171.10.
 
-**Downstream implication (note for v2 zoning / inference):** a hiker's GPS can also land on a masked
-coastal cell. The runtime zone-lookup will need a **"nearest valid land cell" fallback** (snap to the
-closest non-masked cell) rather than returning NaN features. Cheap to precompute from the land-sea mask.
+**Downstream implication (v2 zoning / inference):** a hiker's GPS can land on a masked coastal cell.
+The runtime zone-lookup needs a **"nearest valid land cell" fallback** rather than returning NaN features.
 
 ### GPM IMERG labels — verified (2026-06-02)
 
 Pulled 2 half-hour granules (GPM_3IMERGHH **V07** Final) for 2022-06-01:
 - **Field `precipitation`** (V07 name; was `precipitationCal` in V06), units **mm/hr**, dims (time, lon, lat).
-- **Timestamp = period-BEGINNING (confirmed via `time_bnds`).** `time` is the window start; `time_bnds =
-  [start, start+30 min]` (00:00 granule → [00:00, 00:30]; 00:30 → [00:30, 01:00]), matching the filename
-  `S…-E…`. → for the strictly-after-T label, sum granules with `time_bnds.start ≥ T`.
+- **Timestamp = period-BEGINNING (confirmed via `time_bnds`).** → for the strictly-after-T label, sum
+  granules with `time_bnds.start ≥ T`.
 - Calendar is cftime **DatetimeJulian** — convert when aligning to ERA5's `datetime64`.
 - Sample NZ-box precip reached ~47 mm/hr (vs ERA5-Land's smoothed ~18) — GPM captures the extremes ERA5
   misses, which is the whole reason it's the label source.
-- **Bonus fields:** `probabilityLiquidPrecipitation` (%, rain/snow split), `precipitationQualityIndex`,
-  `randomError` (mm/hr, optional sample weighting).
-- **Access gotcha (reproducibility):** GES DISC returns HTTP 403 `{"error_description":"EULA Acceptance
-  Failure","resolution_url":"…/approve_app?client_id=e2WVk8Pw6weeLUKZYOxvTQ"}` until that client is
-  approved once per Earthdata account. earthaccess surfaces it as a misleading generic "EULA" traceback.
-- **Full label pull (step 4):** granules are GLOBAL (~30 MB each, 48/day). Pulling years of these is heavy
-  → use spatial subsetting (Harmony/OPeNDAP) to the NZ box, or extract only the probe-point pixels.
-
-## Static: elevation (DEM) — ETOPO 2022
-
-For point **stratification** and the **elevation feature** we use **ETOPO 2022** (NOAA NCEI, public domain),
-not Copernicus 30 m, for v1:
-
-- **OPeNDAP-subset to the NZ box**, so only the subset (~MBs) transfers — no giant global download and **no
-  rasterio/GIS dependency** (xarray + netcdf4 read it). `download_dem.py` → `data/raw/dem_nz.nc`.
-- **30 arc-sec (~0.9 km)** is ample: GPM labels are 11 km, so finer elevation adds no *trainable* signal, and
-  inference uses the pod's own altitude anyway. Copernicus 30 m point-sampling is a clean later swap if
-  feature-importance says elevation carries a lot.
-- Negative values are ocean (bathymetry) → **land mask = elevation > 0**. `sample_points.py` aggregates the
-  DEM onto the ERA5-Land 0.1° grid (per-cell mean elevation over land pixels + land fraction), keeps
-  majority-land cells, and stratify-samples across elevation bands. See
-  [02 · Gridded model](02-design-decisions.md#gridded-model-pre--and-post-training-grid-logic).
-
-## Acquisition status (2026-06-04)
-
-Two background pulls running on the VM (different services, no contention):
-
-| Pull | Module | Output | Range | ETA |
-|---|---|---|---|---|
-| **GPM** rain labels (HHR 30-min), full NZ grid | `download_gpm_harmony` | `data/raw/gpm_grid/gpm_YYYY-MM.nc` (checkpointed per month) | 2000-06 → 2024-12, newest-first | ~40 min/month → recent 5 yr ~2 days, full ~8–9 days |
-| **ERA5** features at 205 stratified cells | `download_era5 --points-file` | `data/raw/era5land_ts_<name>_*.nc` (checkpointed per point) | 2000 → 2024 | queue-paced, resumable |
-
-> GPM ends at **2024**, not 2025: IMERG **Final** latency means late-2025 isn't posted yet — the pull skips
-> empty recent months cleanly. ERA5 matches the **2000–2024 GPM overlap** (no point pulling features where
-> there's no rain label). Both `data/raw/*` are gitignored and re-derived on each machine; the **point list**
-> (`config/sampled_points.csv`) is committed so both machines pull the identical set.
+- **Access gotcha:** GES DISC returns HTTP 403 until the Earthdata client is approved once per account.

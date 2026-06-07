@@ -21,7 +21,6 @@ import os
 import sys
 
 import pandas as pd
-import xarray as xr
 
 from podml.config import DATA_RAW, load_config
 from podml.features import FEATURE_COLUMNS
@@ -85,7 +84,7 @@ class ConfigValidator:
         """Check that all required directories exist and are writable."""
         dirs_to_check = [
             DATA_RAW,
-            DATA_RAW / "era5land",
+            DATA_RAW / "era5_grid" / "core",
             DATA_RAW / "gpm_grid",
             DATA_RAW / "openmeteo",
         ]
@@ -106,28 +105,16 @@ class ConfigValidator:
                     self.info.append(f"Directory OK: {d}")
 
     def _validate_era5_data(self) -> None:
-        """Check ERA5 timeseries for training years (2010–2022)."""
-        points = self.cfg.get("probe_points", {})
-
-        for point_name in points:
-            expected_file = DATA_RAW / "era5land" / f"era5land_ts_{point_name}_2010-2022_2024-12-31.nc"
-
-            if not expected_file.exists():
-                self.warnings.append(f"ERA5 file missing: {expected_file.name}")
-                continue
-
-            try:
-                with xr.open_dataset(expected_file) as ds:
-                    # Check required variables
-                    required_vars = {"sp", "t2m", "d2m"}
-                    missing = required_vars - set(ds.data_vars)
-                    if missing:
-                        self.errors.append(f"{point_name}: ERA5 missing variables {missing}")
-                    else:
-                        n = len(ds["valid_time"])
-                        self.info.append(f"{point_name}: ERA5 OK ({n} timesteps)")
-            except Exception as e:
-                self.errors.append(f"{point_name}: ERA5 file corrupted ({e})")
+        """Check ERA5 gridded core cache has files for the training range."""
+        core_dir = DATA_RAW / "era5_grid" / "core"
+        if not core_dir.exists():
+            self.warnings.append(f"ERA5 core grid directory missing: {core_dir}")
+            return
+        files = sorted(core_dir.glob("era5land_nz_*.nc"))
+        if not files:
+            self.warnings.append("ERA5 core grid: no monthly files found")
+        else:
+            self.info.append(f"ERA5 core grid: {len(files)} monthly files in {core_dir}")
 
     def _validate_openmeteo_data(self) -> None:
         """Check Open-Meteo observations exist and have recent data."""

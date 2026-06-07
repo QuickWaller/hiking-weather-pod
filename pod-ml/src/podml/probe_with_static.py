@@ -25,8 +25,8 @@ import pandas as pd
 from lightgbm import LGBMClassifier
 from sklearn.metrics import average_precision_score
 
-from podml.config import DATA_RAW, load_config
-from podml.dataio import load_timeseries
+from podml.config import load_config
+from podml.era5_load import load_point_from_grid
 from podml.features import build_features_from_signals, raw_signals
 from podml.labels import HORIZONS_H, THRESHOLDS_MM_HR, build_labels
 from podml.sensorsim import SensorSimParams, degrade_signals
@@ -68,12 +68,6 @@ def operating_point_metrics(y: np.ndarray, p: np.ndarray, target_recall: float =
     }
 
 
-def _point_path(name: str, cfg: dict) -> Path:
-    t = cfg["time"]
-    tag = f"{t['acquisition_start']}_{t['test_year']}-12-31"
-    return DATA_RAW / f"era5land_ts_{name}_{tag}.nc"
-
-
 def probe_point(
     name: str,
     cfg: dict,
@@ -93,7 +87,7 @@ def probe_point(
     Returns:
         pd.DataFrame with skill metrics for all thresholds/horizons
     """
-    ds = load_timeseries(_point_path(name, cfg))
+    ds = load_point_from_grid(name, cfg)
     signals = raw_signals(ds)
     feats_train = build_features_from_signals(signals)
 

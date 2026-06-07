@@ -44,12 +44,20 @@ DATASETS = {
         "min_valid_frac": 0.5,
     },
     "era5": {
-        "dir": DATA_RAW / "era5_grid",
+        "dir": DATA_RAW / "era5_grid" / "core",
         "glob": "era5land_nz_*.nc",
         "steps_per_day": 24,
         "required_vars": ["sp", "t2m", "d2m", "tp"],
         "probe_var": "tp",
         "min_valid_frac": 0.0,  # land-only: only flag a 100%-NaN field
+    },
+    "era5_more_labels_1": {
+        "dir": DATA_RAW / "era5_grid" / "more_labels_1",
+        "glob": "era5land_nz_*.nc",
+        "steps_per_day": 24,
+        "required_vars": ["sf", "sro"],
+        "probe_var": "sf",
+        "min_valid_frac": 0.0,
     },
 }
 
@@ -128,6 +136,9 @@ def _check_file(path: Path, spec: dict, deep: bool) -> list[str]:
 
 def validate_dataset(name: str, deep: bool = False) -> dict:
     spec = DATASETS[name]
+    if not spec["dir"].exists():
+        return {"dir": str(spec["dir"]), "n_files": 0, "ok": 0, "bad": 0,
+                "problems": [], "note": "directory not yet created"}
     files = sorted(spec["dir"].glob(spec["glob"]))
     problems = []
     for f in files:
@@ -155,7 +166,8 @@ def run(datasets: list[str], deep: bool) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Deep integrity check of downloaded monthly grids.")
-    ap.add_argument("--dataset", choices=[*DATASETS, "all"], default="all")
+    ap.add_argument("--dataset", choices=[*DATASETS, "all"], default="all",
+                    help=f"dataset to check: {list(DATASETS)} or 'all'")
     ap.add_argument("--deep", action="store_true",
                     help="scan every timestep for NaN (default: sample one mid-month step)")
     ap.add_argument("--json", action="store_true", help="emit machine-readable JSON")
