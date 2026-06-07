@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import time
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -158,6 +159,31 @@ class TestBuildGrid:
 
         assert client.submit.call_count == GPM_MAX_ATTEMPTS
         assert "INCOMPLETE" in capsys.readouterr().out
+
+    def test_parallel_months_both_complete(self, tmp_path):
+        grid_dir = tmp_path / "gpm_grid"
+        grid_dir.mkdir()
+
+        two_file_futures = [MagicMock(result=MagicMock(return_value=f"f{i}")) for i in range(2)]
+        client = MagicMock()
+        client.submit.return_value = "job-x"
+        client.status.return_value = {"status": "successful"}
+        client.download_all.return_value = two_file_futures
+
+        mock_ds = MagicMock()
+        mock_ds.sizes = {"time": 2}
+        mock_ds.data_vars = ["precipitation"]
+        mock_ds.to_netcdf.side_effect = lambda path, **kw: Path(path).touch()
+
+        with patch("podml.download_gpm_harmony.GRID_DIR", grid_dir), \
+             patch("harmony.Client", return_value=client), \
+             patch("harmony.Request"), \
+             patch("podml.download_gpm_harmony.time.sleep"), \
+             patch("podml.download_gpm_harmony.stack_month", return_value=mock_ds):
+            build_grid("2024-01", "2024-02", MagicMock(), MagicMock(), month_workers=2)
+
+        assert (grid_dir / "gpm_2024-01.nc").exists(), "first month not written"
+        assert (grid_dir / "gpm_2024-02.nc").exists(), "second month not written"
 
 
 class TestAcquireLock:
