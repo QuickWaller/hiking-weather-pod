@@ -12,7 +12,7 @@ cd "$REPO"
 DONE="$REPO/era5_more_labels_1.done"
 LOG="$REPO/era5_more_labels_1.log"
 LOCK="/tmp/podml_era5_more_labels_1.lock"
-START_YEAR=2010
+START_YEAR=2000
 END_YEAR=2024
 WORKERS=3
 
