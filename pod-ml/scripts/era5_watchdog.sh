@@ -17,8 +17,8 @@ cd "$REPO"
 DONE="$REPO/era5_pull.done"
 LOG="$REPO/era5_pull.log"
 LOCK="/tmp/podml_era5.lock"
-START_YEAR=2010
-END_YEAR=2024                   # training span (2010-2022 train, 2024 test); fixed so
+START_YEAR=2000
+END_YEAR=2024                   # training span (2000-2022 train, 2024 test); fixed so
                                # we don't spin on months CDS hasn't published yet
 WORKERS=3                       # CDS allows ~2 concurrent active jobs per account for ERA5-Land.
                                # Each worker now requests 3 months per CDS job (BATCH_SIZE=3),

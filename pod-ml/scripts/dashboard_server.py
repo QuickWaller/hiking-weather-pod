@@ -295,8 +295,8 @@ def _hourly_rate(files, hours=48):
 
 
 def api_data():
-    era5_core_s = _stats(str(RAW / "era5_grid" / "core" / "era5land_nz_*.nc"), 180)
-    era5_ml1_s  = _stats(str(RAW / "era5_grid" / "more_labels_1" / "era5land_nz_*.nc"), 180)
+    era5_core_s = _stats(str(RAW / "era5_grid" / "core" / "era5land_nz_*.nc"), 300)
+    era5_ml1_s  = _stats(str(RAW / "era5_grid" / "more_labels_1" / "era5land_nz_*.nc"), 300)
     gpm_s = _stats(str(RAW / "gpm_grid" / "gpm_*.nc"), 295)
     gpm_log = _parse_gpm()
     era5_core_log = _parse_era5(REPO / "era5_pull.log")
@@ -346,8 +346,8 @@ def api_data():
         "gpm_workers": _parse_gpm_workers(REPO / "gpm_pull.log"),
         "grids": {
             "gpm": _month_grid(gpm_s["files"], 2000, 2026, gpm_log["failures"], gpm_log["no_data"]),
-            "era5_core": _month_grid(era5_core_s["files"], 2010, 2024, era5_core_log["failures"], []),
-            "era5_more_labels_1": _month_grid(era5_ml1_s["files"], 2010, 2024, era5_ml1_log["failures"], []),
+            "era5_core": _month_grid(era5_core_s["files"], 2000, 2024, era5_core_log["failures"], []),
+            "era5_more_labels_1": _month_grid(era5_ml1_s["files"], 2000, 2024, era5_ml1_log["failures"], []),
         },
         "disk": os.statvfs(str(RAW)),
         "hourly": {
@@ -689,7 +689,7 @@ body {
       <div class="panel-head">
         <div>
           <div class="ph-label">ERA5-Land / CDS</div>
-          <div class="ph-title">Core features · 2010–2024</div>
+          <div class="ph-title">Core features · 2000–2024</div>
         </div>
         <span class="ph-badge idle" id="era5-badge">idle</span>
       </div>
@@ -718,7 +718,7 @@ body {
       <div class="panel-head">
         <div>
           <div class="ph-label">ERA5-Land / CDS</div>
-          <div class="ph-title">More labels 1 · 2010–2024</div>
+          <div class="ph-title">More labels 1 · 2000–2024</div>
         </div>
         <span class="ph-badge idle" id="era5-ml1-badge">idle</span>
       </div>
