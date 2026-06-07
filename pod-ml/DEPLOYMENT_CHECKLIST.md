@@ -6,9 +6,9 @@
 
 | Dataset | Status | Notes |
 |---|---|---|
-| ERA5-Land `core` grid | ✅ Done | 180 months (2010–2024), VM `data/raw/era5_grid/core/` |
-| ERA5-Land `more_labels_1` | ⏳ Not started | snowfall + surface_runoff; run `--group more_labels_1` |
-| GPM IMERG | ⏳ Downloading | 2000–2024, VM `data/raw/gpm_grid/` |
+| ERA5-Land `core` grid | ✅ Done | 180/180 months (2010–2024), VM `data/raw/era5_grid/core/` |
+| ERA5-Land `more_labels_1` | ⏳ Downloading | 6/180 months, ETA ~29h; snowfall + surface_runoff |
+| GPM IMERG | ⏳ Downloading | 98/295 (33%), ETA ~197h, VM `data/raw/gpm_grid/` |
 | DEM | ✅ Done | `data/raw/dem_nz.nc` |
 | Open-Meteo | On-demand | Query after hikes via `fetch_openmeteo.py`; no cron job |
 

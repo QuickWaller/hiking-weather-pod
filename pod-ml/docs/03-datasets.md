@@ -35,14 +35,14 @@ Each group writes to `data/raw/era5_grid/<group>/era5land_nz_YYYY-MM.nc` with in
 > **Wind (u10/v10) is not in the gridded download** — the pod has no anemometer, so wind is never a
 > feature. It may appear as a label-side variable from ERA5 single-levels (gusts) if needed.
 
-#### `more_labels_1` — supplemental label variables (not yet downloaded)
+#### `more_labels_1` — supplemental label variables (downloading: 6/180 months, ETA ~29h as of 2026-06-07)
 
 | ERA5-Land variable | Short name | Use |
 |---|---|---|
 | `snowfall` | `sf` | Snow severity label; alpine/sub-alpine sites |
 | `surface_runoff` | `sro` | Ground saturation proxy; future river-flooding model |
 
-Download when ready: `python -m podml.download_era5_grid --group more_labels_1`
+Download command: `python -m podml.download_era5_grid --group more_labels_1`
 
 ## Labels come from elsewhere
 
@@ -72,21 +72,19 @@ Download when ready: `python -m podml.download_era5_grid --group more_labels_1`
 
 ### Open-Meteo (real-time + historical)
 
-- **Current:** cron job collecting hourly observations at 5 NZ probe points → `data/raw/openmeteo/*.csv`
-  (precip, pressure, temp, humidity). Used to cross-check ERA5 and validate the live model.
-- **Planned:** on-demand historical query for any hike route — Open-Meteo historical API (backed by ERA5)
-  goes back to 1950 at any lat/lon, hourly, free. After a hike, query the exact coordinates + time window
-  for instant post-hoc validation without pre-collecting fixed-point data.
+- **No cron job.** On-demand only — query after a hike via `fetch_openmeteo.py` with the route coordinates
+  and time window. Open-Meteo historical API (backed by ERA5) goes back to 1950 at any lat/lon, hourly, free.
+  Instant post-hoc validation without pre-collecting fixed-point data.
 
 ## Acquisition status (2026-06-07)
 
 | Dataset | Location | Status | Notes |
 |---|---|---|---|
-| ERA5-Land `core` grid | VM `data/raw/era5_grid/core/` | ✅ Done | 180 months, 2010–2024, sp/t2m/d2m/tp |
-| ERA5-Land `more_labels_1` | VM `data/raw/era5_grid/more_labels_1/` | ⏳ Not started | snowfall + surface_runoff |
-| GPM IMERG labels | VM `data/raw/gpm_grid/` | ⏳ Downloading | ~1 400 files, 2000–2024, still in progress |
+| ERA5-Land `core` grid | VM `data/raw/era5_grid/core/` | ✅ Done | 180/180 months, 2010–2024, sp/t2m/d2m/tp |
+| ERA5-Land `more_labels_1` | VM `data/raw/era5_grid/more_labels_1/` | ⏳ Downloading | 6/180 months, ETA ~29h, snowfall + surface_runoff |
+| GPM IMERG labels | VM `data/raw/gpm_grid/` | ⏳ Downloading | 98/295 (33%), 2000–2024, ETA ~197h |
 | DEM (ETOPO 2022) | Local `data/raw/dem_nz.nc` | ✅ Done | Static, one-time |
-| Open-Meteo validation | VM `data/raw/openmeteo/` | ✅ Live | 5 probe points, hourly cron |
+| Open-Meteo validation | VM `data/raw/openmeteo/` | On-demand | Query after hikes via `fetch_openmeteo.py`; no cron |
 
 ### ⚠️ ERA5-Land is land-only — coastal cells are NaN-masked
 
