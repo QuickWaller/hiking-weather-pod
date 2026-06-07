@@ -1,6 +1,6 @@
 ---
 name: podml-downloads
-description: Monitor and maintain the pod-ml weather-dataset downloads (GPM rain + ERA5-Land) on the ML VM. Use whenever the user asks about download status/progress, when something looks stuck or failed, or to validate/restart/re-pull a dataset.
+description: Monitor and maintain the pod-ml weather-dataset downloads (GPM rain + ERA5-Land core + ERA5-Land more_labels_1) on the ML VM. Use whenever the user asks about download status/progress, when something looks stuck or failed, or to validate/restart/re-pull a dataset.
 ---
 
 # pod-ml dataset download operator
@@ -12,10 +12,11 @@ description: Monitor and maintain the pod-ml weather-dataset downloads (GPM rain
 > `agent-propose.sh`) for Opus to review and merge. Never edit your active skill to diverge from
 > `main`, and never push skill changes straight to `main`.
 
-You look after two long-running dataset downloads on the ML VM (reached over the SSH terminal backend):
+You look after three long-running dataset downloads on the ML VM (reached over the SSH terminal backend):
 
-- **gpm** — GPM IMERG 30-min rain, one NetCDF per month, ~2000-06 → present. These are the rain *labels*.
-- **era5** — ERA5-Land hourly weather (surface pressure, temp, dewpoint, precip), one file per month, 2010–2024. These are the *features*.
+- **gpm** — GPM IMERG 30-min rain, one NetCDF per month, ~2000-06 → present. Rain *labels*.
+- **era5** — ERA5-Land `core` group (surface pressure, temp, dewpoint, precip), 2010–2024. *Features*.
+- **era5_more_labels_1** — ERA5-Land supplemental labels (snowfall + surface_runoff), 2010–2024. Writes to `data/raw/era5_grid/more_labels_1/`. Sentinel: `era5_more_labels_1.done`. Log: `era5_more_labels_1.log`. Watchdog: `era5_more_labels_1_watchdog.sh`.
 
 Both are already self-healing: cron watchdogs relaunch a download if it dies, a hang detector kills one that's stuck, and a weekly job pulls newly-published months. Your job is **oversight**: notice when the automation isn't keeping up, fix it with the supported commands, and tell the user when something needs a human.
 
@@ -24,12 +25,12 @@ Both are already self-healing: cron watchdogs relaunch a download if it dies, a 
 All actions go through one command (run it via `sudo -u claude /home/claude/cyber-deck-and-weather-station/pod-ml/scripts/podctl`, or just `podctl` if it's on PATH):
 
 ```
-podctl status                          # JSON: per-dataset n/expected, %, running, workers, current month, eta, failures
-podctl validate [gpm|era5|all]         # opens the files, checks they're real & complete (JSON)
-podctl ps                              # what's running right now
-podctl logs <gpm|era5|hang|weekly> [N] # tail a log (default 40 lines)
-podctl restart <gpm|era5|all>          # kill a running pull and relaunch it (safe — resumes from checkpoints)
-podctl repull <gpm|era5> <YYYY-MM>     # delete one bad month so it gets refetched
+podctl status                                        # JSON: per-dataset n/expected, %, running, workers, current month, eta, failures
+podctl validate [gpm|era5|era5_more_labels_1|all]   # opens the files, checks they're real & complete (JSON)
+podctl ps                                            # what's running right now
+podctl logs <gpm|era5|era5_more|hang|weekly> [N]    # tail a log (default 40 lines)
+podctl restart <gpm|era5|all>                        # kill a running pull and relaunch it (safe — resumes from checkpoints)
+podctl repull <gpm|era5> <YYYY-MM>                  # delete one bad month so it gets refetched
 ```
 
 `status` and `validate` are read-only — run them freely. `restart` and `repull` change things and are logged; prefer them over raw `kill`/`rm`. Downloads are checkpointed per month, so restarting only re-fills gaps, it never re-downloads finished months or corrupts anything.

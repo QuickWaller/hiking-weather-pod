@@ -18,18 +18,21 @@ die()   { echo "podctl: $*" >&2; exit 2; }
 
 usage() {
   cat <<'EOF'
-podctl — manage the pod-ml dataset downloads
+podctl — manage the pod-ml dataset downloads and dashboard
 
 READ (no side effects):
-  podctl status                          JSON: counts, %, running, workers, eta, failures
-  podctl validate [gpm|era5|all]         deep integrity check of downloaded months (JSON)
-  podctl ps                              show running download processes
-  podctl logs <gpm|era5|hang|weekly> [N] tail N (default 40) lines of a log
-  podctl cds-queue                       CDS job queue snapshot (accepted/running/successful/rejected)
+  podctl status                                           JSON: counts, %, running, workers, eta, failures
+  podctl validate [gpm|era5|era5_more_labels_1|all]      deep integrity check of downloaded months (JSON)
+  podctl ps                                              show running download processes
+  podctl logs <gpm|era5|era5_more|dashboard|hang|weekly> [N]  tail N (default 40) lines of a log
+  podctl cds-queue                                       CDS job queue snapshot (accepted/running/successful/rejected)
+  podctl dashboard [status]                              dashboard server: running, pid, uptime_s (JSON)
 
 ACT (appended to podctl_audit.log):
   podctl restart <gpm|era5|all>          kill any running pull for that dataset, relaunch via watchdog
   podctl repull <gpm|era5> <YYYY-MM>     delete that month so it gets refetched, then kick the watchdog
+  podctl dashboard restart               kill + relaunch dashboard_server.py
+  podctl dashboard deploy                pull origin/main dashboard_server.py into live tree + restart
 
 Exit: 0 ok · 1 validate found bad months · 2 usage/error
 EOF
@@ -96,11 +99,13 @@ PYEOF
   logs)
     name="${1:-}"; n="${2:-40}"
     case "$name" in
-      gpm)    f="$REPO/gpm_pull.log";;
-      era5)   f="$REPO/era5_pull.log";;
-      hang)   f="$REPO/hang_check.log";;
-      weekly) f="$REPO/weekly_topup.log";;
-      *) die "logs <gpm|era5|hang|weekly> [N]";;
+      gpm)       f="$REPO/gpm_pull.log";;
+      era5)      f="$REPO/era5_pull.log";;
+      era5_more) f="$REPO/era5_more_labels_1.log";;
+      dashboard) f="$REPO/dashboard_server.log";;
+      hang)      f="$REPO/hang_check.log";;
+      weekly)    f="$REPO/weekly_topup.log";;
+      *) die "logs <gpm|era5|era5_more|dashboard|hang|weekly> [N]";;
     esac
     tail -n "$n" "$f" 2>/dev/null || echo "no log yet: $f"
     ;;
@@ -134,6 +139,58 @@ PYEOF
     "$(ds_watchdog "$ds")" || true
     echo "$ds $ym queued for refetch. If a pull is mid-run it lands on the next pass;"
     echo "use 'podctl restart $ds' to force it now (safe — checkpointed)."
+    ;;
+  dashboard)
+    sub="${1:-status}"; shift || true
+    case "$sub" in
+      status)
+        pid="$(pgrep -u "$(whoami)" -f 'dashboard_server\.py' | head -1 || true)"
+        if [ -z "$pid" ]; then
+          echo '{"running":false,"pid":null,"uptime_s":null}'
+        else
+          elapsed="$(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' ' || echo 0)"
+          echo "{\"running\":true,\"pid\":$pid,\"uptime_s\":$elapsed}"
+        fi
+        ;;
+      restart)
+        old_pid="$(pgrep -u "$(whoami)" -f 'dashboard_server\.py' | head -1 || true)"
+        if [ -n "$old_pid" ]; then
+          audit "dashboard restart (kill $old_pid)"
+          kill "$old_pid" 2>/dev/null || true
+          sleep 1
+        fi
+        setsid python3 "$REPO/scripts/dashboard_server.py" \
+          </dev/null >>"$REPO/dashboard_server.log" 2>&1 &
+        new_pid=$!
+        audit "dashboard restarted (new pid $new_pid)"
+        echo "dashboard: restarted (pid $new_pid)"
+        ;;
+      deploy)
+        # Pull the latest dashboard_server.py from origin/main into the live tree, then restart.
+        # Called by agent-dashboard.sh after it pushes a direct-to-main dashboard commit.
+        LIVE_ROOT="$(dirname "$REPO")"
+        audit "dashboard deploy (pull origin/main:pod-ml/scripts/dashboard_server.py)"
+        git -C "$LIVE_ROOT" fetch origin --quiet
+        # Check the live file hasn't drifted (shouldn't happen — live tree is reset-hard on each
+        # full deploy, but guard anyway so we don't silently clobber an in-progress manual edit)
+        if ! git -C "$LIVE_ROOT" diff --quiet HEAD -- pod-ml/scripts/dashboard_server.py; then
+          die "live dashboard_server.py has uncommitted local edits — refusing to overwrite. Resolve manually or run deploy-live.sh."
+        fi
+        git -C "$LIVE_ROOT" checkout origin/main -- pod-ml/scripts/dashboard_server.py
+        echo "live file updated: $(git -C "$LIVE_ROOT" log --oneline -1 origin/main)"
+        old_pid="$(pgrep -u "$(whoami)" -f 'dashboard_server\.py' | head -1 || true)"
+        if [ -n "$old_pid" ]; then
+          kill "$old_pid" 2>/dev/null || true
+          sleep 1
+        fi
+        setsid python3 "$REPO/scripts/dashboard_server.py" \
+          </dev/null >>"$REPO/dashboard_server.log" 2>&1 &
+        new_pid=$!
+        audit "dashboard deployed and restarted (new pid $new_pid)"
+        echo "dashboard: deployed and restarted (pid $new_pid)"
+        ;;
+      *) die "dashboard <status|restart|deploy>";;
+    esac
     ;;
   ""|-h|--help|help) usage ;;
   *) die "unknown command '$cmd' (try: podctl help)" ;;
