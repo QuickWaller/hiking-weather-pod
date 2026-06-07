@@ -384,16 +384,19 @@ def _summary_row(name: str, s: dict, running: int, log_info: dict, note: str = "
 
 def _collect() -> dict:
     """Gather every download's stats + log-derived state once. Source of truth for both outputs."""
-    era5_s = _stats(str(RAW / "era5_grid" / "era5land_nz_*.nc"), 180)
-    gpm_s  = _stats(str(RAW / "gpm_grid"  / "gpm_*.nc"),          295)
-    om_files = glob.glob(str(RAW / "openmeteo" / "*.csv"))
-    dem_ok = (RAW / "dem_nz.nc").exists()
+    era5_s     = _stats(str(RAW / "era5_grid" / "core"          / "era5land_nz_*.nc"), 180)
+    era5_sup_s = _stats(str(RAW / "era5_grid" / "more_labels_1" / "era5land_nz_*.nc"), 180)
+    gpm_s      = _stats(str(RAW / "gpm_grid"  / "gpm_*.nc"),          295)
+    om_files   = glob.glob(str(RAW / "openmeteo" / "*.csv"))
+    dem_ok     = (RAW / "dem_nz.nc").exists()
 
-    gpm_log  = _parse_gpm_log(REPO / "gpm_pull.log")
-    era5_log = _parse_era5_log(REPO / "era5_pull.log")
+    gpm_log      = _parse_gpm_log(REPO / "gpm_pull.log")
+    era5_log     = _parse_era5_log(REPO / "era5_pull.log")
+    era5_sup_log = _parse_era5_log(REPO / "era5_more_labels_1.log")
 
-    gpm_run  = _running("download_gpm_harmony")
-    era5_run = _running("download_era5_grid")
+    gpm_run      = _running("download_gpm_harmony")
+    era5_run     = _running("download_era5_grid")
+    era5_sup_run = _running("more_labels_1")
 
     if gpm_run and not gpm_log["workers"]:
         gpm_log["workers"] = _worker_count("download_gpm_harmony")
@@ -401,9 +404,10 @@ def _collect() -> dict:
         era5_log["workers"] = _worker_count("download_era5_grid")
 
     return {
-        "era5_s": era5_s, "gpm_s": gpm_s, "om_files": om_files, "dem_ok": dem_ok,
-        "gpm_log": gpm_log, "era5_log": era5_log,
-        "gpm_run": gpm_run, "era5_run": era5_run,
+        "era5_s": era5_s, "era5_sup_s": era5_sup_s,
+        "gpm_s": gpm_s, "om_files": om_files, "dem_ok": dem_ok,
+        "gpm_log": gpm_log, "era5_log": era5_log, "era5_sup_log": era5_sup_log,
+        "gpm_run": gpm_run, "era5_run": era5_run, "era5_sup_run": era5_sup_run,
     }
 
 
@@ -434,8 +438,10 @@ def status_json() -> dict:
         "datasets": {
             "gpm":  {**_ds_json(st["gpm_s"],  st["gpm_run"],  st["gpm_log"]),
                      "stalled": stalled(st["gpm_s"], st["gpm_run"])},
-            "era5": {**_ds_json(st["era5_s"], st["era5_run"], st["era5_log"]),
-                     "stalled": stalled(st["era5_s"], st["era5_run"])},
+            "era5_core": {**_ds_json(st["era5_s"], st["era5_run"], st["era5_log"]),
+                          "stalled": stalled(st["era5_s"], st["era5_run"])},
+            "era5_more_labels_1": {**_ds_json(st["era5_sup_s"], st["era5_sup_run"], st["era5_sup_log"]),
+                                   "stalled": stalled(st["era5_sup_s"], st["era5_sup_run"])},
             "dem":  {"n": int(st["dem_ok"]), "expected": 1,
                      "pct": 100.0 if st["dem_ok"] else 0.0, "running": False},
             "openmeteo": {"n": len(st["om_files"]), "running": False},
@@ -445,10 +451,10 @@ def status_json() -> dict:
 
 def render() -> str:
     st = _collect()
-    era5_s, gpm_s = st["era5_s"], st["gpm_s"]
+    era5_s, era5_sup_s, gpm_s = st["era5_s"], st["era5_sup_s"], st["gpm_s"]
     om_files, dem_ok = st["om_files"], st["dem_ok"]
-    gpm_log, era5_log = st["gpm_log"], st["era5_log"]
-    gpm_run, era5_run = st["gpm_run"], st["era5_run"]
+    gpm_log, era5_log, era5_sup_log = st["gpm_log"], st["era5_log"], st["era5_sup_log"]
+    gpm_run, era5_run, era5_sup_run = st["gpm_run"], st["era5_run"], st["era5_sup_run"]
     era5_workers = _parse_era5_workers(REPO / "era5_pull.log")
     era5_workers_html = _era5_workers_html(era5_workers)
 
@@ -460,15 +466,17 @@ def render() -> str:
              "pct": 100.0 if om_files else 0.0, "recent": "points" if om_files else "-"}
 
     summary = (
-        _summary_row("ERA5-Land (CDS, 0.1°)",      era5_s, era5_run, era5_log, "features: sp/t2m/d2m/tp")
-      + _summary_row("GPM IMERG (direct, 0.1°)",   gpm_s,  gpm_run,  gpm_log,  "rain labels, 30-min")
-      + _summary_row("DEM (ETOPO)",                 dem_s,  0,        {},        "elevation (one-time)")
-      + _summary_row("Open-Meteo (validation)",     om_s,   0,        {},        "hourly cron, real-time")
+        _summary_row("ERA5-Land core (CDS, 0.1°)",       era5_s,     era5_run,     era5_log,     "features: sp/t2m/d2m/tp")
+      + _summary_row("ERA5-Land more_labels_1 (CDS)",    era5_sup_s, era5_sup_run, era5_sup_log, "labels: snowfall+surface_runoff")
+      + _summary_row("GPM IMERG (direct, 0.1°)",         gpm_s,      gpm_run,      gpm_log,      "rain labels, 30-min")
+      + _summary_row("DEM (ETOPO)",                      dem_s,      0,            {},            "elevation (one-time)")
+      + _summary_row("Open-Meteo (validation)",          om_s,       0,            {},            "on-demand, post-hike")
     )
 
     failures_html = (
-        _failure_html(gpm_log["failures"],  "GPM failures")
-      + _failure_html(era5_log["failures"], "ERA5 failures")
+        _failure_html(gpm_log["failures"],      "GPM failures")
+      + _failure_html(era5_log["failures"],     "ERA5-core failures")
+      + _failure_html(era5_sup_log["failures"], "ERA5-more_labels_1 failures")
     )
 
     legend = "".join(
@@ -478,8 +486,9 @@ def render() -> str:
         for c, lbl in [("#3fb950","done"), ("#f85149","failed"), ("#e3b341","no data"), ("#30363d","missing")]
     )
 
-    gpm_grid  = _month_grid(gpm_s["files"],  2000, 2026, gpm_log["failures"],  gpm_log["no_data"])
-    era5_grid = _month_grid(era5_s["files"], 2010, 2026, era5_log["failures"], [])
+    gpm_grid      = _month_grid(gpm_s["files"],      2000, 2026, gpm_log["failures"],      gpm_log["no_data"])
+    era5_grid     = _month_grid(era5_s["files"],     2010, 2026, era5_log["failures"],     [])
+    era5_sup_grid = _month_grid(era5_sup_s["files"], 2010, 2026, era5_sup_log["failures"], [])
 
     return f"""<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="refresh" content="30">
@@ -514,8 +523,11 @@ def render() -> str:
 <div style='margin-bottom:6px'>{legend}</div>
 {gpm_grid}
 
-<h2 style='margin-top:20px'>ERA5 completed months</h2>
+<h2 style='margin-top:20px'>ERA5-core completed months</h2>
 {era5_grid}
+
+<h2 style='margin-top:20px'>ERA5 more_labels_1 completed months</h2>
+{era5_sup_grid}
 
 <p style='margin-top:16px;color:#8b949e;font-size:12px'>
   ETA = remaining ÷ files/hr (last hour). Hover month cells for detail.
