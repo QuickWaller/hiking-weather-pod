@@ -125,8 +125,8 @@ def build_features(ds: xr.Dataset) -> pd.DataFrame:
 if __name__ == "__main__":
     import argparse
 
-    from podml.config import DATA_RAW, load_config
-    from podml.dataio import load_timeseries
+    from podml.config import load_config
+    from podml.era5_load import load_point_from_grid
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--point", default=None, help="probe point name (default: verification_point)")
@@ -134,12 +134,9 @@ if __name__ == "__main__":
 
     cfg = load_config()
     name = args.point or cfg.get("verification_point") or next(iter(cfg["probe_points"]))
-    t = cfg["time"]
-    tag = f"{t['acquisition_start']}_{t['test_year']}-12-31"
-    path = DATA_RAW / f"era5land_ts_{name}_{tag}.nc"
 
-    print(f"Building features for {name} from {path.name}")
-    feats = build_features(load_timeseries(path))
+    print(f"Building features for {name} from ERA5 grid")
+    feats = build_features(load_point_from_grid(name, cfg))
     print(f"\nShape: {feats.shape}")
     print(f"\n{feats.describe().round(3).T}")
     print("\nFirst rows with full history (after 6h warmup):")

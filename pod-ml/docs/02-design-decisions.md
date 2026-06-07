@@ -203,13 +203,14 @@ defined until a model exists**, so we train global first regardless.
 
 ```mermaid
 flowchart LR
-    A["(a) deep history<br/>~200 stratified points<br/>2000-2024 hourly"] --> M[("global model")]
+    A["(a) deep history<br/>~200 stratified cells<br/>ERA5 gridded, 2010-2024"] --> M[("global model")]
     M --> B["(b) full grid, SHORT window<br/>~1-2 yr · only to run the<br/>trained model everywhere"]
     B --> Z["SKATER zoning"]
 ```
 
-(a) is the **training** data (the current 5-point pull scaled up). (b) is needed only at the **end**, to run
-the finished model over every cell for the zoning pass.
+(a) is the **training** data — ERA5-Land gridded pull (`--group core`), probe points extracted via
+`load_point_from_grid`. (b) is needed only at the **end**, to run the finished model over every cell
+for the zoning pass.
 
 ### Static vs dynamic — and what bakes into firmware
 

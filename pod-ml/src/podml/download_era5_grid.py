@@ -33,16 +33,14 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
+from pathlib import Path
 
 import xarray as xr
 
-from podml.config import DATA_RAW, ROOT
+from podml.config import DATA_RAW, ROOT, load_config
 
 NZ_AREA = [-34.0, 166.0, -47.0, 178.0]  # N, W, S, E
-VARIABLES = [
-    "surface_pressure", "2m_temperature", "2m_dewpoint_temperature", "total_precipitation",
-]
-CACHE = DATA_RAW / "era5_grid"
+ERA5_GRID_DIR = DATA_RAW / "era5_grid"
 BATCH_SIZE = 1          # months per CDS job (all same year); 3-month batches now hit CDS cost limits
                         # for the NZ box (~25 MB/month), but 3 keeps memory bounded at ~560 MB
                         # per worker and retries don't lose more than 3 months on failure.
@@ -63,8 +61,8 @@ def _worker_id() -> str:
     return name.replace(" ", "")[:4]
 
 
-def month_cache_path(year: int, month: int):
-    return CACHE / f"era5land_nz_{year}-{month:02d}.nc"
+def month_cache_path(year: int, month: int, cache_dir: "Path") -> "Path":
+    return cache_dir / f"era5land_nz_{year}-{month:02d}.nc"
 
 
 def _client():
@@ -126,15 +124,15 @@ def _classify_403(exc: Exception) -> str | None:
     return "maintenance"  # unknown 403 — treat as transient; log will surface it
 
 
-def download_batch(batch: list[tuple[int, int]]) -> list[str]:
+def download_batch(batch: list[tuple[int, int]], variables: list[str], cache_dir: "Path") -> list[str]:
     """Fetch a batch of months (all same year) in one CDS request, split into per-month files.
 
     Cached months within the batch are skipped; only uncached months are requested.
     Returns a list of result strings (one per month in the batch).
     """
     wid = _worker_id()
-    cached = [(y, m) for y, m in batch if month_cache_path(y, m).exists()]
-    to_fetch = [(y, m) for y, m in batch if not month_cache_path(y, m).exists()]
+    cached = [(y, m) for y, m in batch if month_cache_path(y, m, cache_dir).exists()]
+    to_fetch = [(y, m) for y, m in batch if not month_cache_path(y, m, cache_dir).exists()]
     results = [f"[W{wid}] [{y}-{m:02d}] cached" for y, m in cached]
 
     if not to_fetch:
@@ -144,13 +142,13 @@ def download_batch(batch: list[tuple[int, int]]) -> list[str]:
     months = sorted(m for _, m in to_fetch)
     tag = f"{year}-[{'+'.join(f'{m:02d}' for m in months)}]"
     print(f"[W{wid}] {tag} started ({len(to_fetch)} months)", flush=True)
-    CACHE.mkdir(parents=True, exist_ok=True)
+    cache_dir.mkdir(parents=True, exist_ok=True)
 
     slug = f"{year}_m{'_'.join(f'{m:02d}' for m in months)}"
-    raw = CACHE / f"era5land_nz_{slug}.cdsdownload"
+    raw = cache_dir / f"era5land_nz_{slug}.cdsdownload"
 
     request = {
-        "variable": VARIABLES,
+        "variable": variables,
         "year": str(year),
         "month": [f"{m:02d}" for m in months],
         "day": [f"{d:02d}" for d in range(1, 32)],
@@ -172,7 +170,7 @@ def download_batch(batch: list[tuple[int, int]]) -> list[str]:
             ds = ds.drop_vars([c for c in _DROP if c in ds.variables], errors="ignore")
             # Split lazily — reads from raw once per month, keeps peak RAM to one month at a time.
             for yr, mo in to_fetch:
-                path = month_cache_path(yr, mo)
+                path = month_cache_path(yr, mo, cache_dir)
                 mask = (ds.valid_time.dt.year == yr) & (ds.valid_time.dt.month == mo)
                 month_ds = ds.isel(valid_time=mask.values)
                 part = path.with_suffix(".nc.part")
@@ -218,7 +216,13 @@ def download_batch(batch: list[tuple[int, int]]) -> list[str]:
 
 
 def main() -> int:
+    cfg = load_config()
+    groups = cfg.get("era5_grid_groups", {})
+    group_names = list(groups)
+
     ap = argparse.ArgumentParser(description="Download NZ ERA5-Land months from CDS")
+    ap.add_argument("--group", required=True, choices=group_names,
+                    help=f"Variable group to download: {group_names}")
     ap.add_argument("--start-year", type=int, default=2010)
     ap.add_argument("--end-year", type=int, default=2024)
     ap.add_argument("--workers", type=int, default=3,
@@ -227,6 +231,13 @@ def main() -> int:
     ap.add_argument("--batch-size", type=int, default=BATCH_SIZE,
                     help="months per CDS request (same year only)")
     args = ap.parse_args()
+
+    variables = groups[args.group]["variables"]
+    cache_dir = ERA5_GRID_DIR / args.group
+
+    print(f"Group    : {args.group}", flush=True)
+    print(f"Variables: {variables}", flush=True)
+    print(f"Cache    : {cache_dir}", flush=True)
 
     # Build year-aligned batches newest-first so recent test-year data lands soonest.
     batches: list[list[tuple[int, int]]] = []
@@ -241,7 +252,7 @@ def main() -> int:
 
     failures = 0
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futures = {pool.submit(download_batch, b): b for b in batches}
+        futures = {pool.submit(download_batch, b, variables, cache_dir): b for b in batches}
         for fut in as_completed(futures):
             b = futures[fut]
             tag = f"{b[0][0]}-[{'+'.join(f'{m:02d}' for _, m in b)}]"

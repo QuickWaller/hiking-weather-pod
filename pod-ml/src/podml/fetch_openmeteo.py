@@ -1,18 +1,17 @@
-"""Step 6 — Open-Meteo hourly observations for real-time hike validation.
+"""On-demand Open-Meteo query for post-hike validation.
 
 Weather data by Open-Meteo.com (CC BY 4.0). See pod-ml/OPENMETEO_LICENSE.md for terms.
 
-Fetches precipitation, pressure, temperature, humidity for the 5 probe points (NZ domain).
-Stores rolling 1-year CSV per point. Cron job: hourly fetches → append → deduplicate → prune.
+Fetches precipitation, pressure, temperature, humidity for a set of lat/lon points.
+Open-Meteo historical API covers 1950–present at any lat/lon — query after a hike to get
+ground-truth for that route + time window. No cron job; run on demand.
 
-  data/raw/openmeteo/hokitika_westcoast.csv    time, precip_mm_hr, pressure_hPa, temp_c, humidity_pct
-  data/raw/openmeteo/christchurch_lee.csv      ...
-  ...
+  data/raw/openmeteo/<name>.csv    time, precip_mm_hr, pressure_hPa, temp_c, humidity_pct
 
 Usage:
-  python -m podml.fetch_openmeteo                    # fetch + write
+  python -m podml.fetch_openmeteo                    # fetch probe points + write
   python -m podml.fetch_openmeteo --dry-run          # fetch + print, no write
-  python -m podml.fetch_openmeteo --points-file CSV  # custom points (lat,lon,name)
+  python -m podml.fetch_openmeteo --points-file CSV  # custom points (name,lat,lon)
 """
 
 from __future__ import annotations

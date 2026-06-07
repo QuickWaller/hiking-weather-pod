@@ -73,12 +73,12 @@ def compute_climatology(
       3. Compute mean over time dimension
     """
     if era5_dir is None:
-        era5_dir = DATA_RAW / "era5_grid"
+        era5_dir = DATA_RAW / "era5_grid" / "core"
 
     if not era5_dir.exists():
         raise FileNotFoundError(
             f"ERA5 grid directory not found at {era5_dir}. "
-            "Run: python -m podml.download_era5_grid"
+            "Run: python -m podml.download_era5_grid --group core"
         )
 
     # Placeholder: return dummy DataArrays with proper structure

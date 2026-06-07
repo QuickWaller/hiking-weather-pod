@@ -1,170 +1,121 @@
-# Pod-ML Weather Prediction Pipeline
+# Pod-ML Architecture
 
 ## Overview
 
-Pod-ML is a data engineering + machine learning pipeline that trains and validates LightGBM weather prediction models for the hiking pod. The pipeline enables **field validation** of pod predictions against real-world weather data.
+Pod-ML trains and validates LightGBM weather prediction models for the hiking pod. It uses ERA5-Land
+reanalysis as features and GPM IMERG satellite rainfall as labels, trains a global model across NZ,
+then validates against real-time Open-Meteo observations.
 
-**Key principle:** Train on historical ERA5 data (2010–2022) with clean sensor inputs → validate on real 2024 observations (Open-Meteo) to discover model weaknesses before field deployment.
+**Key principle:** features are pod-replicable only — no wind, no upper-air data. The model must reproduce
+the same output from the same sensor readings the pod computes on-device.
 
-## Architecture
+## Data Flow
 
 ```
-ERA5 timeseries (2010–2022)        Open-Meteo observations (2024+)
-        ↓                                  ↓
- download_era5.py ←────────────→ fetch_openmeteo.py
-        ↓                                  ↓
-data/raw/era5land_ts_*.nc        data/raw/openmeteo/*.csv
-        ↓                                  ↓
- raw_signals() ←────────────────────→ openmeteo_to_signals()
-        ↓                                  ↓
-features.py: pressure/temp/humidity     (same feature format)
-   (tendencies, absolute levels, month/hour)
-        ↓                                  ↓
- build_features()              build_features_from_signals()
-        ↓                                  ↓
-data/features_era5.csv    (features match schema exactly)
-        ↓                                  ↓
-labels.py (ERA5 precip)    labels_gpm.py (satellite rainfall)
-        ↓                                  ↓
-ge{thr}_h{h} binary labels for:   (same 12-column format)
-  0.5, 2.5, 7.6 mm/hr
-  6, 12, 24, 48 hour horizons
-        ↓                                  ↓
-train/test split (2010–2022 / 2024)
-        ↓
- LGBMClassifier (50 models: 3 thresholds × 4 horizons × 5 points)
-        ↓
-probe.py: Brier Skill Score (BSS) vs climatology baseline
-        ↓
-outputs/skill_probe_era5.csv  &  skill_probe_gpm.csv
-outputs/feature_importance_*.csv
+ERA5-Land gridded (2010–2024)         GPM IMERG (2000–2024)
+data/raw/era5_grid/core/              data/raw/gpm_grid/
+        ↓                                    ↓
+download_era5_grid.py                download_gpm_harmony.py
+        ↓                                    ↓
+era5_load.load_era5_nz()          ←→  labels_gpm.build_labels_gpm()
+        ↓                                    ↓
+features.py: pressure/temp/humidity    forward-window severity labels
+(tendencies, absolute levels,          (0.5 / 2.5 / 7.6 mm/hr × 6/12/24/48 h)
+ month/hour UTC)
+        ↓                                    ↓
+              train_grid.py (global model, static covariates)
+                              ↓
+                    LightGBM model
+                              ↓
+              post-training SKATER zoning + per-zone calibration
+                              ↓
+                    flash to pod MCU
+```
+
+## Directory Layout
+
+```
+data/
+├── raw/
+│   ├── era5_grid/
+│   │   ├── core/               # sp, t2m, d2m, tp — 2010–2024, monthly 0.1° grids
+│   │   └── more_labels_1/      # snowfall, surface_runoff — not yet downloaded
+│   ├── gpm_grid/               # GPM IMERG 30-min rain labels, 2000–2024
+│   ├── openmeteo/              # real-time hourly observations, 5 probe points
+│   └── dem_nz.nc               # NZ elevation (ETOPO 2022, static)
+└── clean/
+    └── labels/                 # processed label files (future step)
 ```
 
 ## Modules
 
 ### Data Acquisition
 
-- **`download_era5.py`** — ERA5-Land hourly reanalysis (2010–2022) via CDS API. Returns NetCDF with sp, t2m, d2m, u10, v10.
-- **`download_gpm_harmony.py`** — GPM IMERG satellite rainfall via Harmony API. Monthly 0.1° grids, 30-min resolution.
-- **`download_dem.py`** — Digital elevation model for altitude-based sampling.
-- **`fetch_openmeteo.py`** — Real-time hourly weather observations (precip, pressure, temp, humidity) from Open-Meteo. Cron-driven, 7-day rolling window.
+- **`download_era5_grid.py`** — ERA5-Land full NZ spatial grid via CDS. Group-based:
+  `--group core` (sp, t2m, d2m, tp) or `--group more_labels_1` (snowfall, surface_runoff).
+  Writes monthly NetCDFs to `data/raw/era5_grid/<group>/`. Checkpointed per month.
+- **`download_gpm_harmony.py`** — GPM IMERG satellite rainfall via Harmony API.
+  Monthly 0.1° grids, 30-min resolution → `data/raw/gpm_grid/`.
+- **`download_dem.py`** — ETOPO 2022 elevation, NZ bounding box → `data/raw/dem_nz.nc`.
+- **`fetch_openmeteo.py`** — On-demand Open-Meteo query (precip, pressure, temp, humidity).
+  Historical API covers 1950–present at any lat/lon. Run after a hike to get ground-truth for
+  that route + time window. No cron job — query on demand.
+
+### Data Loading
+
+- **`era5_load.py`** — Load cached ERA5 gridded months:
+  - `load_era5_nz(start_year, end_year, group="core")` — lazy spatial dataset
+  - `load_point_from_grid(name, cfg, group="core")` — extract nearest grid cell for a probe point
 
 ### Feature Engineering
 
-- **`features.py`** — Pod-replicable feature vector (24 features):
-  - Pressure absolute + 6 pressure tendencies (3h–72h windows)
-  - Temperature + 3h trend
-  - Humidity + 3h trend
-  - Month, hour UTC (for seasonality, time-of-day)
-  - **Contract:** Pod C++ code must reproduce these bit-for-bit. No wind features (pod has no anemometer).
+- **`features.py`** — Pod-replicable feature vector (13 features):
+  - `sp_hPa` — absolute surface pressure
+  - `sp_rate_3h` … `sp_rate_72h` — pressure tendencies (6 windows)
+  - `rh`, `rh_trend_3h` — humidity + 3h trend
+  - `t2m_C`, `t2m_trend_3h` — temperature + 3h trend
+  - `month`, `hour_utc` — seasonality / time of day
+  - **Contract:** pod C++ code must reproduce these bit-for-bit. No wind features (no anemometer).
 
-- **`sensorsim.py`** — Sensor degradation layer:
-  - Adds realistic noise to pressure/temp/humidity (BME280-like biases)
-  - Pressure offset (cancels in trends, persists in absolute level)
-  - Temperature warm bias (±1.5°C) + small noise
-  - Humidity noise + clipping to [0, 100]%
-  - **Use case:** Train on clean ERA5 → test on sensor-degraded features = "deployable" skill.
+- **`sensorsim.py`** — Sensor degradation layer (BME280-like biases). Train on clean ERA5 → test
+  on sensor-degraded features = "deployable" skill estimate.
 
-### Labels (Ground Truth)
+### Labels
 
-- **`labels.py`** — Binary rain-severity labels from ERA5 precipitation:
-  - Forward-looking window (6h, 12h, 24h, 48h)
-  - Three thresholds (0.5, 2.5, 7.6 mm/hr)
-  - Output: 12 columns (ge{threshold}_h{horizon})
-  - **Caveat:** Circular (ERA5 features + ERA5 labels) → optimistic skill ceiling.
+- **`labels.py`** — Rain-severity labels from ERA5 precipitation (optimistic ceiling — circular).
+- **`labels_gpm.py`** — Rain-severity labels from GPM IMERG (honest — independent of ERA5 features).
+  Forward-looking window, three thresholds (0.5 / 2.5 / 7.6 mm/hr), four horizons (6/12/24/48 h).
 
-- **`labels_gpm.py`** — Binary rain-severity labels from GPM IMERG (honest):
-  - Satellite-measured rainfall (independent of ERA5)
-  - Resample 30-min → hourly max (rainfall semantics)
-  - Same output format as `labels.py` (drop-in replacement)
-  - **Use case:** Test ERA5-trained model on GPM labels → gap = circularity bias.
+### Model Training & Probing
 
-### Point Sampling
+- **`probe.py`** — Point skill probe: train on one grid cell's history, evaluate BSS vs climatology.
+  Uses `load_point_from_grid` to extract a probe point from the gridded cache.
+- **`probe_with_static.py`** — Same with elevation + climatology static features added.
+- **`train_grid.py`** — Full gridded training: one global model across all sampled cells.
 
-- **`sample_points.py`** — Extract ERA5 and GPM timeseries at specific lat/lon:
-  - Nearest-neighbor or bilinear interpolation
-  - Handles missing/corrupted data gracefully
-  - 5 NZ probe points: Hokitika, Christchurch, Mt Cook, Long Bay, Milford (see `config.py`)
+### Validation
 
-### Model Training & Validation
+- **`validate.py`** — Integrity check on downloaded monthly grid files (ERA5 + GPM). Emits JSON
+  for the Hermes agent or a human summary. Checks variable presence, timestep count, time axis sanity.
+- **`validate_openmeteo.py`** — Compare model predictions vs. real-time Open-Meteo observations.
+- **`config_validate.py`** — Pre-run check: probe points in NZ bounds, directories exist, ERA5 grid present.
 
-- **`probe.py`** — Dress-rehearsal skill probe:
-  - Train: LGBMClassifier on 2010–2022 ERA5 features + labels
-  - Test: 2024 features + (ERA5 or GPM) labels
-  - Metrics: Brier Skill Score (BSS), Precision-Recall AUC, confusion breakdown at 70% recall
-  - Separate "clean" (optimistic ceiling) vs "sensor-sim" (deployable) skill tracks
-  - **Flag:** `--label-source {era5,gpm}` for side-by-side comparison
+### Static Features
 
-- **`validate_openmeteo.py`** — Real-time validation against Open-Meteo:
-  - Loads Open-Meteo hourly observations for each probe point
-  - Builds features + labels from the same data
-  - Trains on 70%, tests on 30% (quick baseline)
-  - Or integrates with pre-trained ERA5 model (research-mode)
-  - **Use case:** "How is the model performing on actual NZ weather right now?"
+- **`sample_points.py`** — Stratified sampling of ERA5-Land cells across elevation bands.
+  Writes `config/sampled_points.csv` (committed; both machines pull the identical set).
+- **`static_features.py`** — Elevation, zone ID, climatology from the ERA5 gridded cache.
 
-### Plotting & Analysis
+## Validation Strategy
 
-- **`plots.py`** — Visualization utilities:
-  - Skill vs horizon (line plots)
-  - Confusion matrices
-  - Feature importance (bar charts)
-
-## Data Paths
-
-```
-data/
-├── raw/
-│   ├── era5land/               # ERA5-Land NetCDFs from CDS (2010–2022)
-│   │   └── era5land_ts_2010-2022.nc
-│   ├── gpm_grid/               # GPM IMERG monthly grids (2024+, incomplete)
-│   │   └── gpm_2024-03.nc, gpm_2024-04.nc, ...
-│   ├── dem/                    # Elevation data (auxiliary)
-│   └── openmeteo/              # Real-time observations (cron-fetched, 7-day rolling)
-│       ├── hokitika_westcoast.csv
-│       ├── christchurch_lee.csv
-│       └── ...
-│
-├── features/                   # Processed features (cache, optional)
-│   └── features_era5_*.csv
-│
-└── processed/                  # Final train/test datasets (intermediate)
-```
-
-## Validation Workflow (Field Deployment)
-
-1. **Collect field data** — Pod logs on hikeS with manual activity groundtruth
-2. **Compare pod predictions vs. Open-Meteo** — Use `validate_openmeteo.py`
-3. **Identify systematic biases** — pressure overestimation? activity misclassification?
-4. **Label field data** — Manually note: precipitation (yes/no), temperature, visibility, activity
-5. **Retrain on field data** — Transfer learning: start with ERA5 weights, fine-tune on real pod logs
-6. **Redeploy** — Updated model with field-learned adjustments
-
-## Testing
-
-- **51 tests:** Features (trailing slope, RH calculation, feature parity), labels, sensorsim, GPM label loading
-- **64 tests** after recent expansion (edge cases: NaN handling, boundary conditions, sign conventions)
-- Run all: `pytest` (from pod-ml root)
-- Run one suite: `pytest tests/test_features.py -v`
+On-demand historical query after each hike — Open-Meteo historical API (backed by ERA5, 1950–present,
+any lat/lon, hourly, free). Query the exact route coordinates + time window for instant post-hoc
+validation. No cron job or pre-collection needed.
 
 ## Known Limitations
 
-1. **Circular ERA5 labels** — Features and labels from same physics model. BSS is optimistic ceiling (true skill is lower).
-2. **Incomplete GPM data** — Only 11 of 294 months downloaded (June 18 ETA for completion). Labels skip missing months gracefully.
-3. **No field data yet** — Model trained on ERA5 reanalysis, untested on actual pod sensor data.
-4. **No activity validation** — Pod predicts activity (climbing/walking/resting) but not yet validated in field.
-5. **Single model per point** — No spatial transfer learning (Mt Cook model can't help Hokitika).
-
-## Next Steps
-
-1. **Fix probe.py** — Support mixed label sources (ERA5 train, GPM test) for honest transfer validation
-2. **Collect field data** — 5–10 hikes with pod + manual groundtruth
-3. **Expand validation** — Storm confidence, activity accuracy, modifier (temp/visibility)
-4. **Retrain on field data** — Fine-tune ERA5 weights with real pod observations
-5. **Automate GPM completion** — When download finishes (June 18), re-run probe with full dataset
-
-## References
-
-- ERA5-Land: https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5-land
-- GPM IMERG: https://gpm.nasa.gov/data/imerg
-- Open-Meteo: https://open-meteo.com (CC BY 4.0, free tier)
-- LightGBM: https://lightgbm.readthedocs.io
+1. **Circular ERA5 labels** — `labels.py` uses the same ERA5 physics for features + labels. Use
+   `labels_gpm.py` for honest evaluation.
+2. **GPM download in progress** — labels incomplete; skip missing months gracefully during training.
+3. **No field data yet** — model trained on reanalysis, untested on actual pod sensor readings.
+4. **Coastal NaN cells** — ERA5-Land masks ocean cells; inference needs a nearest-valid-land fallback.

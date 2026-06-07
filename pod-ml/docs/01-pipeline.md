@@ -29,20 +29,22 @@ flowchart TD
 ## Phase 2 — "train for real" (gridded)
 
 The point probe (steps 1–5) cleared the gate: a single location predicts near-term rain. We're now scaling
-from 5 points to the whole country **without** pulling a terabyte, via a **one global model + static
+from probe points to the whole country **without** pulling a terabyte, via a **one global model + static
 covariates** architecture — full design and diagrams in
 [02 · Gridded model](02-design-decisions.md#gridded-model-pre--and-post-training-grid-logic).
 
 ```mermaid
 flowchart TD
     P2a["DEM (ETOPO) → land mask + elevation<br/>(download_dem.py)"] --> P2b["stratify ~200 cells across<br/>elevation bands (sample_points.py)<br/>→ config/sampled_points.csv"]
-    P2b --> P2c["bulk ERA5 pull at those cells<br/>(download_era5 --points-file)"]
+    P2b --> P2c["ERA5 gridded pull — core group<br/>(download_era5_grid --group core)<br/>→ data/raw/era5_grid/core/"]
     GPM["GPM grid pull<br/>(download_gpm_harmony)"] --> P2d
     P2c --> P2d["labels (fwd windows + nowcast h0 + snow)<br/>+ training table → train global model"]
     P2d --> P2e["post-training SKATER zoning<br/>+ per-zone calibration → flash"]
 ```
 
-**Status (2026-06-04):** DEM + sampler done (`config/sampled_points.csv` = 205 cells); GPM and ERA5 pulls
-running in the background on the VM — see
-[03 · Acquisition status](03-datasets.md#acquisition-status-2026-06-04). **Next:** the label builder (forward
-windows + horizon-0 nowcast + snow), then assemble the training table and train.
+**Status (2026-06-07):**
+- DEM done (`data/raw/dem_nz.nc`)
+- ERA5 core grid done: 180 months (2010–2024) on VM at `data/raw/era5_grid/core/`
+- ERA5 `more_labels_1` (snowfall, surface_runoff): not yet started
+- GPM still downloading: `data/raw/gpm_grid/` — see [03 · Acquisition status](03-datasets.md#acquisition-status-2026-06-07)
+- **Next:** label builder (forward windows + horizon-0 nowcast + snow), then training table
