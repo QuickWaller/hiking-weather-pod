@@ -64,3 +64,55 @@ class TestParseEra5Workers:
     def test_empty_log_returns_empty(self, tmp_path):
         log = self._write_log(tmp_path, [])
         assert ds._parse_era5_workers(log) == []
+
+
+class TestParseGpmWorkers:
+    def _write_log(self, tmp_path: Path, lines: list[str]) -> Path:
+        log = tmp_path / "gpm.log"
+        log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return log
+
+    def test_active_harmony_request_shown(self, tmp_path):
+        log = self._write_log(tmp_path, [
+            "[2017-06] Harmony request (attempt 1/4)...",
+        ])
+        workers = ds._parse_gpm_workers(log)
+        assert len(workers) == 1
+        assert workers[0]["month"] == "2017-06"
+        assert workers[0]["stage"] == "requested"
+        assert workers[0]["attempt"] == 1
+
+    def test_completed_month_not_shown(self, tmp_path):
+        log = self._write_log(tmp_path, [
+            "[2017-07] Harmony request (attempt 1/4)...",
+            "[2017-07] 1488 granules -> 1488 steps -> gpm_2017-07.nc",
+        ])
+        workers = ds._parse_gpm_workers(log)
+        assert workers == [], f"completed month should not appear, got {workers}"
+
+    def test_completed_month_hides_earlier_request(self, tmp_path):
+        # Same seen-logic regression risk as ERA5: completion line must prevent
+        # the earlier Harmony request line being reported as active.
+        log = self._write_log(tmp_path, [
+            "[2017-07] Harmony request (attempt 1/4)...",
+            "[2017-07] 1488 granules -> 1488 steps -> gpm_2017-07.nc",
+            "[2017-06] Harmony request (attempt 1/4)...",
+        ])
+        workers = ds._parse_gpm_workers(log)
+        months = [w["month"] for w in workers]
+        assert "2017-07" not in months, "completed month must not reappear"
+        assert "2017-06" in months
+
+    def test_failed_attempt_shown_with_attempt_number(self, tmp_path):
+        log = self._write_log(tmp_path, [
+            "[2017-06] Harmony request (attempt 1/4)...",
+            "[2017-06] attempt 1 failed: Harmony job exceeded 1800s timeout",
+            "[2017-06] Harmony request (attempt 2/4)...",
+        ])
+        workers = ds._parse_gpm_workers(log)
+        assert len(workers) == 1
+        assert workers[0]["attempt"] == 2
+
+    def test_empty_log_returns_empty(self, tmp_path):
+        log = self._write_log(tmp_path, [])
+        assert ds._parse_gpm_workers(log) == []
