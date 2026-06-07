@@ -102,6 +102,17 @@ agent-dashboard.sh <slug>   →  git push origin main
 
 Compare with the standard path (code fix): `agent-work` → `agent-propose.sh` → PR → admin runs `deploy-live.sh`.
 
+## Live tree state after agent-dashboard.sh
+
+`podctl dashboard deploy` updates `dashboard_server.py` in the live tree via
+`git checkout origin/main -- file`. This leaves the live tree with HEAD behind
+origin/main and the file staged. **This is normal and expected.**
+
+`deploy-live.sh` (the admin deploy script) handles this correctly — it compares
+the working tree to origin/main, not HEAD, so the staged file is not a blocker.
+If an admin needs to run `deploy-live.sh` after you've deployed a dashboard change,
+it will just work.
+
 ## Guardrails
 
 - Only edit `pod-ml/scripts/dashboard_server.py` via this path. Everything else uses PRs.
