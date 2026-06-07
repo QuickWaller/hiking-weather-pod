@@ -384,8 +384,8 @@ def _summary_row(name: str, s: dict, running: int, log_info: dict, note: str = "
 
 def _collect() -> dict:
     """Gather every download's stats + log-derived state once. Source of truth for both outputs."""
-    era5_s     = _stats(str(RAW / "era5_grid" / "core"          / "era5land_nz_*.nc"), 180)
-    era5_sup_s = _stats(str(RAW / "era5_grid" / "more_labels_1" / "era5land_nz_*.nc"), 180)
+    era5_s     = _stats(str(RAW / "era5_grid" / "core"          / "era5land_nz_*.nc"), 300)
+    era5_sup_s = _stats(str(RAW / "era5_grid" / "more_labels_1" / "era5land_nz_*.nc"), 300)
     gpm_s      = _stats(str(RAW / "gpm_grid"  / "gpm_*.nc"),          295)
     om_files   = glob.glob(str(RAW / "openmeteo" / "*.csv"))
     dem_ok     = (RAW / "dem_nz.nc").exists()
