@@ -115,11 +115,14 @@ def _parse_era5_workers(log_path=None):
             continue  # already captured this worker's latest state
         # Skip FAILED — they're done, not active
         if "FAILED:" in rest:
+            seen.add(wid)
             continue
         # Skip completed — they're done
         if "cached" in rest:
+            seen.add(wid)
             continue
         if "s" in rest and "MB" in rest:
+            seen.add(wid)
             continue
         seen.add(wid)
         if rest.startswith("started"):
