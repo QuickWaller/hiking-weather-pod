@@ -113,17 +113,14 @@ def _parse_era5_workers(log_path=None):
         if not re.match(r"\[?\d{4}", month): continue
         if wid in seen:
             continue  # already captured this worker's latest state
-        # Skip FAILED — they're done, not active
+        # Skip FAILED/completed — they're done, not active
+        # Must add to seen so earlier 'submitting' lines for the same worker are also skipped
         if "FAILED:" in rest:
-            seen.add(wid)
-            continue
-        # Skip completed — they're done
+            seen.add(wid); continue
         if "cached" in rest:
-            seen.add(wid)
-            continue
+            seen.add(wid); continue
         if "s" in rest and "MB" in rest:
-            seen.add(wid)
-            continue
+            seen.add(wid); continue
         seen.add(wid)
         if rest.startswith("started"):
             stage, extra = "started", ""

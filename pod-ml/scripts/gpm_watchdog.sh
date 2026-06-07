@@ -35,7 +35,7 @@ echo "[watchdog $(date -Is)] relaunching GPM backfill ($START..$END)" >> "$LOG"
 setsid bash -c '
   source "'"$REPO"'/.venv/bin/activate"
   cd "'"$REPO"'"
-  if flock -n "'"$LOCK"'" python -m podml.download_gpm_harmony --start '"$START"' --end '"$END"' --workers 16; then
+  if flock -n "'"$LOCK"'" python -m podml.download_gpm_harmony --start '"$START"' --end '"$END"' --workers 16 --month-workers 2; then
     touch "'"$DONE"'"
     echo "[watchdog '"$(date -Is)"'] GPM backfill completed cleanly, sentinel set" >> "'"$LOG"'"
   fi

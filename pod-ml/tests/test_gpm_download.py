@@ -70,7 +70,7 @@ class TestRunJob:
 
 
 class TestBuildGrid:
-    """Tests for build_grid control flow — uses a mock Harmony client + tmp_path for files."""
+    """Tests for build_grid control flow — _process_month creates its own Client() per thread."""
 
     def _make_client(self, *, job_status="successful", download_files=None, submit_exc=None):
         client = MagicMock()
@@ -83,16 +83,18 @@ class TestBuildGrid:
             client.download_all.return_value = futures
         return client
 
-    def test_skips_already_cached_month(self, tmp_path, capsys):
+    def test_skips_already_cached_month(self, tmp_path):
         grid_dir = tmp_path / "gpm_grid"
         grid_dir.mkdir()
         (grid_dir / "gpm_2024-01.nc").touch()
         client = self._make_client()
         with patch("podml.download_gpm_harmony.GRID_DIR", grid_dir), \
+             patch("harmony.Client", return_value=client), \
+             patch("harmony.Request"), \
              patch("podml.download_gpm_harmony.time.sleep"):
-            build_grid("2024-01", "2024-01", client, MagicMock(), MagicMock())
+            build_grid("2024-01", "2024-01", MagicMock(), MagicMock(), month_workers=1)
+        # Already-cached months are filtered out before any thread starts — no submit
         client.submit.assert_not_called()
-        assert "skipping" in capsys.readouterr().out
 
     def test_no_granules_skips_immediately_without_retrying(self, tmp_path, capsys):
         # IMERG Final lag: Harmony raises "No matching granules found" — must skip on the
@@ -101,9 +103,10 @@ class TestBuildGrid:
         grid_dir.mkdir()
         client = self._make_client(submit_exc=Exception("No matching granules found"))
         with patch("podml.download_gpm_harmony.GRID_DIR", grid_dir), \
-             patch("podml.download_gpm_harmony.time.sleep"), \
-             patch("harmony.Request"):
-            build_grid("2024-01", "2024-01", client, MagicMock(), MagicMock())
+             patch("harmony.Client", return_value=client), \
+             patch("harmony.Request"), \
+             patch("podml.download_gpm_harmony.time.sleep"):
+            build_grid("2024-01", "2024-01", MagicMock(), MagicMock(), month_workers=1)
         # Only one submit call — no retries
         assert client.submit.call_count == 1
         out = capsys.readouterr().out
@@ -116,9 +119,10 @@ class TestBuildGrid:
         grid_dir.mkdir()
         client = self._make_client(submit_exc=Exception("Service Unavailable 503"))
         with patch("podml.download_gpm_harmony.GRID_DIR", grid_dir), \
-             patch("podml.download_gpm_harmony.time.sleep"), \
-             patch("harmony.Request"):
-            build_grid("2024-01", "2024-01", client, MagicMock(), MagicMock())
+             patch("harmony.Client", return_value=client), \
+             patch("harmony.Request"), \
+             patch("podml.download_gpm_harmony.time.sleep"):
+            build_grid("2024-01", "2024-01", MagicMock(), MagicMock(), month_workers=1)
         assert client.submit.call_count == GPM_MAX_ATTEMPTS
         assert "SKIPPED" in capsys.readouterr().out
 
@@ -146,10 +150,11 @@ class TestBuildGrid:
         client.download_all.return_value = ten_file_futures
 
         with patch("podml.download_gpm_harmony.GRID_DIR", grid_dir), \
+             patch("harmony.Client", return_value=client), \
              patch("podml.download_gpm_harmony.time.sleep"), \
              patch("podml.download_gpm_harmony.stack_month", return_value=ds), \
              patch("harmony.Request"):
-            build_grid("2024-01", "2024-01", client, MagicMock(), MagicMock())
+            build_grid("2024-01", "2024-01", MagicMock(), MagicMock(), month_workers=1)
 
         assert client.submit.call_count == GPM_MAX_ATTEMPTS
         assert "INCOMPLETE" in capsys.readouterr().out
