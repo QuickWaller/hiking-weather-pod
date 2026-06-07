@@ -22,7 +22,7 @@ Both are already self-healing: cron watchdogs relaunch a download if it dies, a 
 
 ## Use `podctl` — don't improvise shell
 
-All actions go through one command (run it via `sudo -u claude /home/claude/cyber-deck-and-weather-station/pod-ml/scripts/podctl`, or just `podctl` if it's on PATH):
+All actions go through the `/usr/local/bin/podctl` shim — run it as just `podctl`. The shim adds `sudo -u claude` automatically; never call the raw script path directly or permissions will fail:
 
 ```
 podctl status                                        # JSON: per-dataset n/expected, %, running, workers, current month, eta, failures
