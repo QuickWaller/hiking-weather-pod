@@ -67,6 +67,52 @@ def _parse_gpm():
             current = month
     return {"current": current, "workers": workers, "failures": list(failures.items()), "no_data": sorted(set(no_data))}
 
+def _parse_gpm_workers(log_path=None):
+    """Parse [YYYY-MM] lines in gpm_pull.log to show active worker state.
+
+    Walks backwards through the last ~200 lines. Each month gets a sequence:
+    Harmony request → (attempt N failed) → granules -> steps -> completion.
+    Active = has a recent request/failed line but no completion yet.
+    Returns [{month, stage, attempt}], newest first.
+    """
+    if log_path is None:
+        log_path = REPO / "gpm_pull.log"
+    lines = _tail(log_path, n=200)
+    seen: set[str] = set()
+    workers: list[dict] = []
+
+    for line in reversed(lines):
+        line = line.strip()
+        m = re.match(r"\[(\d{4}-\d{2})\] (.+)", line)
+        if not m:
+            continue
+        month, msg = m.group(1), m.group(2)
+        if month in seen:
+            continue
+
+        # Terminal states — month is done, don't show as active
+        if "granules ->" in msg and "steps ->" in msg:
+            seen.add(month)
+            continue
+        if "no granules available" in msg or "already stored" in msg:
+            seen.add(month)
+            continue
+
+        am = re.search(r"attempt (\d+)/(\d+)", msg)
+        attempt = int(am.group(1)) if am else 1
+
+        if "Harmony request" in msg:
+            workers.append({"month": month, "stage": "requested", "attempt": attempt})
+            seen.add(month)
+        elif "attempt" in msg and "failed" in msg:
+            workers.append({"month": month, "stage": "failed", "attempt": attempt})
+            seen.add(month)
+
+        if len(workers) >= 16:
+            break
+
+    return workers
+
 def _parse_era5(log_path=None):
     if log_path is None:
         log_path = REPO / "era5_pull.log"
@@ -297,6 +343,7 @@ def api_data():
         "activity": _activity(),
         "era5_workers": _parse_era5_workers(REPO / "era5_pull.log"),
         "era5_ml1_workers": _parse_era5_workers(REPO / "era5_more_labels_1.log"),
+        "gpm_workers": _parse_gpm_workers(REPO / "gpm_pull.log"),
         "grids": {
             "gpm": _month_grid(gpm_s["files"], 2000, 2026, gpm_log["failures"], gpm_log["no_data"]),
             "era5_core": _month_grid(era5_core_s["files"], 2010, 2024, era5_core_log["failures"], []),
@@ -726,7 +773,7 @@ body {
   </div>
 
   <!-- ERA5 workers -->
-  <div class="row two" id="workers-row">
+  <div class="row three" id="workers-row">
     <div class="panel">
       <div class="panel-head">
         <div class="ph-title">ERA5 Core Workers</div>
@@ -761,6 +808,24 @@ body {
           </tr></thead>
           <tbody id="era5-ml1-workers-body">
             <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px">no active workers</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel" id="gpm-workers-panel">
+      <div class="panel-head">
+        <div class="ph-title">GPM Workers</div>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto" id="gpm-w-count">0 active</span>
+      </div>
+      <div class="panel-body" style="padding:0">
+        <table class="workers-table">
+          <thead><tr>
+            <th>Month</th>
+            <th>Stage</th>
+            <th>Attempt</th>
+          </tr></thead>
+          <tbody id="gpm-workers-body">
+            <tr><td colspan="3" style="color:var(--muted);text-align:center;padding:16px">no active workers</td></tr>
           </tbody>
         </table>
       </div>
@@ -937,6 +1002,23 @@ function updateWorkers(workers, tbodyId, countId) {
   }).join('');
 }
 
+function updateGpmWorkers(workers) {
+  const tbody = $('#gpm-workers-body');
+  $('#gpm-w-count').textContent = workers.length + ' active';
+  if (!workers.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:16px;font-size:12px">no active workers</td></tr>';
+    return;
+  }
+  tbody.innerHTML = workers.map(w => {
+    const sc = stageClass(w.stage);
+    return `<tr>
+      <td class="wmonth">${w.month}</td>
+      <td><span class="wstage ${sc}"><span class="wstage-dot"></span><span class="wstage-text">${w.stage}</span></span></td>
+      <td style="color:var(--muted);font-size:12px;text-align:center">${w.attempt}</td>
+    </tr>`;
+  }).join('');
+}
+
 function gridHTML(ds, title, cells) {
   if (!cells || !cells.length) return '';
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1095,6 +1177,7 @@ function render(data) {
   updateDataset('gpm',  d.gpm,  'blue');
   updateWorkers(data.era5_workers || [], 'era5-workers-body', 'w-count');
   updateWorkers(data.era5_ml1_workers || [], 'era5-ml1-workers-body', 'ml1-w-count');
+  updateGpmWorkers(data.gpm_workers || []);
 
   const gridsEl = $('#grids-row');
   gridsEl.innerHTML =
