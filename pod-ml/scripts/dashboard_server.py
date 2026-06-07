@@ -77,7 +77,7 @@ def _parse_gpm_workers(log_path=None):
     """
     if log_path is None:
         log_path = REPO / "gpm_pull.log"
-    lines = _tail(log_path, n=200)
+    lines = _tail(log_path, n=5000)  # large window — raw download paths dominate recent log
     seen: set[str] = set()
     workers: list[dict] = []
 
