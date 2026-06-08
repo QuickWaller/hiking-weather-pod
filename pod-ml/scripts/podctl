@@ -29,8 +29,8 @@ READ (no side effects):
   podctl dashboard [status]                              dashboard server: running, pid, uptime_s (JSON)
 
 ACT (appended to podctl_audit.log):
-  podctl restart <gpm|era5|all>          kill any running pull for that dataset, relaunch via watchdog
-  podctl repull <gpm|era5> <YYYY-MM>     delete that month so it gets refetched, then kick the watchdog
+  podctl restart <gpm|era5|era5_more|all>          kill any running pull for that dataset, relaunch via watchdog
+  podctl repull <gpm|era5> <YYYY-MM>              delete that month so it gets refetched, then kick the watchdog
   podctl dashboard restart               kill + relaunch dashboard_server.py
   podctl dashboard deploy                pull origin/main dashboard_server.py into live tree + restart
 
@@ -38,9 +38,9 @@ Exit: 0 ok · 1 validate found bad months · 2 usage/error
 EOF
 }
 
-ds_pattern()  { case "$1" in gpm) echo 'podml.download_gpm_harmony';; era5) echo 'podml.download_era5_grid';; *) die "unknown dataset '$1'";; esac; }
-ds_watchdog() { case "$1" in gpm) echo "$REPO/scripts/gpm_watchdog.sh";; era5) echo "$REPO/scripts/era5_watchdog.sh";; *) die "unknown dataset '$1'";; esac; }
-ds_done()     { case "$1" in gpm) echo "$REPO/gpm_pull.done";; era5) echo "$REPO/era5_pull.done";; *) die "unknown dataset '$1'";; esac; }
+ds_pattern()  { case "$1" in gpm) echo 'podml.download_gpm_harmony';; era5) echo 'download_era5_grid.*--group core';; era5_more) echo 'download_era5_grid.*more_labels_1';; *) die "unknown dataset '$1'";; esac; }
+ds_watchdog() { case "$1" in gpm) echo "$REPO/scripts/gpm_watchdog.sh";; era5) echo "$REPO/scripts/era5_watchdog.sh";; era5_more) echo "$REPO/scripts/era5_more_labels_1_watchdog.sh";; *) die "unknown dataset '$1'";; esac; }
+ds_done()     { case "$1" in gpm) echo "$REPO/gpm_pull.done";; era5) echo "$REPO/era5_pull.done";; era5_more) echo "$REPO/era5_more_labels_1.done";; *) die "unknown dataset '$1'";; esac; }
 
 # Kill a dataset's whole process group (workers included), by PID — never `pkill -f PATTERN`,
 # which would self-match this script's own command line. Checkpointed, so killing is safe.
@@ -110,8 +110,8 @@ PYEOF
     tail -n "$n" "$f" 2>/dev/null || echo "no log yet: $f"
     ;;
   restart)
-    ds="${1:?restart <gpm|era5|all>}"
-    if [ "$ds" = all ]; then targets=(gpm era5); else targets=("$ds"); fi
+    ds="${1:?restart <gpm|era5|era5_more|all>}"
+    if [ "$ds" = all ]; then targets=(gpm era5 era5_more); else targets=("$ds"); fi
     for t in "${targets[@]}"; do
       kill_ds "$t"
       audit "restart $t (kick watchdog)"

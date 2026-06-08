@@ -30,7 +30,7 @@ WORKERS=3                       # CDS allows ~2 concurrent active jobs per accou
 [ -f "$DONE" ] && exit 0
 
 # 2. Already running — leave it alone.
-if pgrep -f 'podml.download_era5_grid' >/dev/null 2>&1; then
+if pgrep -f 'download_era5_grid.*--group core' >/dev/null 2>&1; then
   exit 0
 fi
 
