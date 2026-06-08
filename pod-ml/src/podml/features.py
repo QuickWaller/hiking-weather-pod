@@ -110,6 +110,26 @@ def build_features_from_signals(signals: dict[str, Any]) -> pd.DataFrame:
     return df[FEATURE_COLUMNS]
 
 
+def build_features_endpoint(signals: dict[str, Any]) -> dict[str, float]:
+    """Just the LAST (endpoint) feature row, as a plain dict — the fast path for per-endpoint builds.
+
+    Must match ``build_features_from_signals(signals).iloc[-1]`` exactly (guarded by a parity test).
+    Skips the per-endpoint DataFrame construction that dominates a multi-million-row training build.
+    """
+    sp, t, rh = signals["sp_hPa"], signals["t2m_C"], signals["rh"]
+    last = pd.Timestamp(signals["time"][-1])
+    out: dict[str, float] = {"sp_hPa": float(sp[-1])}
+    for h in PRESSURE_TREND_HOURS:
+        out[f"sp_rate_{h}h"] = float(trailing_slope(sp, h + 1)[-1])
+    out["rh"] = float(rh[-1])
+    out["rh_trend_3h"] = float(trailing_slope(rh, 4)[-1])
+    out["t2m_C"] = float(t[-1])
+    out["t2m_trend_3h"] = float(trailing_slope(t, 4)[-1])
+    out["month"] = float(last.month)
+    out["hour_utc"] = float(last.hour)
+    return out
+
+
 def build_features(ds: xr.Dataset) -> pd.DataFrame:
     """Clean features straight from ERA5 (no sensor-sim).
 
