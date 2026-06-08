@@ -9,7 +9,6 @@ from podml.features import trailing_slope
 from podml.motionsim import (
     MotionSimParams,
     REGIMES,
-    Path,
     sample_path_backward,
     sample_regimes,
     signals_along_path,
