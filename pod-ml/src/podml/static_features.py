@@ -25,6 +25,48 @@ import xarray as xr
 from podml.config import DATA_RAW
 
 
+ERA5_OROG_PATH = DATA_RAW / "era5_grid" / "static" / "era5land_geopotential_nz.nc"
+G0 = 9.80665  # m/s², standard gravity (geopotential → height)
+
+
+def pressure_to_msl(p_hpa: np.ndarray, elev_m: np.ndarray, t_c: np.ndarray) -> np.ndarray:
+    """Reduce station pressure to mean sea-level pressure (MSLP), the standard hypsometric formula.
+
+    p0 = p * (1 - 0.0065 h / (T + 0.0065 h + 273.15)) ** -5.257   (T in °C at the station, h in m).
+    Pair this with ERA5's OWN orography ([[load_era5_orography]]) when reducing ERA5 ``sp`` — using the
+    DEM over-corrects in steep terrain. motionsim perturbs ``elev_m`` by the GPS-altitude error to model
+    the pod reducing its reading with a slightly-wrong altitude.
+    """
+    lapse = 0.0065  # K/m, ICAO standard troposphere
+    return p_hpa * (1.0 - lapse * elev_m / (t_c + lapse * elev_m + 273.15)) ** (-5.257)
+
+
+def load_era5_orography(path: Path | None = None) -> xr.DataArray:
+    """ERA5-Land model orography HEIGHT (m) on the native 0.1° grid.
+
+    This is the height ERA5-Land's *surface pressure* is defined at, so it — NOT the DEM — must be
+    used when reducing ERA5 ``sp`` to mean sea-level pressure. The DEM sees true peaks (~2500 m+);
+    ERA5-Land's smoothed orography caps NZ at ~1836 m. Reducing ERA5 pressure with the DEM height
+    over-corrects by hundreds of metres in steep terrain → speckled MSLP. The DEM stays the right
+    source for the elevation *feature* (what the pod measures); these are two different jobs.
+
+    Source: ECMWF static geopotential file (variable ``z``, m²/s²); height = z / g.
+
+    Returns:
+        xr.DataArray (lat, lon) of orography height in metres.
+    """
+    p = path or ERA5_OROG_PATH
+    if not p.exists():
+        raise FileNotFoundError(
+            f"ERA5-Land geopotential not found at {p}. Download the static file "
+            "(geo_1279l4_0.1x0.1) and subset to NZ — see docs/03-datasets.md."
+        )
+    da = xr.open_dataset(p)["z"]
+    if "time" in da.dims:
+        da = da.isel(time=0, drop=True)
+    return (da / G0).rename("orography_m")
+
+
 def load_dem_grid(dem_path: Path | None = None) -> xr.DataArray:
     """Load digital elevation model (DEM) for NZ.
 

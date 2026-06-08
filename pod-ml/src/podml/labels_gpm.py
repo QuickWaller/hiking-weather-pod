@@ -74,6 +74,50 @@ def load_gpm_point(lat: float, lon: float, gpm_dir: Optional[Path] = None) -> pd
     return pd.concat(series_list).sort_index()
 
 
+def load_gpm_cells_hourly(
+    lats, lons, start_year: int, end_year: int, gpm_dir: Optional[Path] = None
+) -> tuple[pd.DatetimeIndex, np.ndarray]:
+    """Hourly GPM precip (mm/hr) for MANY cells at once, over [start_year, end_year].
+
+    Efficient counterpart to load_gpm_point: opens each monthly grid once and selects all requested
+    cells in one vectorised nearest-neighbour lookup, then resamples 30-min → hourly max (aligning to
+    ERA5's on-the-hour valid_time). GPM cell centres are offset ~0.05° from ERA5's; nearest handles it.
+
+    Args:
+        lats, lons: 1-D arrays of cell coordinates (length n_cells).
+        start_year, end_year: inclusive year range.
+        gpm_dir: directory of gpm_YYYY-MM.nc (default DATA_RAW/"gpm_grid").
+
+    Returns:
+        (times, precip) where times is an hourly DatetimeIndex and precip is (n_time, n_cells) mm/hr.
+        Missing months are simply absent from the time axis (partial data is fine).
+    """
+    if gpm_dir is None:
+        gpm_dir = DATA_RAW / "gpm_grid"
+    lat_da = xr.DataArray(np.asarray(lats, dtype="float64"), dims="cell")
+    lon_da = xr.DataArray(np.asarray(lons, dtype="float64"), dims="cell")
+
+    parts: list[pd.DataFrame] = []
+    for year in range(start_year, end_year + 1):
+        for month in range(1, 13):
+            fpath = gpm_dir / f"gpm_{year}-{month:02d}.nc"
+            if not fpath.exists():
+                continue
+            ds = _open_gpm_grid(fpath)
+            p = ds["precipitation"].sel(lat=lat_da, lon=lon_da, method="nearest")  # (time, cell)
+            df = pd.DataFrame(
+                p.transpose("time", "cell").values.astype("float64"),
+                index=pd.to_datetime(ds["time"].values),
+            )
+            parts.append(df.resample("h").max())  # 30-min → hourly max, on-the-hour
+            ds.close()
+
+    if not parts:
+        return pd.DatetimeIndex([]), np.empty((0, len(np.asarray(lats))))
+    full = pd.concat(parts).sort_index()
+    return full.index, full.values
+
+
 def resample_to_hourly(s: pd.Series) -> pd.Series:
     """Resample 30-min GPM data → hourly max, aligned to hour boundaries.
 
