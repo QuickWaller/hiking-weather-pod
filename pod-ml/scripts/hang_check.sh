@@ -65,5 +65,6 @@ check_dataset() {
   fi
 }
 
-check_dataset era5 'podml.download_era5_grid' "$REPO/era5_pull.log" "$REPO/scripts/era5_watchdog.sh"
-check_dataset gpm  'podml.download_gpm_harmony' "$REPO/gpm_pull.log"  "$REPO/scripts/gpm_watchdog.sh"
+check_dataset era5      'download_era5_grid.*--group core'       "$REPO/era5_pull.log"             "$REPO/scripts/era5_watchdog.sh"
+check_dataset era5_more 'download_era5_grid.*more_labels_1'     "$REPO/era5_more_labels_1.log"    "$REPO/scripts/era5_more_labels_1_watchdog.sh"
+check_dataset gpm       'podml.download_gpm_harmony'            "$REPO/gpm_pull.log"              "$REPO/scripts/gpm_watchdog.sh"
