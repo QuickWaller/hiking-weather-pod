@@ -216,6 +216,11 @@ def to_long_format(
     Each endpoint appears once per horizon, with horizon_h added as a feature column. Rows whose
     amount is NaN (the horizon extends past the GPM array) are dropped. Output is stacked
     horizon-major: all rows for h=0, then h=1, … — callers split it afterwards by the year column.
+
+    Features are emitted as float32 (LightGBM bins them anyway, so this is lossless to the model) and
+    filled into a preallocated array per horizon. That keeps the 38M-row frame at ~1× its size: a
+    pd.concat of 25 slices, or a single X[ep_idx] fancy-index, would hold a second full-size copy.
+    Pass meta pre-sliced to the columns you actually need downstream — every column is replicated 25×.
     """
     missing = [f"amount_h{h}" for h in ENSEMBLE_HORIZONS if f"amount_h{h}" not in y.columns]
     if missing:
@@ -223,20 +228,33 @@ def to_long_format(
             f"Cache is missing amount columns {missing}. "
             "Rebuild with: python -m podml.train_ensemble --build-cache"
         )
-    X_parts, y_parts, meta_parts = [], [], []
-    for h in ENSEMBLE_HORIZONS:
-        valid = y[f"amount_h{h}"].notna().to_numpy()
-        Xh = X[valid].copy()
-        Xh["horizon_h"] = float(h)
-        X_parts.append(Xh)
-        y_parts.append(y.loc[valid, f"amount_h{h}"].to_numpy())
-        mh = meta[valid].copy()
-        mh["horizon_h"] = float(h)
-        meta_parts.append(mh)
+    H, n_ep, feat_cols = len(ENSEMBLE_HORIZONS), len(X), list(X.columns)
 
-    X_long = pd.concat(X_parts, ignore_index=True)
-    y_long = pd.Series(np.concatenate(y_parts), name="amount")
-    meta_long = pd.concat(meta_parts, ignore_index=True)
+    # Valid (non-NaN amount) endpoints per horizon. np.where scans horizon-major, so the long rows
+    # come out grouped by horizon — horizon hi owns the contiguous slice [bounds[hi]:bounds[hi+1]).
+    valid = np.empty((H, n_ep), dtype=bool)
+    for hi, h in enumerate(ENSEMBLE_HORIZONS):
+        valid[hi] = y[f"amount_h{h}"].notna().to_numpy()
+    h_idx, ep_idx = np.where(valid)
+    n_long = len(ep_idx)
+    bounds = np.concatenate(([0], np.cumsum(valid.sum(axis=1))))
+
+    X_src = X.to_numpy(dtype="float32")
+    X_arr = np.empty((n_long, len(feat_cols) + 1), dtype="float32")
+    y_arr = np.empty(n_long, dtype="float32")
+    for hi, h in enumerate(ENSEMBLE_HORIZONS):
+        s, e = int(bounds[hi]), int(bounds[hi + 1])
+        if s == e:
+            continue
+        eps = ep_idx[s:e]                       # endpoints valid at this horizon (≤ n_ep rows)
+        X_arr[s:e, :-1] = X_src[eps]
+        X_arr[s:e, -1] = h
+        y_arr[s:e] = y[f"amount_h{h}"].to_numpy(dtype="float32")[eps]
+
+    X_long = pd.DataFrame(X_arr, columns=feat_cols + ["horizon_h"])
+    y_long = pd.Series(y_arr, name="amount")
+    meta_long = meta.iloc[ep_idx].reset_index(drop=True)
+    meta_long["horizon_h"] = np.asarray(ENSEMBLE_HORIZONS, dtype="float32")[h_idx]
     return X_long, y_long, meta_long
 
 
@@ -480,7 +498,9 @@ def train_ensemble(
               flush=True)
 
     # Expand to long (one row per endpoint × horizon, horizon_h as a feature), then split by year.
-    X_long, y_long, meta_long = to_long_format(X, y, meta)
+    # Only cell/month/year are read off meta downstream (the split + per-cell climatology), so the
+    # other meta columns aren't carried into the 38M-row frame.
+    X_long, y_long, meta_long = to_long_format(X, y, meta[["cell", "month", "year"]])
     del X, y, meta
     years = meta_long["year"].to_numpy()
     tr, vl, te = np.isin(years, list(TRAIN_YEARS)), years == VAL_YEAR, years == TEST_YEAR
@@ -636,8 +656,9 @@ def ensemble_feature_ablation(
 
     # Expand once and split by year. Every fit below selects its own feature columns from these
     # frames, so the full model and all drop-one variants share identical rows (only the feature set
-    # differs) — that keeps the drop-one deltas aligned with the full-model labels.
-    X_long, y_long, meta_long = to_long_format(X, y, meta)
+    # differs) — that keeps the drop-one deltas aligned with the full-model labels. Only cell/month/
+    # year are read off meta downstream, so the rest isn't carried into the long frame.
+    X_long, y_long, meta_long = to_long_format(X, y, meta[["cell", "month", "year"]])
     del X, y, meta
     years = meta_long["year"].to_numpy()
     tr, vl = np.isin(years, list(TRAIN_YEARS)), years == VAL_YEAR
