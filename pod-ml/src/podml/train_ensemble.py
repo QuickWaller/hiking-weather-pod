@@ -262,6 +262,34 @@ def to_long_format(
     return X_long, y_long, meta_long
 
 
+# Meta columns the training/ablation pipeline actually consumes (climatology, weights, splits,
+# conditional subsets). Everything else (lat/lon/elevation/zone/time/motion) is dead weight that
+# to_long_format would otherwise replicate 25× per endpoint — ~2 GB for the train split alone.
+META_KEEP = ["cell", "month", "year"]
+
+
+def _slim_for_expansion(
+    X: pd.DataFrame, y: pd.DataFrame, meta: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Shrink the wide cache to the dtypes/columns the long expansion needs, in place of the caller.
+
+    The long expansion replicates X and meta per horizon (25×), so a fat wide frame becomes a huge
+    long frame. Three cheap reductions keep the per-split expansion under the VM's RAM ceiling
+    without touching the data itself:
+      - X, y → float32 (the long arrays are float32 anyway; halves the wide footprint),
+      - meta → only META_KEEP (drops six columns that are replicated but never read here),
+      - cell → category, month/year → int16 (so the replicated meta_long is codes, not strings).
+    """
+    X = X.astype("float32")
+    y = y.astype("float32")
+    meta = meta[META_KEEP].copy()
+    meta["cell"] = meta["cell"].astype("category")
+    meta["month"] = meta["month"].astype("int16")
+    meta["year"] = meta["year"].astype("int16")
+    gc.collect()
+    return X, y, meta
+
+
 def expand_split_long(
     X: pd.DataFrame,
     y: pd.DataFrame,
@@ -523,6 +551,7 @@ def train_ensemble(
                       meta[mask].reset_index(drop=True))
 
     print(f"train_ensemble: X={X.shape}, cells={meta['cell'].nunique()}", flush=True)
+    X, y, meta = _slim_for_expansion(X, y, meta)
 
     # Features present in this cache (v3 features absent from old caches). horizon_h is appended by
     # the long expansion, so it is always available.
@@ -688,6 +717,7 @@ def ensemble_feature_ablation(
         X = X[mask].reset_index(drop=True)
         y = y[mask].reset_index(drop=True)
         meta = meta[mask].reset_index(drop=True)
+    X, y, meta = _slim_for_expansion(X, y, meta)
 
     # Only ablate features that are actually in the cache. horizon_h is appended by the long
     # expansion, so it is always available.

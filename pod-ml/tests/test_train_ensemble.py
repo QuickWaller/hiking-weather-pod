@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 from podml.train_ensemble import (
-    ENSEMBLE_FEATURES, ENSEMBLE_HORIZONS, MODEL_NAMES,
+    ENSEMBLE_FEATURES, ENSEMBLE_HORIZONS, META_KEEP, MODEL_NAMES,
+    _clim_preds, _slim_for_expansion, build_clim_distribution,
     coverage, crps_from_quantiles, crpss, expand_split_long, pit_histogram, to_long_format,
 )
 
@@ -119,6 +120,43 @@ def test_expand_split_drop_one_stays_row_aligned():
     assert np.array_equal(y_full.to_numpy(), y_drop.to_numpy())
     assert np.array_equal(X_drop["horizon_h"].to_numpy(),
                           expand_split_long(X, y, meta, ep, ENSEMBLE_FEATURES)[0]["horizon_h"].to_numpy())
+
+
+# ─────────────────────────────────────────────── _slim_for_expansion ────────────────────────────
+
+def _toy_wide_fat(n: int = 60) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Wide frame with the full fat meta (lat/lon/elev/zone/time/motion) the cache really carries."""
+    X, y, meta = _toy_wide_full(n)
+    rng = np.random.default_rng(7)
+    meta["lat"] = rng.uniform(-45, -35, n)
+    meta["lon"] = rng.uniform(166, 178, n)
+    meta["elevation"] = rng.uniform(0, 2000, n)
+    meta["zone"] = rng.integers(0, 4, n)
+    meta["time"] = pd.date_range("2016-01-01", periods=n, freq="h")
+    meta["motion"] = rng.choice(["still", "walk", "drive"], n)
+    return X, y, meta
+
+
+def test_slim_drops_fat_meta_and_downcasts():
+    X, y, meta = _toy_wide_fat()
+    Xs, ys, ms = _slim_for_expansion(X, y, meta)
+    assert list(ms.columns) == META_KEEP
+    assert str(ms["cell"].dtype) == "category"
+    assert Xs.to_numpy().dtype == np.float32
+    assert ys.to_numpy().dtype == np.float32
+
+
+def test_slim_then_expand_then_climatology_runs():
+    """Categorical cell must survive expansion and flow through the climatology groupby + lookup."""
+    X, y, meta = _toy_wide_fat()
+    Xs, ys, ms = _slim_for_expansion(X, y, meta)
+    ep = ms["year"].to_numpy() == 2016
+    X_l, y_l, m_l = expand_split_long(Xs, ys, ms, ep, ENSEMBLE_FEATURES)
+    assert "lat" not in m_l.columns  # fat columns gone, not replicated 25×
+    train_mask = np.ones(len(y_l), dtype=bool)
+    table, glob = build_clim_distribution(y_l, m_l, train_mask)
+    preds = _clim_preds(table, glob, m_l)
+    assert all(len(preds[name]) == len(m_l) for name in MODEL_NAMES)
 
 
 # ─────────────────────────────────────────────── crps_from_quantiles ────────────────────────────
