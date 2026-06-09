@@ -3,11 +3,14 @@
 > **Living doc for the current design phase** — where the new approach is worked out, carrying the learnings
 > from the concluded phase 06 ([06-feature-testing.md](06-feature-testing.md)): the motion-sim + pressure
 > backbone is strong and well-calibrated, several standard add-ons proved neutral-or-harmful, and the
-> binary-threshold framing has outlived its usefulness. **Status: proposed — not yet built or measured.** Every
-> *model* change below is a **hypothesis** to validate with bootstrap-CI ablations (the same bar as 06's A–D
-> scorecard) before it ships, and to re-check once the back-extension data (≈14 more years, toward GPM IMERG's
-> 2000 floor) lands. The *visualisation* and *deployment* choices are firmer but still revisable. Updated as
+> binary-threshold framing has outlived its usefulness. **Status: in progress.** Every *model* change is a
+> **hypothesis** to validate with bootstrap-CI ablations (the same bar as 06's A–D scorecard). Updated as
 > decisions and results land.
+>
+> **What's built (2026-06-09):** `FEATURE_VECTOR_VERSION 3` is in `features.py` and passing 204 tests. The 07
+> cache is building on the VM (2861 cells, 2014–2024, k=4, ~1.5 M rows). The model trainer
+> (`train_ensemble.py`) is written and ready. Run sequence once the cache finishes: `--from-cache` then
+> `--ablation`.
 
 ## 1. Why change anything
 
@@ -48,40 +51,68 @@ Supporting changes (each measured separately):
   it at *5* models instead of 5 × (number of horizons). This is load-bearing for both skill and flash.
 - **Drop the 48 h horizon.** Weakest (BSS 0.099) and the most climatology-like; keeping 0–24 h leaves a
   mutually consistent set for pooling.
-- **Feature additions:** **cyclic hour** (`sin/cos` of RTC hour — `hour_utc` is currently a top-5 feature but
-  raw integer 0–23, with a discontinuity at the 23→0 wrap; `month` already gets the cyclic treatment) and
-  **dewpoint depression** (`T − Td`, derived on-device by inverting Magnus from sensed RH+temp — a more
-  physical saturation signal than raw RH). Both are cheap, parity-safe, and *permanent* wins (encoding /
-  information, not data-scarcity patches).
+- **Feature additions:** see v2 and v3 below.
 - **No class weighting.** Measured neutral-or-harmful (C3): reweighting doesn't change ranking and *decalibrates*,
   which a Brier/CRPS-judged probabilistic model can't afford. Sensitivity belongs at the **decision threshold**
   on a calibrated model, not in the training loss.
 
-### Immediate next steps (in flight): cyclic hour + dewpoint depression
+### Label semantics
 
-These two land **first**. They are cheap, parity-safe, *permanent* wins, and they help the existing model too —
-so they can be **measured now on the current cache** (a 06-style ablation with bootstrap CIs), without waiting
-for the ensemble rebuild. Keep each only if the CI says so, and judge **conditionally** (a feature can be flat
-on average yet matter in a niche).
+`amount_h{H}` = **instantaneous GPM rain rate (mm/hr) at T+H** for H = 0 … 24. The nowcast (H=0) is the
+current hour's GPM rate; H>0 is the 1-hour accumulation ending at T+H.
 
-**Cyclic hour.** Add `hour_sin = sin(2π·h/24)`, `hour_cos = cos(2π·h/24)`, mirroring the existing
-`month_sin/cos` in `train_motion.add_derived_features`. `hour_utc` is currently a top-5 feature but a raw
-integer 0–23 with a discontinuity at the 23→0 wrap; the cyclic pair removes that. Then **measure whether raw
-`hour_utc` can be dropped** — today `month` is redundantly double-encoded raw+cyclic; don't repeat that for
-hour. Refinement to test later: `hour_utc` is **UTC**, but the diurnal signal is local-solar-time, so a
-local-hour version is marginally more physical (NZ's offset is near-constant, so a tree mostly absorbs it). Pod
-side: `sin/cos` of the RTC hour — trivial.
+*Why not forward-window max?* `max(rain[T+1..T+H])` is monotone non-decreasing in H by construction — the
+plume can only ramp up and plateau, which makes "when does it arrive and clear?" unreadable. Instantaneous rate
+gives the bump-and-decay shape that answers the hiker's actual question. It also fits Tweedie cleanly (compound
+Poisson-gamma per hour), whereas the max of correlated hours has an ugly distribution.
 
-**Dewpoint depression.** Add `dewpoint_dep = T − Td`, with `Td` derived by **inverting** the Magnus/Tetens
-relation already in `features.rh_from_t_td` (forward = RH from T,Td; we need the inverse, Td from T,RH). It is a
-more physical "how close to saturation" signal than raw RH, and fully pod-sensible (AHT10 gives RH+temp → invert
-on-device). Start with the value alone; add a trend only if a CI earns it. It belongs in the pod-replicable
-vector in `features.py` (alongside `rh`), not the off-cache derived block.
+Two riders noted after the decision:
 
-**Parity & tests (both).** As pod-replicable features they fall under the `features.py` parity contract: add
-**golden-vector tests** (Python feature build == the eventual C compute, within tolerance), plus a round-trip
-check for the dewpoint inverse (`rh_from_t_td(T, T − dewpoint_dep) ≈ RH`). Bump the feature-vector version when
-the columns change.
+1. **Skill-vs-horizon check.** The 1-hour ERA5 accumulation is spiky at 18–24 h (single convective hours). After
+   training, plot CRPSS vs horizon; if skill degrades visibly past ~18 h consider a short 3-hour trailing mean
+   for the long tail only. Don't smooth preemptively — measure first.
+2. **Alerting is not exactly recoverable.** `P(rain at any point in window) = P(max > 0)` needs the joint
+   distribution across hours; per-hour marginal CDFs under-count by ignoring temporal correlation. A hiker
+   reading the plume integrates it by eye and this is good enough. If calibrated alerting ever matters, it needs
+   its own coarse-bin head, not a derivation from the plume.
+
+### v2 feature additions — ✅ DONE (`FEATURE_VECTOR_VERSION 2`)
+
+**Cyclic hour.** Replaced raw `hour_utc` (0–23, discontinuous at 23→0) with `hour_sin = sin(2π·h/24)` and
+`hour_cos = cos(2π·h/24)`. Pod side: trivial (RTC hour into Magnus). Measurable on the 06 cache without a rebuild
+(`--v2-ablation`).
+
+**Dewpoint depression.** Added `dewpoint_dep = T − Td` where `Td` comes from inverting the Magnus/Tetens
+relation (`td_from_t_rh` in `features.py`). More physical "how close to saturation" than raw RH, and
+pod-sensible (AHT10 T+RH → invert on-device). Belongs in the pod-replicable vector alongside `rh`.
+
+Both are guarded by golden-vector tests and a round-trip check (`rh_from_t_td(T, T − dewpoint_dep) ≈ RH`).
+
+### v3 feature additions — ✅ BUILT, cache building (`FEATURE_VECTOR_VERSION 3`)
+
+Cannot be backfilled from the 06 endpoint-only cache — they need the raw signal history at the endpoint, which
+the 07 build preserves. Each is a hypothesis; all land in the raw 07 cache and the ablation decides.
+
+| Feature | Computation | Rationale | Expected outcome |
+|---|---|---|---|
+| `sp_accel_nested` | `sp_rate_3h − sp_rate_6h` | WMO tendency code 8 analog; rate-of-change of pressure slope catches frontal curvature before the slope steepens | Survive |
+| `sp_accel_disjoint` | `trailing_slope(sp, 4)[t] − trailing_slope(sp, 4)[t−3]` | Purer 2nd derivative (non-overlapping 3h windows); less collinear with nested | Ablation picks one or both |
+| `td_trend_3h` | OLS slope of Td = T−dewpoint_dep over 4 h | Alongside `rh_trend_3h` at 3h they're near-collinear; add both, CI decides | Coin flip vs rh_trend_3h |
+| `td_trend_6h` | OLS slope of Td over 7 h | Diurnally stable (RH has a diurnal cycle; Td tracks actual moisture, not relative saturation); captures slow moisture advection | Survive |
+| `t2m_trend_6h` | OLS slope of T over 7 h | Cold-front signal | Borderline; likely cut |
+| `month_sin/cos` | `sin/cos(2π·month/12)` | Replaces raw `month` — removes the Dec→Jan discontinuity | Permanent encoding win |
+
+**Ablation plan:** train full model once, then drop one feature at a time; bootstrap CI (200 iterations,
+resample cells) on ΔCRPSS. Judge conditionally — `sp_accel` on fast-front events (`sp_rate_3h < −1.5 hPa/hr`),
+`td_trend_6h` on moisture-advection events (`td_trend_6h > 0.5 °C/hr`). A feature that's flat on average can
+still earn its keep in the niche it was designed for.
+
+Backward compat: `sp_accel_nested` and `month_sin/cos` are backfillable from the 06 cache (derivable from
+cached columns). The signal-history features (`sp_accel_disjoint`, `td_trend_*`, `t2m_trend_6h`) require the
+07 cache.
+
+**Parity:** all new features added to `build_features_endpoint` and `build_features_from_signals`. The existing
+parity test (`build_features_endpoint` must match `build_features_from_signals().iloc[-1]`) guards all of them.
 
 ## 3. Probability = model blended with per-cell climatology
 
@@ -218,24 +249,28 @@ The parity discipline from `features.py` ("the SPEC the C++ must reproduce bit-f
 
 ## 7. Sequencing — permanent wins vs scarcity bridges vs re-tune
 
-The incoming ≈14 years of data reshapes priorities: some ideas only help *because data is scarce now* and will
-fade; spend effort accordingly.
-
-| Item | Survives more data? | When |
+| Item | Survives more data? | Status |
 |---|---|---|
-| Cyclic hour, dewpoint depression | ✅ permanent (encoding / information) | **now — in flight** (spec in §2); cheap, help at any size |
-| Distributional model + horizon-as-feature | ✅ permanent (coherence + deployment) | design now, build/measure on full data |
-| Per-cell climatology blend | ✅ permanent | with the model |
-| Monotonic constraints | ⚠️ fades (physics-for-data regulariser) | quick measure now, don't over-tune |
-| Statistical sharing for the rare tail | ⚠️ fades | measure: *independent-heavy* vs *shared-heavy* on 25 yr — if they converge it was a bridge |
-| Train-on-all-cells | ⚠️ revisit (may plateau sooner in cells) | after data |
-| Model capacity (`num_leaves`, `n_estimators`) | 🔼 re-tune up (likely the biggest ceiling-lift) | after data |
-| Multi-year test set | ✅ better evaluation (tighter heavy CIs) | after data |
+| Cyclic hour, dewpoint depression | ✅ permanent (encoding / information) | ✅ Done — `FEATURE_VECTOR_VERSION 2` |
+| v3 pressure acceleration + Td trends | ✅ permanent (physics signal) | ✅ Built — ablation decides which survive |
+| Distributional model + horizon-as-feature | ✅ permanent (coherence + deployment) | ✅ Trainer written, cache building |
+| Per-cell climatology blend | ✅ permanent | ✅ Implemented in `train_ensemble.py` |
+| Training range 2014–2022 | ✅ more ENSO diversity | ✅ Confirmed — ERA5 + GPM both complete for 2014 |
+| Monotonic constraints | ⚠️ fades (physics-for-data regulariser) | Measure after ablation |
+| Statistical sharing for the rare tail | ⚠️ fades | Measure: *independent-heavy* vs *shared-heavy* — if they converge it was a scarcity bridge |
+| Model capacity re-tune | 🔼 re-tune up (likely the biggest ceiling-lift) | After ablation settles feature set |
+| Multi-year test set | ✅ better evaluation (tighter heavy CIs) | Revisit after 2025 data lands |
 
-**Data-quality caveat:** the back-extension isn't uniform — GPM IMERG before the core satellite (Feb 2014)
-leans on a sparser TRMM-era constellation, so pre-2014 *heavy*-rain truth is weaker, exactly the tail we most
-want. Net win (regime/ENSO diversity + event count), but check heavy base rates pre/post-2014 per region before
-trusting the extra heavy events.
+**Current trainer hyperparameters** (in `fit_ensemble`):
+- `n_estimators=3000, learning_rate=0.02, num_leaves=127` — capacity matched to ~1.5 M long-format rows
+- `min_child_samples=50` — prevents leaf-level overfit on the sparse heavy-rain tail
+- `reg_lambda=0.5` — L2 regularisation; keeps quantile heads from crossing under extrapolation
+- Early stopping patience=100 on the 2023 val set (one year, ~25% of long rows)
+- Tweedie power=1.5 (compound Poisson-gamma midpoint for NZ hourly rain amounts)
+
+**Data-quality note:** GPM IMERG before the core satellite era (Feb 2014) uses a sparser TRMM-era constellation.
+Pre-2014 heavy-rain truth is weaker, exactly where we most care. 2014 is included (net win for ENSO diversity
+and event count) but check heavy base rates pre/post-2014 per region before trusting the extra heavy events.
 
 ## 8. Open decisions (deferred)
 
@@ -243,6 +278,37 @@ trusting the extra heavy events.
   (The 1.54" colour panel is currently Nijntje + warnings.)
 - **Quantity reframe:** keep plain rain *amount*, or later fold in a **wet-cold hazard** target (rain × cold,
   both partly pod-sensible)? The *form* (distributional) is reusable for any quantity, so this can wait.
-- **Flash budget:** size bytes/model at a few tree-count/depth settings to confirm the interpreter + SD path
-  (and whether `n_estimators` can drop from 300 at little skill cost).
+- **Flash budget:** size bytes/model at the chosen tree depth to confirm the interpreter + SD path. Early stopping
+  means the actual tree count will be determined empirically (patience=100 on 2023 val); profile after the first
+  training run.
+- **Skill-vs-horizon smoothing:** check CRPSS by horizon after the first training run; smooth the 18–24 h tail
+  with a 3-hour trailing mean only if data shows visible degradation (do not assume).
 - Centre line confirmed: **mean for rain, median for temp.**
+
+## 9. Run sequence
+
+```bash
+# Build the 07 dataset (already running on VM):
+python -m podml.train_ensemble --build-cache --all-cells --k 4 --years 2014-2024
+
+# Train + evaluate (run once cache finishes):
+python -m podml.train_ensemble --from-cache > ~/ensemble_train.log 2>&1
+
+# v3 feature ablation (run after --from-cache completes):
+python -m podml.train_ensemble --ablation > ~/ensemble_ablation.log 2>&1
+
+# v2 feature ablation on 06 cache (can run independently now):
+python -m podml.train_motion --v2-ablation
+```
+
+Key outputs in `outputs/ensemble/`:
+
+| File | What it shows |
+|---|---|
+| `metrics_overall.csv` | CRPSS + coverage per horizon (the skill-vs-horizon curve) |
+| `pit_histogram.csv` | PIT calibration check by horizon (uniform = honest bands) |
+| `coverage.csv` | Empirical 10–90 and 25–75 coverage vs 80% / 50% targets |
+| `cell_weights.json` | Per-cell trust weights (baked into device lookup) |
+| `importance.csv` | Feature gain per model head |
+| `v3_ablation.csv` | Per-feature ΔCRPSS + 95% CI + KEEP/CUT |
+| `v3_conditional.csv` | Feature skill on fast-front and moisture-advection subsets |
