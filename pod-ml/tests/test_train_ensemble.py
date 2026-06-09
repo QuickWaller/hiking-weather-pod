@@ -5,8 +5,8 @@ import pandas as pd
 import pytest
 
 from podml.train_ensemble import (
-    ENSEMBLE_HORIZONS, MODEL_NAMES,
-    coverage, crps_from_quantiles, crpss, pit_histogram, to_long_format,
+    ENSEMBLE_FEATURES, ENSEMBLE_HORIZONS, MODEL_NAMES,
+    coverage, crps_from_quantiles, crpss, expand_split_long, pit_histogram, to_long_format,
 )
 
 
@@ -66,6 +66,59 @@ def test_long_format_missing_column_raises():
     y_bad = y.drop(columns=["amount_h5"])
     with pytest.raises(ValueError, match="amount_h5"):
         to_long_format(X, y_bad, meta)
+
+
+# ─────────────────────────────────────────────── expand_split_long ──────────────────────────────
+
+def _toy_wide_full(n: int = 60) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Wide (X, y, meta) carrying every ENSEMBLE feature column and two years, for split tests."""
+    rng = np.random.default_rng(2)
+    feat_cols = [f for f in ENSEMBLE_FEATURES if f != "horizon_h"]
+    X = pd.DataFrame({c: rng.normal(size=n).astype("float32") for c in feat_cols})
+    labels = {f"amount_h{h}": rng.exponential(1.0, n).astype("float32") for h in ENSEMBLE_HORIZONS}
+    labels["amount_h24"][-4:] = np.nan  # future extends past GPM for a few endpoints
+    y = pd.DataFrame(labels)
+    meta = pd.DataFrame({
+        "cell": [f"c{i % 5}" for i in range(n)],
+        "month": (np.arange(n) % 12) + 1,
+        "year": np.where(np.arange(n) < 40, 2016, 2023),  # 40 train, 20 val
+    })
+    return X, y, meta
+
+
+def test_expand_split_selects_only_the_split():
+    """Only the masked endpoints are expanded — by row count vs to_long_format on that split."""
+    X, y, meta = _toy_wide_full()
+    ep = meta["year"].to_numpy() == 2016
+    X_l, y_l, m_l = expand_split_long(X, y, meta, ep, ENSEMBLE_FEATURES)
+    ref_X, _, _ = to_long_format(X[ep].reset_index(drop=True),
+                                 y[ep].reset_index(drop=True),
+                                 meta[ep].reset_index(drop=True))
+    assert len(X_l) == len(ref_X)
+    assert set(m_l["year"].unique()) == {2016}
+
+
+def test_expand_split_columns_match_feats_exactly():
+    """The no-copy contract: expanded columns equal the requested feats (so X[feats] is a no-op)."""
+    X, y, meta = _toy_wide_full()
+    ep = meta["year"].to_numpy() == 2016
+    X_full, _, _ = expand_split_long(X, y, meta, ep, ENSEMBLE_FEATURES)
+    assert list(X_full.columns) == list(ENSEMBLE_FEATURES)
+    drop_feats = [f for f in ENSEMBLE_FEATURES if f != "rh"]
+    X_drop, _, _ = expand_split_long(X, y, meta, ep, drop_feats)
+    assert list(X_drop.columns) == drop_feats
+
+
+def test_expand_split_drop_one_stays_row_aligned():
+    """Dropping a feature must not change the row set/order — labels identical to the full set."""
+    X, y, meta = _toy_wide_full()
+    ep = meta["year"].to_numpy() == 2016
+    _, y_full, _ = expand_split_long(X, y, meta, ep, ENSEMBLE_FEATURES)
+    X_drop, y_drop, _ = expand_split_long(X, y, meta, ep, [f for f in ENSEMBLE_FEATURES if f != "rh"])
+    assert len(y_full) == len(y_drop)
+    assert np.array_equal(y_full.to_numpy(), y_drop.to_numpy())
+    assert np.array_equal(X_drop["horizon_h"].to_numpy(),
+                          expand_split_long(X, y, meta, ep, ENSEMBLE_FEATURES)[0]["horizon_h"].to_numpy())
 
 
 # ─────────────────────────────────────────────── crps_from_quantiles ────────────────────────────

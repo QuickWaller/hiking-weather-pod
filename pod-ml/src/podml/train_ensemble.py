@@ -262,6 +262,35 @@ def to_long_format(
     return X_long, y_long, meta_long
 
 
+def expand_split_long(
+    X: pd.DataFrame,
+    y: pd.DataFrame,
+    meta: pd.DataFrame,
+    ep_mask: np.ndarray,
+    feats: list[str],
+) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
+    """Long-format expansion of ONE endpoint split, carrying only `feats` (minus horizon_h).
+
+    The memory-safe path. Building the global long frame and then boolean-masking it holds the full
+    ~5 GB endpoint×horizon matrix AND a multi-GB masked copy simultaneously — that is the OOM. Here
+    we slice the small endpoint-level (wide) frame first and expand only that split, so peak RAM is
+    one split's long matrix, never the global one.
+
+    Two invariants this relies on:
+      - The expanded X carries exactly `feats` (to_long_format appends horizon_h, which is last in
+        ENSEMBLE_FEATURES), so the downstream ``X[feats]`` inside fit_ensemble is a no-op view — no
+        extra copy on each of the five head fits.
+      - The dropped rows (NaN amount) depend only on `y`, never on which feature columns are present.
+        So the row set and order are identical for any `feats` on the same `ep_mask`: drop-one
+        ablations stay aligned with labels expanded from the full set.
+    """
+    cols = [f for f in feats if f != "horizon_h" and f in X.columns]
+    Xs = X.loc[ep_mask, cols].reset_index(drop=True)
+    ys = y.loc[ep_mask].reset_index(drop=True)
+    ms = meta.loc[ep_mask].reset_index(drop=True)
+    return to_long_format(Xs, ys, ms)
+
+
 # ─────────────────────────────────────────────── metrics ────────────────────────────────────────
 
 def crps_from_quantiles(y_true: np.ndarray, preds: dict[str, np.ndarray]) -> np.ndarray:
@@ -335,16 +364,21 @@ def fit_ensemble(
         verbose=-1, random_state=seed,
     )
     callbacks = [lgb.early_stopping(100, verbose=False), lgb.log_evaluation(500)]
+    # Select the feature columns ONCE (not per-head). When the caller already passes exactly `feats`
+    # — which the per-split expansion does — this is a no-op view, avoiding a multi-GB copy on each of
+    # the five fits. That repeated copy is what tips a RAM-tight box into OOM.
+    Xtr_f = X_tr if list(X_tr.columns) == list(feats) else X_tr[feats]
+    Xval_f = X_val if list(X_val.columns) == list(feats) else X_val[feats]
     models: dict[str, LGBMRegressor] = {}
     print("  fitting mean (Tweedie)…", flush=True)
     models["mean"] = LGBMRegressor(
         objective="tweedie", tweedie_variance_power=1.5, **lgb_common
-    ).fit(X_tr[feats], y_tr, eval_set=[(X_val[feats], y_val)], callbacks=callbacks)
+    ).fit(Xtr_f, y_tr, eval_set=[(Xval_f, y_val)], callbacks=callbacks)
     for alpha, name in zip(QUANTILE_LEVELS, MODEL_NAMES[1:]):
         print(f"  fitting {name} (α={alpha})…", flush=True)
         models[name] = LGBMRegressor(
             objective="quantile", alpha=alpha, **lgb_common
-        ).fit(X_tr[feats], y_tr, eval_set=[(X_val[feats], y_val)], callbacks=callbacks)
+        ).fit(Xtr_f, y_tr, eval_set=[(Xval_f, y_val)], callbacks=callbacks)
     return models
 
 
@@ -490,43 +524,52 @@ def train_ensemble(
 
     print(f"train_ensemble: X={X.shape}, cells={meta['cell'].nunique()}", flush=True)
 
-    X_long, y_amount, meta_long = to_long_format(X, y, meta)
-    del X, y, meta
-    gc.collect()  # free raw cache before fitting (~375 MB)
-    years = meta_long["year"].to_numpy()
-    train_mask = np.isin(years, list(TRAIN_YEARS)) & y_amount.notna().to_numpy()
-    val_mask   = (years == VAL_YEAR)  & y_amount.notna().to_numpy()
-    test_mask  = (years == TEST_YEAR) & y_amount.notna().to_numpy()
-
-    print(f"  long rows: {len(X_long):,} | train={train_mask.sum():,} "
-          f"val={val_mask.sum():,} test={test_mask.sum():,}", flush=True)
-
-    # Restrict ENSEMBLE_FEATURES to columns actually present (v3 features absent from old caches)
-    avail_feats = [f for f in ENSEMBLE_FEATURES if f in X_long.columns]
+    # Features present in this cache (v3 features absent from old caches). horizon_h is appended by
+    # the long expansion, so it is always available.
+    avail_feats = [f for f in ENSEMBLE_FEATURES if f == "horizon_h" or f in X.columns]
     if len(avail_feats) < len(ENSEMBLE_FEATURES):
         missing = set(ENSEMBLE_FEATURES) - set(avail_feats)
         print(f"  WARNING: {len(missing)} features absent from cache (rebuild for v3): {missing}",
               flush=True)
 
-    # 1. Train (val set used for early stopping only — not for weight fitting)
-    y_tr = y_amount[train_mask].to_numpy()
-    y_vl = y_amount[val_mask].to_numpy()
-    models = fit_ensemble(X_long[train_mask], y_tr,
-                          X_long[val_mask], y_vl,
-                          avail_feats, seed=seed)
+    # Expand to long PER SPLIT so the global ~5 GB endpoint×horizon frame is never materialised —
+    # peak RAM is one split's matrix, not the global one plus a boolean-masked copy. The expanded X
+    # carries exactly avail_feats so fit_ensemble's column-select is a no-op (no extra copy).
+    years_ep = meta["year"].to_numpy()
+    tr_ep = np.isin(years_ep, list(TRAIN_YEARS))
+    vl_ep = years_ep == VAL_YEAR
+    te_ep = years_ep == TEST_YEAR
 
-    # 2. Climatology distribution + per-cell trust weights (fitted on validation only)
-    clim_table, global_stats = build_clim_distribution(y_amount, meta_long, train_mask)
-    weights = fit_cell_weights(models, X_long[val_mask], y_vl,
-                               meta_long[val_mask], clim_table, global_stats, avail_feats)
+    X_tr, y_tr_s, meta_tr = expand_split_long(X, y, meta, tr_ep, avail_feats)
+    X_vl, y_vl_s, meta_vl = expand_split_long(X, y, meta, vl_ep, avail_feats)
+    X_te, y_te_s, meta_te = expand_split_long(X, y, meta, te_ep, avail_feats)
+    del X, y, meta
+    gc.collect()
+
+    y_tr, y_vl, y_te = y_tr_s.to_numpy(), y_vl_s.to_numpy(), y_te_s.to_numpy()
+    print(f"  long rows: train={len(X_tr):,} val={len(X_vl):,} test={len(X_te):,}", flush=True)
+
+    # Climatology distribution (needs only train labels + meta). Build it BEFORE fitting so the
+    # train-split meta can be released — that keeps the train matrix the sole memory peak.
+    clim_table, global_stats = build_clim_distribution(
+        y_tr_s, meta_tr, np.ones(len(y_tr_s), dtype=bool))
+    del meta_tr, y_tr_s
+    gc.collect()
+
+    # 1. Train (val set used for early stopping only — not for weight fitting)
+    models = fit_ensemble(X_tr, y_tr, X_vl, y_vl, avail_feats, seed=seed)
+    del X_tr
+    gc.collect()  # the train matrix is the memory peak — release it before evaluation
+
+    # 2. Per-cell trust weights (fitted on validation only)
+    weights = fit_cell_weights(models, X_vl, y_vl,
+                               meta_vl, clim_table, global_stats, avail_feats)
     print(f"  cell weights: {len(weights)} cells, mean w={np.mean(list(weights.values())):.3f}",
           flush=True)
 
     # 3. Test evaluation (2024 held-out)
-    preds_te   = predict(models, X_long[test_mask], avail_feats)
-    blended_te = blend(preds_te, clim_table, global_stats, weights, meta_long[test_mask])
-    y_te       = y_amount[test_mask].to_numpy()
-    meta_te    = meta_long[test_mask]
+    preds_te   = predict(models, X_te, avail_feats)
+    blended_te = blend(preds_te, clim_table, global_stats, weights, meta_te)
 
     crps_te = crps_from_quantiles(y_te, blended_te)
 
@@ -646,30 +689,29 @@ def ensemble_feature_ablation(
         y = y[mask].reset_index(drop=True)
         meta = meta[mask].reset_index(drop=True)
 
-    X_long, y_amount, meta_long = to_long_format(X, y, meta)
-    del X, y, meta
-    gc.collect()  # free raw cache before fitting
-    years = meta_long["year"].to_numpy()
-    train_mask = np.isin(years, list(TRAIN_YEARS)) & y_amount.notna().to_numpy()
-    val_mask   = (years == VAL_YEAR) & y_amount.notna().to_numpy()
-
-    y_tr = y_amount[train_mask].to_numpy()
-    y_vl = y_amount[val_mask].to_numpy()
-    meta_vl = meta_long[val_mask]
-
-    # Only ablate features that are actually in the cache
-    full_feats = [f for f in ENSEMBLE_FEATURES if f in X_long.columns]
-    ablate = [f for f in V3_ABLATION_FEATURES if f in X_long.columns]
+    # Only ablate features that are actually in the cache. horizon_h is appended by the long
+    # expansion, so it is always available.
+    full_feats = [f for f in ENSEMBLE_FEATURES if f == "horizon_h" or f in X.columns]
+    ablate = [f for f in V3_ABLATION_FEATURES if f in X.columns]
     if not ablate:
         print("No v3 ablation features found in cache — rebuild with --build-cache first.",
               flush=True)
         return {}
 
-    print(f"ensemble_feature_ablation: {len(ablate)} features to ablate, "
-          f"train={train_mask.sum():,} val={val_mask.sum():,}", flush=True)
+    # Keep the small endpoint-level (wide) frame resident and expand to long PER FIT, so the global
+    # ~5 GB long frame is never built. The val split is expanded once with all features and held —
+    # it is small and serves the full model, the weights, the climatology, and the conditional event
+    # subsets. Each train fit re-expands its own columns so only one multi-GB train matrix is ever
+    # resident at a time (re-expansion is cheap relative to fitting five heads).
+    years_ep = meta["year"].to_numpy()
+    tr_ep = np.isin(years_ep, list(TRAIN_YEARS))
+    vl_ep = years_ep == VAL_YEAR
 
-    clim_table, global_stats = build_clim_distribution(y_amount, meta_long, train_mask)
-    clim_mean_vl = _clim_preds(clim_table, global_stats, meta_vl)["mean"]
+    X_vl_full, y_vl_s, meta_vl = expand_split_long(X, y, meta, vl_ep, full_feats)
+    y_vl = y_vl_s.to_numpy()
+
+    print(f"ensemble_feature_ablation: {len(ablate)} features to ablate, val={len(y_vl):,}",
+          flush=True)
 
     rng = np.random.default_rng(seed + 1)
 
@@ -693,12 +735,21 @@ def ensemble_feature_ablation(
             return np.nan, np.nan, np.nan
         return float(np.mean(boots)), *np.percentile(boots, [2.5, 97.5])
 
-    # --- Train full model once ---
+    # --- Train full model once (train split expanded with all features, then released) ---
     print("Training FULL model…", flush=True)
-    models_full = fit_ensemble(X_long[train_mask], y_tr, X_long[val_mask], y_vl, full_feats, seed)
-    weights_full = fit_cell_weights(models_full, X_long[val_mask], y_vl,
+    X_tr_full, y_tr_s, meta_tr = expand_split_long(X, y, meta, tr_ep, full_feats)
+    y_tr = y_tr_s.to_numpy()
+    clim_table, global_stats = build_clim_distribution(
+        y_tr_s, meta_tr, np.ones(len(y_tr_s), dtype=bool))
+    clim_mean_vl = _clim_preds(clim_table, global_stats, meta_vl)["mean"]
+    del meta_tr, y_tr_s
+    gc.collect()  # train-split meta no longer needed once climatology is built
+    models_full = fit_ensemble(X_tr_full, y_tr, X_vl_full, y_vl, full_feats, seed)
+    del X_tr_full
+    gc.collect()  # release the train matrix before the per-drop re-expansions
+    weights_full = fit_cell_weights(models_full, X_vl_full, y_vl,
                                     meta_vl, clim_table, global_stats, full_feats)
-    preds_full = predict(models_full, X_long[val_mask], full_feats)
+    preds_full = predict(models_full, X_vl_full, full_feats)
     blended_full = blend(preds_full, clim_table, global_stats, weights_full, meta_vl)
     crps_full = crps_from_quantiles(y_vl, blended_full)
     crpss_full_overall = crpss(crps_full, y_vl, clim_mean_vl)
@@ -714,12 +765,17 @@ def ensemble_feature_ablation(
     for feat in ablate:
         drop_feats = [f for f in full_feats if f != feat]
         print(f"  drop {feat} → training…", flush=True)
-        models_drop = fit_ensemble(X_long[train_mask], y_tr, X_long[val_mask], y_vl,
-                                   drop_feats, seed)
-        preds_drop = predict(models_drop, X_long[val_mask], drop_feats)
+        X_tr_d = expand_split_long(X, y, meta, tr_ep, drop_feats)[0]  # [0]: drop unused y/meta now
+        X_vl_d = expand_split_long(X, y, meta, vl_ep, drop_feats)[0]
+        models_drop = fit_ensemble(X_tr_d, y_tr, X_vl_d, y_vl, drop_feats, seed)
+        del X_tr_d
+        gc.collect()
+        preds_drop = predict(models_drop, X_vl_d, drop_feats)
         blended_drop = blend(preds_drop, clim_table, global_stats, weights_full, meta_vl)
         crps_drop = crps_from_quantiles(y_vl, blended_drop)
         saved_crps_drop[feat] = crps_drop
+        del X_vl_d, models_drop, preds_drop, blended_drop
+        gc.collect()
 
         # delta = crps_drop - crps_full (positive means full is better, i.e. feature helps)
         mean_d, lo, hi = _bootstrap_delta(crps_drop, crps_full, meta_vl)
@@ -753,10 +809,16 @@ def ensemble_feature_ablation(
             continue
         drop_feats = [f for f in full_feats if f not in group_present]
         print(f"  drop {group_name} {group_present} → training…", flush=True)
-        models_gd = fit_ensemble(X_long[train_mask], y_tr, X_long[val_mask], y_vl, drop_feats, seed)
-        preds_gd = predict(models_gd, X_long[val_mask], drop_feats)
+        X_tr_g = expand_split_long(X, y, meta, tr_ep, drop_feats)[0]  # [0]: drop unused y/meta now
+        X_vl_g = expand_split_long(X, y, meta, vl_ep, drop_feats)[0]
+        models_gd = fit_ensemble(X_tr_g, y_tr, X_vl_g, y_vl, drop_feats, seed)
+        del X_tr_g
+        gc.collect()
+        preds_gd = predict(models_gd, X_vl_g, drop_feats)
         blended_gd = blend(preds_gd, clim_table, global_stats, weights_full, meta_vl)
         crps_gd = crps_from_quantiles(y_vl, blended_gd)
+        del X_vl_g, models_gd, preds_gd, blended_gd
+        gc.collect()
         mean_d, lo, hi = _bootstrap_delta(crps_gd, crps_full, meta_vl)
         rows.append({
             "feature": group_name,
@@ -772,33 +834,34 @@ def ensemble_feature_ablation(
         print(f"  {group_name}: Δ CRPSS={mean_d:.3f} [{lo:.3f}, {hi:.3f}]  (informational)",
               flush=True)
 
-    # --- Conditional analysis on event subsets ---
-    sp3 = X_long["sp_rate_3h"].to_numpy()
+    # --- Conditional analysis on event subsets (val rows; X_vl_full is the full-feature val frame,
+    # so subset masks are computed directly on it and align with the val-length saved CRPS arrays). ---
+    sp3 = X_vl_full["sp_rate_3h"].to_numpy()
 
     # Fast fronts: rapid pressure drop at the endpoint (sp_rate_3h < -1.5 hPa/hr)
-    fast_val = val_mask & (sp3 < -1.5)
-    if fast_val.sum() >= 200:
-        y_ff = y_amount[fast_val].to_numpy()
-        m_ff = meta_long[fast_val]
+    fast = sp3 < -1.5
+    if fast.sum() >= 200:
+        y_ff = y_vl[fast]
+        m_ff = meta_vl[fast]
         clim_ff = _clim_preds(clim_table, global_stats, m_ff)["mean"]
-        p_ff = predict(models_full, X_long[fast_val], full_feats)
+        p_ff = predict(models_full, X_vl_full[fast], full_feats)
         b_ff = blend(p_ff, clim_table, global_stats, weights_full, m_ff)
         cs_ff = crps_from_quantiles(y_ff, b_ff)
         cond_rows.append({
             "condition": "fast_front (sp_rate_3h < -1.5 hPa/hr)",
             "feature": "full_model",
-            "n": int(fast_val.sum()),
+            "n": int(fast.sum()),
             "crpss": crpss(cs_ff, y_ff, clim_ff),
         })
         for feat in ["sp_accel_nested", "sp_accel_disjoint"]:
             if feat not in saved_crps_drop:
                 continue
-            crps_d_ff = saved_crps_drop[feat][fast_val[val_mask]]
+            crps_d_ff = saved_crps_drop[feat][fast]
             mean_d, lo, hi = _bootstrap_delta(crps_d_ff, cs_ff, m_ff)
             cond_rows.append({
                 "condition": "fast_front (sp_rate_3h < -1.5 hPa/hr)",
                 "feature": f"drop_{feat}",
-                "n": int(fast_val.sum()),
+                "n": int(fast.sum()),
                 "crpss": crpss(crps_d_ff, y_ff, clim_ff),
                 "delta_vs_full_mean": mean_d,
                 "delta_vs_full_lo": float(lo),
@@ -806,29 +869,29 @@ def ensemble_feature_ablation(
             })
 
     # Moisture advection: Td rising, high moisture (td_trend_6h > 0.5 °C/hr)
-    if "td_trend_6h" in X_long.columns:
-        td6 = X_long["td_trend_6h"].to_numpy()
-        moist_val = val_mask & (td6 > 0.5)
-        if moist_val.sum() >= 200:
-            y_mv = y_amount[moist_val].to_numpy()
-            m_mv = meta_long[moist_val]
+    if "td_trend_6h" in X_vl_full.columns:
+        td6 = X_vl_full["td_trend_6h"].to_numpy()
+        moist = td6 > 0.5
+        if moist.sum() >= 200:
+            y_mv = y_vl[moist]
+            m_mv = meta_vl[moist]
             clim_mv = _clim_preds(clim_table, global_stats, m_mv)["mean"]
-            p_mv = predict(models_full, X_long[moist_val], full_feats)
+            p_mv = predict(models_full, X_vl_full[moist], full_feats)
             b_mv = blend(p_mv, clim_table, global_stats, weights_full, m_mv)
             cs_mv = crps_from_quantiles(y_mv, b_mv)
             cond_rows.append({
                 "condition": "moisture_advection (td_trend_6h > 0.5 °C/hr)",
                 "feature": "full_model",
-                "n": int(moist_val.sum()),
+                "n": int(moist.sum()),
                 "crpss": crpss(cs_mv, y_mv, clim_mv),
             })
             if "td_trend_6h" in saved_crps_drop:
-                crps_d_mv = saved_crps_drop["td_trend_6h"][moist_val[val_mask]]
+                crps_d_mv = saved_crps_drop["td_trend_6h"][moist]
                 mean_d, lo, hi = _bootstrap_delta(crps_d_mv, cs_mv, m_mv)
                 cond_rows.append({
                     "condition": "moisture_advection (td_trend_6h > 0.5 °C/hr)",
                     "feature": "drop_td_trend_6h",
-                    "n": int(moist_val.sum()),
+                    "n": int(moist.sum()),
                     "crpss": crpss(crps_d_mv, y_mv, clim_mv),
                     "delta_vs_full_mean": mean_d,
                     "delta_vs_full_lo": float(lo),
