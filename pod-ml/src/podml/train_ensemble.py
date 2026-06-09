@@ -331,9 +331,11 @@ def fit_ensemble(
         verbose=-1, random_state=seed,
     )
     callbacks = [lgb.early_stopping(100, verbose=False), lgb.log_evaluation(500)]
-    # Select the model feature columns once (shared across all five heads).
-    Xtr_f = X_tr[feats]
-    Xval_f = X_val[feats]
+    # Select the model feature columns once (shared across all five heads). When the caller already
+    # passes exactly `feats` (the train path does), this is a no-op — avoiding a full copy of the
+    # multi-GB train matrix on top of the original. Ablation passes a subset, so it does copy.
+    Xtr_f = X_tr if list(X_tr.columns) == list(feats) else X_tr[feats]
+    Xval_f = X_val if list(X_val.columns) == list(feats) else X_val[feats]
     models: dict[str, LGBMRegressor] = {}
     print("  fitting mean (Tweedie)…", flush=True)
     models["mean"] = LGBMRegressor(
@@ -498,9 +500,10 @@ def train_ensemble(
               flush=True)
 
     # Expand to long (one row per endpoint × horizon, horizon_h as a feature), then split by year.
-    # Only cell/month/year are read off meta downstream (the split + per-cell climatology), so the
-    # other meta columns aren't carried into the 38M-row frame.
-    X_long, y_long, meta_long = to_long_format(X, y, meta[["cell", "month", "year"]])
+    # Carry only the model-feature columns (so the fit's X[feats] is a no-op, not a 3.5 GB copy of
+    # the 38M-row matrix) and only the meta columns read downstream (cell/month/year → split + clim).
+    X_long, y_long, meta_long = to_long_format(
+        X[[f for f in avail_feats if f != "horizon_h"]], y, meta[["cell", "month", "year"]])
     del X, y, meta
     years = meta_long["year"].to_numpy()
     tr, vl, te = np.isin(years, list(TRAIN_YEARS)), years == VAL_YEAR, years == TEST_YEAR
@@ -656,9 +659,10 @@ def ensemble_feature_ablation(
 
     # Expand once and split by year. Every fit below selects its own feature columns from these
     # frames, so the full model and all drop-one variants share identical rows (only the feature set
-    # differs) — that keeps the drop-one deltas aligned with the full-model labels. Only cell/month/
-    # year are read off meta downstream, so the rest isn't carried into the long frame.
-    X_long, y_long, meta_long = to_long_format(X, y, meta[["cell", "month", "year"]])
+    # differs) — that keeps the drop-one deltas aligned with the full-model labels. Carry only the
+    # ablatable feature set (so the full-model fit's X[feats] is a no-op) and only cell/month/year.
+    X_long, y_long, meta_long = to_long_format(
+        X[[f for f in full_feats if f != "horizon_h"]], y, meta[["cell", "month", "year"]])
     del X, y, meta
     years = meta_long["year"].to_numpy()
     tr, vl = np.isin(years, list(TRAIN_YEARS)), years == VAL_YEAR
