@@ -8,9 +8,9 @@
 > decisions and results land.
 >
 > **What's built (2026-06-09):** `FEATURE_VECTOR_VERSION 3` is in `features.py` and passing 204 tests. The 07
-> cache is building on the VM (2861 cells, 2014–2024, k=4, ~1.5 M rows). The model trainer
-> (`train_ensemble.py`) is written and ready. Run sequence once the cache finishes: `--from-cache` then
-> `--ablation`.
+> cache is building on the VM (2861 cells, 2014–2024, k=4, ~1.5 M rows, 8/11 years done). The model trainer
+> (`train_ensemble.py`) is written and ready. v2 ablation is done — see §v2 for results and correct framing.
+> Run sequence once cache finishes: `--from-cache` then `--ablation`.
 
 ## 1. Why change anything
 
@@ -88,6 +88,25 @@ pod-sensible (AHT10 T+RH → invert on-device). Belongs in the pod-replicable ve
 
 Both are guarded by golden-vector tests and a round-trip check (`rh_from_t_td(T, T − dewpoint_dep) ≈ RH`).
 
+**v2 ablation results (06 binary cache — `outputs/motion/v2_ablation.csv`, n=12 rows):**
+
+| Pair | Δ cyclic_hour | Δ dewpoint_dep | Notes |
+|---|---|---|---|
+| ge0.5_h6 | +0.0006 | +0.0005 | all CIs overlap |
+| ge2.5_h12 | +0.0012 | +0.0008 | all CIs overlap |
+| **ge7.6_h6** | −0.0012 | **−0.0024** | yellow flag — niche where dewpoint should help most |
+| ge0.5_h24 | +0.0003 | +0.0004 | all CIs overlap |
+
+**Verdict (correct framing):** Both features are **neutral on the 06 binary model, provisional keep.**
+- `cyclic_hour` — keep. No regression anywhere; strictly more correct encoding (no phantom 23→0 ordinal gap)
+  at negligible pod cost. The ablation's job was only to confirm no regression — it didn't.
+- `dewpoint_dep` — **neutral, provisional.** All CIs overlap the baseline. The ge7.6_h6 delta is the yellow
+  flag: that is the one case (heavy rain, short horizon) where a moisture-deficit level should theoretically
+  help, and it trended the wrong way. Under "judge conditionally on niche cases" that's a flag, not clearance.
+  The 06 arena was always a weak test — the level feature without its trend (td_trend_6h) is under-powered.
+  The real verdict is the v3 ablation, which tests dewpoint_dep's marginal contribution *given td_trend_6h is
+  already in the model* (the correct joint test; see v3 ablation plan below).
+
 ### v3 feature additions — ✅ BUILT, cache building (`FEATURE_VECTOR_VERSION 3`)
 
 Cannot be backfilled from the 06 endpoint-only cache — they need the raw signal history at the endpoint, which
@@ -103,9 +122,26 @@ the 07 build preserves. Each is a hypothesis; all land in the raw 07 cache and t
 | `month_sin/cos` | `sin/cos(2π·month/12)` | Replaces raw `month` — removes the Dec→Jan discontinuity | Permanent encoding win |
 
 **Ablation plan:** train full model once, then drop one feature at a time; bootstrap CI (200 iterations,
-resample cells) on ΔCRPSS. Judge conditionally — `sp_accel` on fast-front events (`sp_rate_3h < −1.5 hPa/hr`),
-`td_trend_6h` on moisture-advection events (`td_trend_6h > 0.5 °C/hr`). A feature that's flat on average can
-still earn its keep in the niche it was designed for.
+resample cells) on ΔCRPSS. Also drop the moisture group `{dewpoint_dep, td_trend_3h, td_trend_6h}` jointly to
+separate within-group collinearity from total group contribution.
+
+**Pre-stated keep criteria (fixed before the ablation runs — not post-hoc):**
+
+| Feature | Keep if… | Notes |
+|---|---|---|
+| `sp_accel_nested` | CI clears baseline OR fast-front conditional positive | if both sp_accel flat: keep nested only (derivable from cache, zero pod cost) |
+| `sp_accel_disjoint` | CI clears baseline OR fast-front conditional positive | same second path as nested |
+| `td_trend_6h` | CI clears baseline OR moisture-advection conditional positive | primary moisture hypothesis |
+| `td_trend_3h` | CI clears baseline only | redundant shorter window — no conditional path |
+| `t2m_trend_6h` | CI clears baseline only | weakest prior — cut on flat |
+| `dewpoint_dep` | CI clears on drop-one from full model | tests marginal level given td_trend_6h already present — the correct joint test v2 couldn't do |
+| `moisture_group` | — (informational) | total group drop shows collinearity impact |
+
+The drop-one for `dewpoint_dep` now tests the right question: does the *level* help given the *slope* is
+already in the model? The v2 flat result was expected — the 06 binary model had no slope to condition on.
+
+A feature that's flat on average can still earn its keep in the niche it was designed for — but the niche
+criterion is stated above, not decided after seeing the result.
 
 Backward compat: `sp_accel_nested` and `month_sin/cos` are backfillable from the 06 cache (derivable from
 cached columns). The signal-history features (`sp_accel_disjoint`, `td_trend_*`, `t2m_trend_6h`) require the
@@ -310,5 +346,5 @@ Key outputs in `outputs/ensemble/`:
 | `coverage.csv` | Empirical 10–90 and 25–75 coverage vs 80% / 50% targets |
 | `cell_weights.json` | Per-cell trust weights (baked into device lookup) |
 | `importance.csv` | Feature gain per model head |
-| `v3_ablation.csv` | Per-feature ΔCRPSS + 95% CI + KEEP/CUT |
+| `v3_ablation.csv` | Per-feature ΔCRPSS + 95% CI + `ci_survives` + `has_conditional_path` + `verdict`; moisture_group row is informational |
 | `v3_conditional.csv` | Feature skill on fast-front and moisture-advection subsets |
