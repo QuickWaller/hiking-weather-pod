@@ -7,10 +7,11 @@
 > **hypothesis** to validate with bootstrap-CI ablations (the same bar as 06's A–D scorecard). Updated as
 > decisions and results land.
 >
-> **What's built (2026-06-09):** `FEATURE_VECTOR_VERSION 3` is in `features.py` and passing 204 tests. The 07
-> cache is building on the VM (2861 cells, 2014–2024, k=4, ~1.5 M rows, 8/11 years done). The model trainer
-> (`train_ensemble.py`) is written and ready. v2 ablation is done — see §v2 for results and correct framing.
-> Run sequence once cache finishes: `--from-cache` then `--ablation`.
+> **What's built (2026-06-09):** `FEATURE_VECTOR_VERSION 3` is in `features.py` and passing 207 tests. The 07
+> cache is **complete** on the VM (2861 cells, 2014–2024, k=4 → 1,510,608 endpoints, expanding to ~30.9 M train
+> / 3.4 M val / 3.4 M test long-format rows). The trainer (`train_ensemble.py`) reshapes wide→long in one
+> float32 pass (only the model-feature + cell/month/year columns) and is **running** (`--from-cache`); v3
+> `--ablation` is next. v2 ablation is done — see §v2 for results and correct framing.
 
 ## 1. Why change anything
 
@@ -298,10 +299,11 @@ The parity discipline from `features.py` ("the SPEC the C++ must reproduce bit-f
 | Multi-year test set | ✅ better evaluation (tighter heavy CIs) | Revisit after 2025 data lands |
 
 **Current trainer hyperparameters** (in `fit_ensemble`):
-- `n_estimators=3000, learning_rate=0.02, num_leaves=127` — capacity matched to ~1.5 M long-format rows
+- `n_estimators=3000, learning_rate=0.02, num_leaves=127` — capacity matched to ~31 M long-format train rows
+  (1.24 M train endpoints × 25 horizons)
 - `min_child_samples=50` — prevents leaf-level overfit on the sparse heavy-rain tail
 - `reg_lambda=0.5` — L2 regularisation; keeps quantile heads from crossing under extrapolation
-- Early stopping patience=100 on the 2023 val set (one year, ~25% of long rows)
+- Early stopping patience=100 on the 2023 val set (one year, ~3.4 M long rows)
 - Tweedie power=1.5 (compound Poisson-gamma midpoint for NZ hourly rain amounts)
 
 **Data-quality note:** GPM IMERG before the core satellite era (Feb 2014) uses a sparser TRMM-era constellation.
@@ -324,7 +326,7 @@ and event count) but check heavy base rates pre/post-2014 per region before trus
 ## 9. Run sequence
 
 ```bash
-# Build the 07 dataset (already running on VM):
+# Build the 07 dataset (complete on VM — 1,510,608 endpoints, 2861 cells):
 python -m podml.train_ensemble --build-cache --all-cells --k 4 --years 2014-2024
 
 # Train + evaluate (run once cache finishes):
