@@ -177,7 +177,11 @@ class ConfigValidator:
             self.errors.append("FEATURE_COLUMNS not defined")
         else:
             required_feature_types = {
-                "sp_hPa", "rh", "t2m_C", "month", "hour_utc"
+                "sp_hPa", "rh", "t2m_C",
+                "hour_sin", "hour_cos",
+                "month_sin", "month_cos",
+                "dewpoint_dep", "td_trend_6h",
+                "sp_accel_nested", "sp_accel_disjoint",
             }
             missing = required_feature_types - set(FEATURE_COLUMNS)
             if missing:

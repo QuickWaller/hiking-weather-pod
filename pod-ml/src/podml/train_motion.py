@@ -31,7 +31,7 @@ from sklearn.metrics import average_precision_score
 
 from podml.config import CONFIG_PATH, ROOT
 from podml.era5_load import era5_cache_dir
-from podml.features import FEATURE_COLUMNS, PRESSURE_TREND_HOURS, build_features_endpoint
+from podml.features import FEATURE_COLUMNS, PRESSURE_TREND_HOURS, build_features_endpoint, td_from_t_rh
 from podml.labels import HORIZONS_H, THRESHOLDS_MM_HR
 from podml.labels_gpm import load_gpm_cells_hourly
 from podml.motionsim import MotionSimParams, sample_path_backward, signals_along_path
@@ -48,7 +48,8 @@ ALL_FEATURES = list(FEATURE_COLUMNS) + STATIC_COLS
 
 # Derived features the model KEEPS (measured to help, esp. the heavy-rain tail). precip_clim + coast_dist
 # were measured to NOT help and are excluded (they still get computed into raw — we never prune raw).
-KEPT_DERIVED = ["lat", "lon", "ruggedness_m", "month_sin", "month_cos"]
+# month_sin/cos moved out of KEPT_DERIVED — now in base FEATURE_COLUMNS (v3).
+KEPT_DERIVED = ["lat", "lon", "ruggedness_m"]
 
 # What the MODEL actually trains on (curated subset of the cached superset — we never prune raw).
 # `zone` excluded (dead weight, redundant with elevation, confirmed near-zero contribution).
@@ -56,6 +57,11 @@ MODEL_FEATURES = [f for f in ALL_FEATURES if f != "zone"] + KEPT_DERIVED
 
 TRAIN_YEARS = range(2015, 2023)   # 2015–2022 (val 2023, test 2024)
 VAL_YEAR = 2023
+
+# Hourly amount labels for the distributional ensemble (0 = nowcast → 24 = 24 h ahead).
+# Every integer hour is labelled so the ensemble trains on a dense horizon grid and inference
+# can query any sub-hour without interpolation gaps.
+ENSEMBLE_AMOUNT_HORIZONS = list(range(25))  # [0, 1, 2, ..., 24]
 TEST_YEAR = 2024
 
 
@@ -155,6 +161,8 @@ def build_dataset(
                     # label: forward-window max over GPM at this cell; skip if future incomplete
                     labels = {}
                     ok = True
+
+                    # binary labels for the binary classifier models (sparse horizons)
                     for h in HORIZONS_H:
                         if h == 0:
                             fmax = precip[gp, c]
@@ -461,12 +469,21 @@ DERIVED_COLS = ["lat", "lon", "month_sin", "month_cos", "precip_clim", "coast_di
 
 def add_derived_features(X: pd.DataFrame, y: pd.DataFrame, meta: pd.DataFrame) -> None:
     """Attach the off-cache feature wins: lat/lon, cyclic month, real GPM precip-climatology
-    (per-cell+month rain frequency from train years = mean of ge0.5_h0), coast-distance, ruggedness."""
+    (per-cell+month rain frequency from train years = mean of ge0.5_h0), coast-distance, ruggedness.
+
+    Also fills in v2/v3 features for old caches that pre-date them, so ablation runs without a full
+    cache rebuild. v3 note: month_sin/cos are now base FEATURE_COLUMNS (computed by build_features_endpoint),
+    but old v1/v2 caches need them computed here from the cached raw `month` column.
+    """
     X["lat"] = meta["lat"].to_numpy()
     X["lon"] = meta["lon"].to_numpy()
-    mo = X["month"].to_numpy()
-    X["month_sin"] = np.sin(2 * np.pi * mo / 12.0)
-    X["month_cos"] = np.cos(2 * np.pi * mo / 12.0)
+
+    # v1/v2 cache backward compat: month_sin/cos now live in base FEATURE_COLUMNS (v3), but older
+    # caches have raw `month` instead — derive cyclics here if not already present.
+    if "month_sin" not in X.columns and "month" in X.columns:
+        mo = X["month"].to_numpy()
+        X["month_sin"] = np.sin(2 * np.pi * mo / 12.0)
+        X["month_cos"] = np.cos(2 * np.pi * mo / 12.0)
 
     pre = np.isin(meta["year"].to_numpy(), list(TRAIN_YEARS))
     rc = pd.DataFrame({"cell": meta["cell"].to_numpy(), "month": meta["month"].to_numpy(),
@@ -481,13 +498,45 @@ def add_derived_features(X: pd.DataFrame, y: pd.DataFrame, meta: pd.DataFrame) -
     X["coast_dist_km"] = np.where(np.isnan(cd), np.nanmean(cd), cd)
     X["ruggedness_m"] = np.where(np.isnan(rg), 0.0, rg)
 
+    # v2 backward compat: compute from v1 cached columns if not already present
+    if "hour_sin" not in X.columns and "hour_utc" in X.columns:
+        h = X["hour_utc"].to_numpy()
+        X["hour_sin"] = np.sin(2 * np.pi * h / 24.0)
+        X["hour_cos"] = np.cos(2 * np.pi * h / 24.0)
+    if "dewpoint_dep" not in X.columns:
+        X["dewpoint_dep"] = X["t2m_C"].to_numpy() - td_from_t_rh(X["t2m_C"].to_numpy(), X["rh"].to_numpy())
+
+    # v3 backward compat: sp_accel_nested is derivable from cached slopes
+    if "sp_accel_nested" not in X.columns:
+        X["sp_accel_nested"] = X["sp_rate_3h"].to_numpy() - X["sp_rate_6h"].to_numpy()
+    # sp_accel_disjoint, td_trend_3h, td_trend_6h, t2m_trend_6h require raw signal history —
+    # they cannot be backfilled from the 06 endpoint-only cache; they appear only in the 07 cache.
+
 
 def ensure_model_features(X: pd.DataFrame, y: pd.DataFrame, meta: pd.DataFrame) -> None:
-    """Attach all MODEL_FEATURES columns to a cached X (per-cell static + kept derived), idempotently."""
+    """Attach all MODEL_FEATURES columns to a cached X (per-cell static + kept derived), idempotently.
+
+    Handles v1/v2→v3 cache migration: derives missing features from cached columns where possible.
+    Features that need raw signal history (sp_accel_disjoint, td_trend_*, t2m_trend_6h) are silently
+    absent from old caches — callers must filter MODEL_FEATURES to X.columns before training.
+    """
     if "pressure_mean" not in X.columns:
         _add_per_cell_static(X, meta)
     if "lat" not in X.columns:
         add_derived_features(X, y, meta)
+    # Belt-and-suspenders for caches that pre-date add_derived_features or were partially updated
+    if "hour_sin" not in X.columns and "hour_utc" in X.columns:
+        h = X["hour_utc"].to_numpy()
+        X["hour_sin"] = np.sin(2 * np.pi * h / 24.0)
+        X["hour_cos"] = np.cos(2 * np.pi * h / 24.0)
+    if "dewpoint_dep" not in X.columns:
+        X["dewpoint_dep"] = X["t2m_C"].to_numpy() - td_from_t_rh(X["t2m_C"].to_numpy(), X["rh"].to_numpy())
+    if "sp_accel_nested" not in X.columns:
+        X["sp_accel_nested"] = X["sp_rate_3h"].to_numpy() - X["sp_rate_6h"].to_numpy()
+    if "month_sin" not in X.columns and "month" in X.columns:
+        mo = X["month"].to_numpy()
+        X["month_sin"] = np.sin(2 * np.pi * mo / 12.0)
+        X["month_cos"] = np.cos(2 * np.pi * mo / 12.0)
 
 
 def _add_per_cell_static(X: pd.DataFrame, meta: pd.DataFrame) -> None:
@@ -826,6 +875,65 @@ def weighting_experiment(cache_dir: Path = CACHE_DIR, n_cells: int = 800, seed: 
     return {"out": str(OUT)}
 
 
+def cyclic_hour_dewpoint_ablation(cache_dir: Path = CACHE_DIR, n_cells: int = 800, seed: int = 0,
+                                  n_boot: int = 200) -> dict:
+    """Measure the v2 feature gains (cyclic hour + dewpoint_dep) off the existing cache.
+
+    Three feature sets compared at pairs [(0.5,6), (2.5,12), (7.6,6), (0.5,24)]:
+      baseline  — raw hour_utc (v1 behaviour), no dewpoint_dep
+      +cyclic   — hour_sin/cos replacing hour_utc
+      +dewpoint — dewpoint_dep added on top of +cyclic (full v2)
+
+    Saved to outputs/motion/v2_ablation.csv.
+    """
+    X, y, meta = load_cache(cache_dir)
+    ensure_model_features(X, y, meta)  # backfills v2/v3 features where derivable from 06 cache
+    rng = np.random.default_rng(seed)
+    cells = meta["cell"].unique()
+    keep = set(rng.choice(cells, size=min(n_cells, len(cells)), replace=False))
+    mask = meta["cell"].isin(keep).to_numpy()
+    X, y, meta = (X[mask].reset_index(drop=True), y[mask].reset_index(drop=True),
+                  meta[mask].reset_index(drop=True))
+    years, times = meta["year"].to_numpy(), pd.to_datetime(meta["time"].values)
+
+    # v3 features that require raw signal history cannot be backfilled from the 06 endpoint cache.
+    # Restrict all feature sets to what's actually in X so old caches work without errors.
+    available = set(X.columns)
+    v2_only = {"hour_sin", "hour_cos", "dewpoint_dep"}
+    base_feats = [f for f in MODEL_FEATURES if f not in v2_only and f in available]
+    if "hour_utc" in X.columns:
+        base_feats = base_feats + ["hour_utc"]
+    cyclic_feats = [f for f in MODEL_FEATURES if f not in {"dewpoint_dep"} and f in available]
+    full_feats = [f for f in MODEL_FEATURES if f in available]
+
+    def masks(h: int, yc: pd.Series) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        emb = ~((times > pd.Timestamp(f"{max(TRAIN_YEARS)}-12-31 23:00") - pd.Timedelta(hours=h))
+                & np.isin(years, list(TRAIN_YEARS)))
+        tr = np.isin(years, list(TRAIN_YEARS)) & emb & yc.notna().to_numpy()
+        te = (years == TEST_YEAR) & yc.notna().to_numpy()
+        table, glob = _cell_month_clim(yc, meta)
+        clim = np.array([table.get(k, glob) for k in zip(meta.loc[te, "cell"], meta.loc[te, "month"])])
+        return tr, te, clim
+
+    rows = []
+    for thr, h in [(0.5, 6), (2.5, 12), (7.6, 6), (0.5, 24)]:
+        yc = y[f"ge{thr}_h{h}"]
+        tr, te, clim = masks(h, yc)
+        if tr.sum() < 200 or te.sum() < 50 or not (0 < yc[tr].mean() < 1):
+            continue
+        for label, feats in [("baseline_v1", base_feats), ("+cyclic_hour", cyclic_feats),
+                              ("+dewpoint_dep", full_feats)]:
+            bss, lo, hi = _fit_eval_bss(X, yc, tr, te, feats, clim, rng, n_boot)
+            rows.append({"threshold": thr, "horizon": h, "feature_set": label,
+                         "bss": bss, "ci_lo": lo, "ci_hi": hi, "n_feats": len(feats)})
+            print(f"  ge{thr}_h{h} [{label}]: bss={bss:.3f} [{lo:.3f},{hi:.3f}]", flush=True)
+
+    OUT.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(OUT / "v2_ablation.csv", index=False)
+    print(f"v2 ablation saved → {OUT / 'v2_ablation.csv'}", flush=True)
+    return {"out": str(OUT / "v2_ablation.csv"), "rows": len(rows)}
+
+
 def run(k_per_cell_month: int = 6, n_cells: int | None = None, seed: int = 0,
         years: list[int] | None = None) -> dict:
     cells = pd.read_csv(SAMPLED_CSV)
@@ -860,6 +968,7 @@ if __name__ == "__main__":
     ap.add_argument("--calibration", action="store_true", help="C2 probability calibration with/without")
     ap.add_argument("--weighting", action="store_true", help="C3 scale_pos_weight for the heavy class")
     ap.add_argument("--final-eval", action="store_true", help="authoritative all-cells run + atlas data")
+    ap.add_argument("--v2-ablation", action="store_true", help="measure cyclic-hour + dewpoint_dep gain (v2 features)")
     ap.add_argument("--all-cells", action="store_true", help="use every land cell (full build)")
     ap.add_argument("--k", type=int, default=6, help="endpoints per cell per month")
     ap.add_argument("--n-cells", type=int, default=None, help="limit cells (smoke test)")
@@ -890,5 +999,7 @@ if __name__ == "__main__":
         print(weighting_experiment(seed=args.seed))
     elif args.final_eval:
         print(final_eval(seed=args.seed))
+    elif args.v2_ablation:
+        print(cyclic_hour_dewpoint_ablation(n_cells=args.n_cells or 800, seed=args.seed))
     else:
         run(k_per_cell_month=args.k, n_cells=args.n_cells, seed=args.seed, years=yrs)

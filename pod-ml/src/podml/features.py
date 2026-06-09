@@ -31,13 +31,24 @@ PRESSURE_TREND_HOURS = [3, 6, 12, 24, 48, 72]
 # Shape features (range/chunk-deltas) were tested and DROPPED — no BSS or precision gain on rain or
 # wind; the slope ladder already captured the recent shape. See docs/04-results.md.
 
-# The pod-replicable feature vector (order is the contract — bump a version if it changes).
+# Bump this when FEATURE_COLUMNS order or content changes so cached builds and firmware can signal
+# their generation. v1 = original (... hour_utc); v2 = cyclic hour + dewpoint_dep;
+# v3 = sp_accel + td_trend_6h + t2m_trend_6h + cyclic month (raw month removed).
+FEATURE_VECTOR_VERSION = 3
+
+# The pod-replicable feature vector (order is the contract — bump FEATURE_VECTOR_VERSION if it changes).
 FEATURE_COLUMNS = (
-    ["sp_hPa"]                                          # absolute level (LOW trust: sensor + altitude bias)
+    ["sp_hPa"]                                           # absolute level (LOW trust: sensor + altitude bias)
     + [f"sp_rate_{h}h" for h in PRESSURE_TREND_HOURS]   # pressure tendencies, hPa/hr (HIGH trust backbone)
-    + ["rh", "rh_trend_3h",                             # humidity now + 3h trend (LOW trust: siting)
-       "t2m_C", "t2m_trend_3h",                         # temperature now + 3h trend (LOW trust: siting)
-       "month", "hour_utc"]                             # RTC: season + time of day
+    + ["sp_accel_nested",                                # sp_rate_3h − sp_rate_6h: WMO code-8 analog
+       "sp_accel_disjoint",                              # slope[last 3h] − slope[3–6h ago]: pure 2nd deriv
+       "rh", "rh_trend_3h",                              # humidity now + 3h trend (LOW trust: siting)
+       "t2m_C", "t2m_trend_3h", "t2m_trend_6h",         # temperature (LOW trust); 6h = cold-front signal
+       "dewpoint_dep",                                   # T − Td (°C): distance from saturation
+       "td_trend_3h",                                    # Td 3h trend: alongside rh_trend_3h (CI decides)
+       "td_trend_6h",                                    # Td 6h trend: diurnally-stable moisture advection
+       "month_sin", "month_cos",                         # cyclic month (replaces raw month; no 12→1 wrap)
+       "hour_sin", "hour_cos"]                           # cyclic RTC hour; replaces raw hour_utc
 )
 
 
@@ -48,6 +59,19 @@ def rh_from_t_td(t2m_k: np.ndarray, d2m_k: np.ndarray) -> np.ndarray:
     a, b = 17.625, 243.04  # Alduchov & Eskridge coefficients
     rh = 100.0 * np.exp(a * td / (b + td)) / np.exp(a * t / (b + t))
     return np.clip(rh, 0.0, 100.0)
+
+
+def td_from_t_rh(t_c: np.ndarray, rh: np.ndarray) -> np.ndarray:
+    """Dewpoint temperature (°C) from air temperature (°C) and relative humidity (%), Magnus inverse.
+
+    Inverse of rh_from_t_td: td_from_t_rh(t, rh_from_t_td(t+273.15, td+273.15)) ≈ td.
+    Pod computes this on-device from AHT10 (T, RH) to get dewpoint_dep = T − Td.
+    """
+    t = np.asarray(t_c, dtype="float64")
+    r = np.clip(np.asarray(rh, dtype="float64"), 0.001, 100.0)
+    a, b = 17.625, 243.04
+    gamma = np.log(r / 100.0) + a * t / (b + t)
+    return b * gamma / (a - gamma)
 
 
 def trailing_slope(y: np.ndarray, n: int) -> np.ndarray:
@@ -98,15 +122,32 @@ def build_features_from_signals(signals: dict[str, Any]) -> pd.DataFrame:
     sp_hpa, t2m_c, rh = signals["sp_hPa"], signals["t2m_C"], signals["rh"]
     df = pd.DataFrame(index=signals["time"])
     df.index.name = "valid_time"
+
     df["sp_hPa"] = sp_hpa
     for h in PRESSURE_TREND_HOURS:
         df[f"sp_rate_{h}h"] = trailing_slope(sp_hpa, h + 1)  # h-hour span = h+1 hourly points
+    df["sp_accel_nested"] = df["sp_rate_3h"] - df["sp_rate_6h"]
+    df["sp_accel_disjoint"] = df["sp_rate_3h"] - df["sp_rate_3h"].shift(3)  # 3h-lagged slope
+
     df["rh"] = rh
     df["rh_trend_3h"] = trailing_slope(rh, 4)
+
     df["t2m_C"] = t2m_c
     df["t2m_trend_3h"] = trailing_slope(t2m_c, 4)
-    df["month"] = df.index.month
-    df["hour_utc"] = df.index.hour
+    df["t2m_trend_6h"] = trailing_slope(t2m_c, 7)
+
+    td_c = td_from_t_rh(t2m_c, rh)  # dewpoint temperature (°C) — full series for trends
+    df["dewpoint_dep"] = t2m_c - td_c
+    df["td_trend_3h"] = trailing_slope(td_c, 4)
+    df["td_trend_6h"] = trailing_slope(td_c, 7)
+
+    month = df.index.month.astype("float64")
+    df["month_sin"] = np.sin(2 * np.pi * month / 12.0)
+    df["month_cos"] = np.cos(2 * np.pi * month / 12.0)
+    hour = df.index.hour.astype("float64")
+    df["hour_sin"] = np.sin(2 * np.pi * hour / 24.0)
+    df["hour_cos"] = np.cos(2 * np.pi * hour / 24.0)
+
     return df[FEATURE_COLUMNS]
 
 
@@ -119,14 +160,35 @@ def build_features_endpoint(signals: dict[str, Any]) -> dict[str, float]:
     sp, t, rh = signals["sp_hPa"], signals["t2m_C"], signals["rh"]
     last = pd.Timestamp(signals["time"][-1])
     out: dict[str, float] = {"sp_hPa": float(sp[-1])}
-    for h in PRESSURE_TREND_HOURS:
+
+    sp_3h_all = trailing_slope(sp, 4)  # keep full array — needed for sp_accel_disjoint
+    out["sp_rate_3h"] = float(sp_3h_all[-1])
+    for h in PRESSURE_TREND_HOURS[1:]:  # 6, 12, 24, 48, 72
         out[f"sp_rate_{h}h"] = float(trailing_slope(sp, h + 1)[-1])
+    out["sp_accel_nested"] = float(out["sp_rate_3h"] - out["sp_rate_6h"])
+    # slope 3 steps back (window ending 3h ago); IndexError-safe guard; NaN if warmup not met
+    out["sp_accel_disjoint"] = (
+        float(sp_3h_all[-1] - sp_3h_all[-4]) if len(sp_3h_all) >= 4 else float("nan")
+    )
+
     out["rh"] = float(rh[-1])
     out["rh_trend_3h"] = float(trailing_slope(rh, 4)[-1])
+
     out["t2m_C"] = float(t[-1])
     out["t2m_trend_3h"] = float(trailing_slope(t, 4)[-1])
-    out["month"] = float(last.month)
-    out["hour_utc"] = float(last.hour)
+    out["t2m_trend_6h"] = float(trailing_slope(t, 7)[-1])
+
+    td_c = td_from_t_rh(t, rh)  # full series needed for trends
+    out["dewpoint_dep"] = float(t[-1] - td_c[-1])
+    out["td_trend_3h"] = float(trailing_slope(td_c, 4)[-1])
+    out["td_trend_6h"] = float(trailing_slope(td_c, 7)[-1])
+
+    mo = float(last.month)
+    out["month_sin"] = float(np.sin(2 * np.pi * mo / 12.0))
+    out["month_cos"] = float(np.cos(2 * np.pi * mo / 12.0))
+    hr = float(last.hour)
+    out["hour_sin"] = float(np.sin(2 * np.pi * hr / 24.0))
+    out["hour_cos"] = float(np.cos(2 * np.pi * hr / 24.0))
     return out
 
 
