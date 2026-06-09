@@ -614,12 +614,26 @@ def train_ensemble(
         cov_raw_10_90 = coverage(y_h, pr["q10"], pr["q90"])
         cov_raw_25_75 = coverage(y_h, pr["q25"], pr["q75"])
 
+        # Wet-conditional coverage: filter to hours with y > 0.5 mm/hr (light rain threshold).
+        # Strips dry-hour zero-inflation from the denominator — shows calibration when it matters.
+        wet = y_h > 0.5
+        n_wet = int(wet.sum())
+        if n_wet >= 20:
+            cov_wet_10_90     = coverage(y_h[wet], pb["q10"][wet], pb["q90"][wet])
+            cov_wet_25_75     = coverage(y_h[wet], pb["q25"][wet], pb["q75"][wet])
+            cov_wet_raw_10_90 = coverage(y_h[wet], pr["q10"][wet], pr["q90"][wet])
+            cov_wet_raw_25_75 = coverage(y_h[wet], pr["q25"][wet], pr["q75"][wet])
+        else:
+            cov_wet_10_90 = cov_wet_25_75 = cov_wet_raw_10_90 = cov_wet_raw_25_75 = float("nan")
+
         overall.append({
             "horizon_h": h, "crpss": cs, "crpss_raw": cs_raw,
             "mean_crps": float(np.mean(cr_h)),
             "cov_10_90": cov_10_90, "cov_25_75": cov_25_75,
             "cov_raw_10_90": cov_raw_10_90, "cov_raw_25_75": cov_raw_25_75,
-            "n_test": int(h_mask.sum()),
+            "cov_wet_10_90": cov_wet_10_90, "cov_wet_25_75": cov_wet_25_75,
+            "cov_wet_raw_10_90": cov_wet_raw_10_90, "cov_wet_raw_25_75": cov_wet_raw_25_75,
+            "n_test": int(h_mask.sum()), "n_wet": n_wet,
         })
         pit = pit_histogram(y_h, pb)
         pit["horizon_h"] = h

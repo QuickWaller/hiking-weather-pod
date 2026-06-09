@@ -99,6 +99,49 @@ def fig_coverage(m: pd.DataFrame) -> None:
     plt.close(fig)
 
 
+def fig_coverage_wet(m: pd.DataFrame) -> None:
+    """Coverage on wet hours only (y > 0.5 mm/hr). Strips zero-inflation — shows calibration when it matters."""
+    wet_cols = ["cov_wet_10_90", "cov_wet_25_75"]
+    if not all(c in m.columns for c in wet_cols):
+        return
+    m = m.sort_values("horizon_h").dropna(subset=wet_cols)
+    if len(m) == 0:
+        return
+    has_raw = "cov_wet_raw_10_90" in m.columns
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    pairs = [
+        (axes[0], "cov_10_90", "cov_wet_10_90", "cov_raw_10_90", "cov_wet_raw_10_90", 0.80,
+         "10–90 band (target 80%)"),
+        (axes[1], "cov_25_75", "cov_wet_25_75", "cov_raw_25_75", "cov_wet_raw_25_75", 0.50,
+         "25–75 band (target 50%)"),
+    ]
+    for ax, all_col, wet_col, raw_all_col, raw_wet_col, target, title in pairs:
+        ax.plot(m.horizon_h, m[all_col], "-o", color="tab:blue", alpha=0.4,
+                label="blended (all hours)")
+        ax.plot(m.horizon_h, m[wet_col], "-o", color="tab:blue",
+                label="blended (wet hours >0.5 mm/hr)")
+        if has_raw and raw_wet_col in m.columns:
+            ax.plot(m.horizon_h, m[raw_all_col], "-s", color="tab:orange", alpha=0.4,
+                    label="raw (all hours)")
+            ax.plot(m.horizon_h, m[raw_wet_col], "-s", color="tab:orange",
+                    label="raw (wet hours)")
+        ax.axhline(target, color="k", ls="--", lw=1, alpha=0.6, label=f"target {target:.0%}")
+        ax.set_ylim(0, 1.05)
+        ax.set_xlabel("lead time (h)")
+        ax.set_ylabel("coverage")
+        ax.set_title(title)
+        ax.legend(fontsize=8)
+        ax.grid(alpha=0.3)
+
+    fig.suptitle("Wet-hour coverage vs all-hour coverage (blended predictions)\n"
+                 "Wet = y > 0.5 mm/hr · faded = all hours (includes dry) · solid = wet hours only",
+                 fontsize=11)
+    fig.tight_layout()
+    fig.savefig(FIG / "coverage_wet_vs_all.png", dpi=120)
+    plt.close(fig)
+
+
 def fig_pit(pit: pd.DataFrame) -> None:
     """PIT histogram at selected lead times. Uniform = well-calibrated; U-shape = too narrow; hump = too wide."""
     horizons = sorted(pit.horizon_h.unique())
@@ -405,6 +448,7 @@ def main() -> None:
 
     if len(m):
         fig_crpss_vs_horizon(m)
+        fig_coverage_wet(m)
     if len(cov):
         fig_coverage(cov)
     if len(d["pit_histogram"]):
