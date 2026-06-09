@@ -69,6 +69,33 @@ def test_long_format_missing_column_raises():
         to_long_format(X, y_bad, meta)
 
 
+def test_long_format_matches_bruteforce_reference():
+    """Per-horizon fill must equal a naive horizon-by-horizon expansion exactly — value and order.
+
+    Rows are horizon-major, and within each horizon ordered by endpoint, NaN-amount rows dropped.
+    A feature column with a unique value per endpoint makes the (endpoint, horizon)→row mapping
+    unambiguous, so this guards the gather against any off-by-one or reordering.
+    """
+    n = 40
+    X, y, meta = _toy_wide(n)
+    X = X.copy()
+    X["sp_hPa"] = np.arange(n, dtype="float64")  # unique per endpoint
+
+    ref_X, ref_y, ref_h = [], [], []
+    for h in ENSEMBLE_HORIZONS:
+        col = y[f"amount_h{h}"].to_numpy()
+        for ep in range(n):
+            if not np.isnan(col[ep]):
+                ref_X.append(X["sp_hPa"].iloc[ep])
+                ref_y.append(col[ep])
+                ref_h.append(float(h))
+
+    X_l, y_l, _ = to_long_format(X, y, meta)
+    assert np.array_equal(X_l["sp_hPa"].to_numpy(), np.array(ref_X, dtype="float32"))
+    assert np.array_equal(X_l["horizon_h"].to_numpy(), np.array(ref_h, dtype="float32"))
+    assert np.array_equal(y_l.to_numpy(), np.array(ref_y, dtype="float32"))
+
+
 # ─────────────────────────────────────────────── year split ─────────────────────────────────────
 
 def test_long_format_year_column_splits():
