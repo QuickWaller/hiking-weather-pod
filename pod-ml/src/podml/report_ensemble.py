@@ -166,6 +166,25 @@ def fig_trust_weights(weights: list) -> None:
     plt.close(fig)
 
 
+RAIN_LEVELS = [
+    (0.5,  "light",  "#2ca02c"),   # tab:green
+    (2.5,  "heavy",  "#9467bd"),   # tab:purple
+    (7.6,  "storm",  "#d62728"),   # tab:red
+]
+
+
+def _add_rain_levels(ax, y_max: float) -> None:
+    """Draw dotted threshold lines for light / heavy / storm rain on a plume axis."""
+    for mm, label, color in RAIN_LEVELS:
+        if mm > y_max * 1.3:
+            continue  # skip lines way above the visible data — would just crowd the top
+        ax.axhline(mm, color=color, ls=":", lw=1.5, alpha=0.9, zorder=2)
+        ax.text(0.5, mm, f" {label} ({mm} mm/hr)", color=color,
+                fontsize=6.5, va="bottom", ha="left", transform=ax.get_yaxis_transform(),
+                clip_on=True, fontweight="bold",
+                bbox=dict(facecolor="white", alpha=0.5, edgecolor="none", pad=0.5))
+
+
 def fig_plumes(plumes: list) -> None:
     """Raw vs blended vs climatology plume fans for sample endpoints. Shows blend suppression."""
     if not plumes:
@@ -180,22 +199,26 @@ def fig_plumes(plumes: list) -> None:
     for ax, pl in zip(axes, plumes[:n]):
         hs = np.array(pl["horizons"])
         y_obs = np.array(pl["y_obs"])
+        all_vals = list(np.maximum(y_obs, 0))
         for key in ["clim", "raw", "blended"]:
             if key not in pl:
                 continue
             p = pl[key]
             c = palette[key]
-            q10 = np.array(p.get("q10", p.get("q10", np.zeros_like(hs))))
+            q10 = np.array(p.get("q10", np.zeros_like(hs)))
             q25 = np.array(p.get("q25", np.zeros_like(hs)))
             q75 = np.array(p.get("q75", np.zeros_like(hs)))
             q90 = np.array(p.get("q90", np.zeros_like(hs)))
-            mu = np.array(p.get("mean", np.zeros_like(hs)))
+            mu  = np.array(p.get("mean", np.zeros_like(hs)))
             ax.fill_between(hs, np.maximum(q10, 0), np.maximum(q90, 0), alpha=0.12, color=c)
             ax.fill_between(hs, np.maximum(q25, 0), np.maximum(q75, 0), alpha=0.25, color=c)
             ax.plot(hs, np.maximum(mu, 0), "-", color=c, lw=1.5, label=labels[key])
+            all_vals.extend(np.maximum(q90, 0).tolist())
         ax.scatter(hs, np.maximum(y_obs, 0), s=14, color="black", zorder=5,
                    label="observed" if ax is axes[0] else "")
-        ax.set_ylim(bottom=0)
+        y_max = max(all_vals) if all_vals else 1.0
+        ax.set_ylim(bottom=0, top=max(y_max * 1.15, 0.6))
+        _add_rain_levels(ax, y_max)
         ax.set_xlabel("horizon (h)", fontsize=8)
         ax.set_ylabel("rain (mm/hr)", fontsize=8)
         cell = pl.get("cell", "?")
