@@ -26,6 +26,7 @@ Build the dataset once, then train from it:
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 from pathlib import Path
 
@@ -215,6 +216,10 @@ def to_long_format(
 
     Each endpoint appears once per horizon with horizon_h as an additional feature.
     Rows with NaN amount (future extends past GPM array) are dropped.
+
+    Memory-efficient: preallocates float32 numpy arrays rather than building 25 DataFrame
+    copies and concatenating. For 1.5M endpoints × 25 horizons this is the difference
+    between ~4.5 GB and ~9 GB peak RAM.
     """
     missing = [f"amount_h{h}" for h in ENSEMBLE_HORIZONS if f"amount_h{h}" not in y.columns]
     if missing:
@@ -222,20 +227,39 @@ def to_long_format(
             f"Cache is missing amount columns {missing}. "
             "Rebuild with: python -m podml.train_ensemble --build-cache"
         )
-    xs, ys, ms = [], [], []
-    for h in ENSEMBLE_HORIZONS:
-        col = f"amount_h{h}"
-        valid = y[col].notna().to_numpy()
-        xh = X[valid].copy()
-        xh["horizon_h"] = float(h)
-        xs.append(xh)
-        ys.append(y.loc[valid, col].rename("amount"))
-        ms.append(meta[valid].assign(horizon_h=h))
-    return (
-        pd.concat(xs, ignore_index=True),
-        pd.concat(ys, ignore_index=True),
-        pd.concat(ms, ignore_index=True),
-    )
+    n_ep = len(X)
+    H = len(ENSEMBLE_HORIZONS)
+    feat_cols = list(X.columns)
+
+    # Build validity matrix (H, n_ep) and derive flat indices
+    valid_mat = np.zeros((H, n_ep), dtype=bool)
+    for hi, h in enumerate(ENSEMBLE_HORIZONS):
+        valid_mat[hi] = y[f"amount_h{h}"].notna().to_numpy()
+    h_idx, ep_idx = np.where(valid_mat)   # flat indices into (horizon, endpoint)
+    del valid_mat
+
+    # X_long: preallocate float32 — half the peak RAM vs float64
+    X_arr = X.to_numpy(dtype="float32")   # (n_ep, n_feats)
+    n_long = len(ep_idx)
+    X_long_arr = np.empty((n_long, len(feat_cols) + 1), dtype="float32")
+    X_long_arr[:, :-1] = X_arr[ep_idx]
+    X_long_arr[:, -1] = np.array(ENSEMBLE_HORIZONS, dtype="float32")[h_idx]
+    del X_arr
+    X_long = pd.DataFrame(X_long_arr, columns=feat_cols + ["horizon_h"])
+    del X_long_arr
+
+    # y_long: extract from the label matrix
+    y_arr = np.array(
+        [y[f"amount_h{h}"].to_numpy(dtype="float32") for h in ENSEMBLE_HORIZONS]
+    )  # (H, n_ep)
+    y_long = pd.Series(y_arr[h_idx, ep_idx], name="amount", dtype="float32")
+    del y_arr
+
+    # meta_long: replicate rows with horizon_h column
+    meta_long = meta.iloc[ep_idx].reset_index(drop=True).copy()
+    meta_long["horizon_h"] = np.array(ENSEMBLE_HORIZONS, dtype="float32")[h_idx]
+
+    return X_long, y_long, meta_long
 
 
 # ─────────────────────────────────────────────── metrics ────────────────────────────────────────
@@ -467,6 +491,8 @@ def train_ensemble(
     print(f"train_ensemble: X={X.shape}, cells={meta['cell'].nunique()}", flush=True)
 
     X_long, y_amount, meta_long = to_long_format(X, y, meta)
+    del X, y, meta
+    gc.collect()  # free raw cache before fitting (~375 MB)
     years = meta_long["year"].to_numpy()
     train_mask = np.isin(years, list(TRAIN_YEARS)) & y_amount.notna().to_numpy()
     val_mask   = (years == VAL_YEAR)  & y_amount.notna().to_numpy()
@@ -560,7 +586,30 @@ def train_ensemble(
 V3_ABLATION_FEATURES = [
     "sp_accel_nested", "sp_accel_disjoint",
     "td_trend_3h", "td_trend_6h", "t2m_trend_6h",
+    "dewpoint_dep",
 ]
+
+# Pre-stated keep criteria — fixed before running, not post-hoc.
+# A feature survives if it meets the criterion for its row.
+KEEP_CRITERIA = {
+    # Second-derivative of pressure — value is on fast-moving fronts, not average.
+    "sp_accel_nested":   "lo_ci > 0 OR fast-front conditional positive",
+    "sp_accel_disjoint": "lo_ci > 0 OR fast-front conditional positive; if both flat keep nested only (derivable from cache, zero pod cost)",
+    # Moisture: td_trend_6h is the primary signal; dewpoint_dep tested for marginal gain *given trend present*.
+    "td_trend_6h":       "lo_ci > 0 OR moisture-advection conditional positive",
+    "td_trend_3h":       "lo_ci > 0 only (redundant shorter window — no conditional path)",
+    "t2m_trend_6h":      "lo_ci > 0 only (weakest prior — cut on flat)",
+    # dewpoint_dep drop-one tests marginal level contribution given td_trend_6h is already in the full model.
+    # This is the correct test (not the v2 standalone — collinearity only matters when both are absent).
+    "dewpoint_dep":      "lo_ci > 0 from drop-one (marginal gain given td_trend_6h present in full model)",
+    "moisture_group":    "informational — total moisture group contribution vs individual drop-ones",
+}
+
+# Group ablations: drop a semantic cluster to measure joint contribution.
+# Separates collinearity within the group from the group's total value.
+V3_GROUP_ABLATIONS = {
+    "moisture_group": ["dewpoint_dep", "td_trend_3h", "td_trend_6h"],
+}
 
 
 def ensemble_feature_ablation(
@@ -576,9 +625,15 @@ def ensemble_feature_ablation(
       - Bootstrap CI on delta CRPSS (full minus drop), resampling cells on the validation set.
       - Conditional analysis on fast-front events (sp_accel) and moisture-advection events (td_trend_6h).
 
+    Keep criteria are pre-stated in KEEP_CRITERIA above. Individual features with a conditional path
+    (sp_accel_nested, sp_accel_disjoint, td_trend_6h) are tagged "check conditional" rather than
+    auto-cut when the CI misses — read v3_conditional.csv before finalising those decisions.
+    The moisture_group drop (dewpoint_dep + td_trend_3h + td_trend_6h together) is informational:
+    it separates within-group collinearity from the group's total value.
+
     Saved to outputs/ensemble/:
-      v3_ablation.csv         — per-feature delta CRPSS + 95% CI + KEEP/CUT decision
-      v3_conditional.csv      — feature skill on conditioned subsets (fast fronts, moisture advection)
+      v3_ablation.csv    — per-feature delta CRPSS + CI + ci_survives + has_conditional_path + verdict
+      v3_conditional.csv — feature skill on conditioned subsets (fast fronts, moisture advection)
     """
     X, y, meta = load_cache(cache_dir)
     ensure_model_features(X, y, meta)
@@ -592,6 +647,8 @@ def ensemble_feature_ablation(
         meta = meta[mask].reset_index(drop=True)
 
     X_long, y_amount, meta_long = to_long_format(X, y, meta)
+    del X, y, meta
+    gc.collect()  # free raw cache before fitting
     years = meta_long["year"].to_numpy()
     train_mask = np.isin(years, list(TRAIN_YEARS)) & y_amount.notna().to_numpy()
     val_mask   = (years == VAL_YEAR) & y_amount.notna().to_numpy()
@@ -651,6 +708,9 @@ def ensemble_feature_ablation(
     rows, cond_rows = [], []
     saved_crps_drop: dict[str, np.ndarray] = {}
 
+    # Features with a conditional path to survival (conditional analysis below may flip the verdict).
+    _CONDITIONAL_PATH = {"sp_accel_nested", "sp_accel_disjoint", "td_trend_6h"}
+
     for feat in ablate:
         drop_feats = [f for f in full_feats if f != feat]
         print(f"  drop {feat} → training…", flush=True)
@@ -663,7 +723,15 @@ def ensemble_feature_ablation(
 
         # delta = crps_drop - crps_full (positive means full is better, i.e. feature helps)
         mean_d, lo, hi = _bootstrap_delta(crps_drop, crps_full, meta_vl)
-        survives = bool(lo > 0)
+        ci_survives = bool(lo > 0)
+        has_conditional_path = feat in _CONDITIONAL_PATH
+        # "weak*" = CI misses but feature has a conditional path — read conditional before cutting.
+        if ci_survives:
+            tag = "KEEP"
+        elif has_conditional_path:
+            tag = "weak* (check conditional)" if hi > 0 else "CUT* (check conditional)"
+        else:
+            tag = "weak" if hi > 0 else "CUT"
         rows.append({
             "feature": feat,
             "crpss_full": crpss_full_overall,
@@ -671,10 +739,38 @@ def ensemble_feature_ablation(
             "delta_crpss_mean": mean_d,
             "delta_crpss_lo": float(lo),
             "delta_crpss_hi": float(hi),
-            "survives": survives,
+            "ci_survives": ci_survives,
+            "has_conditional_path": has_conditional_path,
+            "verdict": tag,
         })
-        tag = "KEEP" if survives else ("weak" if hi > 0 else "CUT")
         print(f"  {feat}: Δ CRPSS={mean_d:.3f} [{lo:.3f}, {hi:.3f}]  → {tag}", flush=True)
+
+    # --- Group ablations (moisture group: joint contribution vs individual drop-ones) ---
+    print("Group ablations…", flush=True)
+    for group_name, group_feats in V3_GROUP_ABLATIONS.items():
+        group_present = [f for f in group_feats if f in full_feats]
+        if not group_present:
+            continue
+        drop_feats = [f for f in full_feats if f not in group_present]
+        print(f"  drop {group_name} {group_present} → training…", flush=True)
+        models_gd = fit_ensemble(X_long[train_mask], y_tr, X_long[val_mask], y_vl, drop_feats, seed)
+        preds_gd = predict(models_gd, X_long[val_mask], drop_feats)
+        blended_gd = blend(preds_gd, clim_table, global_stats, weights_full, meta_vl)
+        crps_gd = crps_from_quantiles(y_vl, blended_gd)
+        mean_d, lo, hi = _bootstrap_delta(crps_gd, crps_full, meta_vl)
+        rows.append({
+            "feature": group_name,
+            "crpss_full": crpss_full_overall,
+            "crpss_drop": crpss(crps_gd, y_vl, clim_mean_vl),
+            "delta_crpss_mean": mean_d,
+            "delta_crpss_lo": float(lo),
+            "delta_crpss_hi": float(hi),
+            "ci_survives": None,
+            "has_conditional_path": False,
+            "verdict": "informational",
+        })
+        print(f"  {group_name}: Δ CRPSS={mean_d:.3f} [{lo:.3f}, {hi:.3f}]  (informational)",
+              flush=True)
 
     # --- Conditional analysis on event subsets ---
     sp3 = X_long["sp_rate_3h"].to_numpy()
