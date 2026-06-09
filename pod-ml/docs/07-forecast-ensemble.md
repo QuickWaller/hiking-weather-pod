@@ -321,6 +321,14 @@ and event count) but check heavy base rates pre/post-2014 per region before trus
   training run.
 - **Skill-vs-horizon smoothing:** check CRPSS by horizon after the first training run; smooth the 18–24 h tail
   with a 3-hour trailing mean only if data shows visible degradation (do not assume).
+- **Memory scaling for a larger cache (revisit before growing the data):** the trainer builds one global
+  long frame (~38 M rows at the current 1.5 M endpoints) then slices it into train/val/test. Fine at this size
+  (~11 GB peak, leaning on swap), but the slice briefly holds the global frame **and** its three splits at once
+  (~2×) — the tightest point of the run. Doubling the row count (higher `--k`, more cells, or a second variable
+  like snow) roughly doubles that spike → won't fit. Fix when needed: go back to **per-split expansion**
+  (`expand_split_long` — filter endpoints to one split *then* expand, so peak RAM tracks the largest single
+  split, not the whole dataset ×2). Removed 2026-06-09 for simplicity; recover it from git history. Especially
+  relevant if the first full-scale `--from-cache` run OOMs on the fit.
 - Centre line confirmed: **mean for rain, median for temp.**
 
 ## 9. Run sequence
