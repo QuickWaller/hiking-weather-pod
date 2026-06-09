@@ -318,15 +318,17 @@ def fit_ensemble(
     """Train the five-model ensemble on rain amount (mm/hr) with early stopping on the val set.
 
     Hyperparameter choices:
-      n_estimators=3000 / lr=0.02 / num_leaves=127 — enough capacity for 1.5M rows with 25 features.
+      n_estimators=1500 / lr=0.05 / num_leaves=127 — lr raised + cap lowered from the first full run,
+      where q90 ran the full 3000 trees at lr=0.02 but its val loss had flattened by ~1500 (each extra
+      500 trees bought ~half the previous block — diminishing returns). 0.05 reaches the same plateau
+      in far fewer rounds, so the run (and especially the 8×-heavier ablation) is much faster.
       min_child_samples=50 — prevents leaf-level overfit on the sparse high-rain tail.
       reg_lambda=0.5 — L2 regularisation; keeps quantile heads from crossing under extrapolation.
       Tweedie power=1.5 — midpoint of compound Poisson-gamma, well-matched to hourly rain amounts.
-      Early stopping patience=100 — stops if val loss doesn't improve for 100 rounds (saves ~30% of
-      compute on typical NZ rain distributions where skill plateaus early for long horizons).
+      Early stopping patience=100 — stops if val loss doesn't improve for 100 rounds.
     """
     lgb_common = dict(
-        n_estimators=3000, learning_rate=0.02, num_leaves=127,
+        n_estimators=1500, learning_rate=0.05, num_leaves=127,
         min_child_samples=50, reg_lambda=0.5,
         verbose=-1, random_state=seed,
     )
@@ -341,11 +343,13 @@ def fit_ensemble(
     models["mean"] = LGBMRegressor(
         objective="tweedie", tweedie_variance_power=1.5, **lgb_common
     ).fit(Xtr_f, y_tr, eval_set=[(Xval_f, y_val)], callbacks=callbacks)
+    print(f"    mean: {models['mean'].best_iteration_} trees", flush=True)
     for alpha, name in zip(QUANTILE_LEVELS, MODEL_NAMES[1:]):
         print(f"  fitting {name} (α={alpha})…", flush=True)
         models[name] = LGBMRegressor(
             objective="quantile", alpha=alpha, **lgb_common
         ).fit(Xtr_f, y_tr, eval_set=[(Xval_f, y_val)], callbacks=callbacks)
+        print(f"    {name}: {models[name].best_iteration_} trees", flush=True)
     return models
 
 
@@ -532,6 +536,10 @@ def train_ensemble(
     blended_te = blend(preds_te, clim_table, global_stats, weights, meta_te)
 
     crps_te = crps_from_quantiles(y_te, blended_te)
+    # Diagnostic: score the RAW (unblended) model too. If raw CRPSS shows horizon decay / beats
+    # climatology while the blended score is flat, the trust-weight blend is strangling a useful
+    # model (fixable); if raw is also ~climatology, the signal/target is the problem.
+    crps_te_raw = crps_from_quantiles(y_te, preds_te)
 
     overall, cov_rows, pit_rows, imp_rows = [], [], [], []
     for h in ENSEMBLE_HORIZONS:
@@ -541,17 +549,22 @@ def train_ensemble(
         y_h  = y_te[h_mask]
         cr_h = crps_te[h_mask]
         pb   = {n: blended_te[n][h_mask] for n in MODEL_NAMES}
+        pr   = {n: preds_te[n][h_mask] for n in MODEL_NAMES}   # raw, unblended
 
         clim_mean_h = _clim_preds(clim_table, global_stats, meta_te[h_mask])["mean"]
         cs = crpss(cr_h, y_h, clim_mean_h)
+        cs_raw = crpss(crps_te_raw[h_mask], y_h, clim_mean_h)   # raw-model skill
 
         cov_10_90 = coverage(y_h, pb["q10"], pb["q90"])
         cov_25_75 = coverage(y_h, pb["q25"], pb["q75"])
+        cov_raw_10_90 = coverage(y_h, pr["q10"], pr["q90"])
+        cov_raw_25_75 = coverage(y_h, pr["q25"], pr["q75"])
 
         overall.append({
-            "horizon_h": h, "crpss": cs,
+            "horizon_h": h, "crpss": cs, "crpss_raw": cs_raw,
             "mean_crps": float(np.mean(cr_h)),
             "cov_10_90": cov_10_90, "cov_25_75": cov_25_75,
+            "cov_raw_10_90": cov_raw_10_90, "cov_raw_25_75": cov_raw_25_75,
             "n_test": int(h_mask.sum()),
         })
         pit = pit_histogram(y_h, pb)
@@ -563,9 +576,8 @@ def train_ensemble(
             "cov_10_90": cov_10_90, "cov_25_75": cov_25_75,
             "target_10_90": 0.80, "target_25_75": 0.50,
         })
-        print(f"  h={h:2d}h: CRPSS={cs:.3f} | "
-              f"cov 10-90={cov_10_90:.2f} (target 0.80)  "
-              f"25-75={cov_25_75:.2f} (target 0.50)", flush=True)
+        print(f"  h={h:2d}h: CRPSS blend={cs:.3f} raw={cs_raw:.3f} | "
+              f"cov25-75 blend={cov_25_75:.2f} raw={cov_raw_25_75:.2f} (target 0.50)", flush=True)
 
     for name, model in models.items():
         for feat, gain in zip(avail_feats, model.feature_importances_):
