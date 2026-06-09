@@ -19,7 +19,7 @@ Dataset (separate from the phase-06 cache):
   y:  rain amount — instantaneous rate mm/hr at T+h for h=0..24 (one column per hour)
 
 Build the dataset once, then train from it:
-  python -m podml.train_ensemble --build-cache [--all-cells] [--k 4] [--years 2015-2024]
+  python -m podml.train_ensemble --build-cache [--all-cells] [--k 4] [--years 2014-2024]
   python -m podml.train_ensemble --from-cache  [--n-cells N] [--seed S]
 """
 
