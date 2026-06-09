@@ -5,9 +5,9 @@ import pandas as pd
 import pytest
 
 from podml.train_ensemble import (
-    ENSEMBLE_FEATURES, ENSEMBLE_HORIZONS, META_KEEP, MODEL_NAMES,
-    _clim_preds, _slim_for_expansion, build_clim_distribution,
-    coverage, crps_from_quantiles, crpss, expand_split_long, pit_histogram, to_long_format,
+    ENSEMBLE_HORIZONS, MODEL_NAMES,
+    _clim_preds, build_clim_distribution,
+    coverage, crps_from_quantiles, crpss, pit_histogram, to_long_format,
 )
 
 
@@ -69,93 +69,29 @@ def test_long_format_missing_column_raises():
         to_long_format(X, y_bad, meta)
 
 
-# ─────────────────────────────────────────────── expand_split_long ──────────────────────────────
+# ─────────────────────────────────────────────── year split ─────────────────────────────────────
 
-def _toy_wide_full(n: int = 60) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Wide (X, y, meta) carrying every ENSEMBLE feature column and two years, for split tests."""
-    rng = np.random.default_rng(2)
-    feat_cols = [f for f in ENSEMBLE_FEATURES if f != "horizon_h"]
-    X = pd.DataFrame({c: rng.normal(size=n).astype("float32") for c in feat_cols})
-    labels = {f"amount_h{h}": rng.exponential(1.0, n).astype("float32") for h in ENSEMBLE_HORIZONS}
-    labels["amount_h24"][-4:] = np.nan  # future extends past GPM for a few endpoints
-    y = pd.DataFrame(labels)
-    meta = pd.DataFrame({
-        "cell": [f"c{i % 5}" for i in range(n)],
-        "month": (np.arange(n) % 12) + 1,
-        "year": np.where(np.arange(n) < 40, 2016, 2023),  # 40 train, 20 val
-    })
-    return X, y, meta
+def test_long_format_year_column_splits():
+    """meta_long carries the endpoint's year on every horizon row, so a year mask splits cleanly."""
+    X, y, meta = _toy_wide(40)
+    meta = meta.copy()
+    meta["year"] = np.where(np.arange(40) < 25, 2016, 2023)  # 25 endpoints train, 15 val
+    _, y_l, m_l = to_long_format(X, y, meta)
+    assert set(m_l["year"].unique()) == {2016, 2023}
+    # Every endpoint expands to ≤25 horizon rows, so the split sizes stay proportional.
+    assert (m_l["year"] == 2016).sum() > (m_l["year"] == 2023).sum()
+    assert len(m_l) == len(y_l)
 
 
-def test_expand_split_selects_only_the_split():
-    """Only the masked endpoints are expanded — by row count vs to_long_format on that split."""
-    X, y, meta = _toy_wide_full()
-    ep = meta["year"].to_numpy() == 2016
-    X_l, y_l, m_l = expand_split_long(X, y, meta, ep, ENSEMBLE_FEATURES)
-    ref_X, _, _ = to_long_format(X[ep].reset_index(drop=True),
-                                 y[ep].reset_index(drop=True),
-                                 meta[ep].reset_index(drop=True))
-    assert len(X_l) == len(ref_X)
-    assert set(m_l["year"].unique()) == {2016}
+# ─────────────────────────────────────────────── climatology ────────────────────────────────────
 
-
-def test_expand_split_columns_match_feats_exactly():
-    """The no-copy contract: expanded columns equal the requested feats (so X[feats] is a no-op)."""
-    X, y, meta = _toy_wide_full()
-    ep = meta["year"].to_numpy() == 2016
-    X_full, _, _ = expand_split_long(X, y, meta, ep, ENSEMBLE_FEATURES)
-    assert list(X_full.columns) == list(ENSEMBLE_FEATURES)
-    drop_feats = [f for f in ENSEMBLE_FEATURES if f != "rh"]
-    X_drop, _, _ = expand_split_long(X, y, meta, ep, drop_feats)
-    assert list(X_drop.columns) == drop_feats
-
-
-def test_expand_split_drop_one_stays_row_aligned():
-    """Dropping a feature must not change the row set/order — labels identical to the full set."""
-    X, y, meta = _toy_wide_full()
-    ep = meta["year"].to_numpy() == 2016
-    _, y_full, _ = expand_split_long(X, y, meta, ep, ENSEMBLE_FEATURES)
-    X_drop, y_drop, _ = expand_split_long(X, y, meta, ep, [f for f in ENSEMBLE_FEATURES if f != "rh"])
-    assert len(y_full) == len(y_drop)
-    assert np.array_equal(y_full.to_numpy(), y_drop.to_numpy())
-    assert np.array_equal(X_drop["horizon_h"].to_numpy(),
-                          expand_split_long(X, y, meta, ep, ENSEMBLE_FEATURES)[0]["horizon_h"].to_numpy())
-
-
-# ─────────────────────────────────────────────── _slim_for_expansion ────────────────────────────
-
-def _toy_wide_fat(n: int = 60) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Wide frame with the full fat meta (lat/lon/elev/zone/time/motion) the cache really carries."""
-    X, y, meta = _toy_wide_full(n)
-    rng = np.random.default_rng(7)
-    meta["lat"] = rng.uniform(-45, -35, n)
-    meta["lon"] = rng.uniform(166, 178, n)
-    meta["elevation"] = rng.uniform(0, 2000, n)
-    meta["zone"] = rng.integers(0, 4, n)
-    meta["time"] = pd.date_range("2016-01-01", periods=n, freq="h")
-    meta["motion"] = rng.choice(["still", "walk", "drive"], n)
-    return X, y, meta
-
-
-def test_slim_drops_fat_meta_and_downcasts():
-    X, y, meta = _toy_wide_fat()
-    Xs, ys, ms = _slim_for_expansion(X, y, meta)
-    assert list(ms.columns) == META_KEEP
-    assert str(ms["cell"].dtype) == "category"
-    assert Xs.to_numpy().dtype == np.float32
-    assert ys.to_numpy().dtype == np.float32
-
-
-def test_slim_then_expand_then_climatology_runs():
-    """Categorical cell must survive expansion and flow through the climatology groupby + lookup."""
-    X, y, meta = _toy_wide_fat()
-    Xs, ys, ms = _slim_for_expansion(X, y, meta)
-    ep = ms["year"].to_numpy() == 2016
-    X_l, y_l, m_l = expand_split_long(Xs, ys, ms, ep, ENSEMBLE_FEATURES)
-    assert "lat" not in m_l.columns  # fat columns gone, not replicated 25×
-    train_mask = np.ones(len(y_l), dtype=bool)
-    table, glob = build_clim_distribution(y_l, m_l, train_mask)
+def test_climatology_runs_through_long_format():
+    """build_clim_distribution groupby + _clim_preds lookup flow on a to_long_format frame."""
+    X, y, meta = _toy_wide()
+    _, y_l, m_l = to_long_format(X, y, meta)
+    table, glob = build_clim_distribution(y_l, m_l, np.ones(len(y_l), dtype=bool))
     preds = _clim_preds(table, glob, m_l)
+    assert set(preds) == set(MODEL_NAMES)
     assert all(len(preds[name]) == len(m_l) for name in MODEL_NAMES)
 
 
