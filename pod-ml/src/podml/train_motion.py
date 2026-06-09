@@ -55,7 +55,7 @@ KEPT_DERIVED = ["lat", "lon", "ruggedness_m"]
 # `zone` excluded (dead weight, redundant with elevation, confirmed near-zero contribution).
 MODEL_FEATURES = [f for f in ALL_FEATURES if f != "zone"] + KEPT_DERIVED
 
-TRAIN_YEARS = range(2015, 2023)   # 2015–2022 (val 2023, test 2024)
+TRAIN_YEARS = range(2014, 2023)   # 2014–2022 (val 2023, test 2024)
 VAL_YEAR = 2023
 
 # Hourly amount labels for the distributional ensemble (0 = nowcast → 24 = 24 h ahead).
