@@ -486,10 +486,19 @@ def add_derived_features(X: pd.DataFrame, y: pd.DataFrame, meta: pd.DataFrame) -
         X["month_cos"] = np.cos(2 * np.pi * mo / 12.0)
 
     pre = np.isin(meta["year"].to_numpy(), list(TRAIN_YEARS))
-    rc = pd.DataFrame({"cell": meta["cell"].to_numpy(), "month": meta["month"].to_numpy(),
-                       "r": y["ge0.5_h0"].to_numpy()})[pre].dropna()
-    tab, glob = rc.groupby(["cell", "month"])["r"].mean(), float(rc["r"].mean())
-    X["precip_clim"] = np.array([tab.get(k, glob) for k in zip(meta["cell"], meta["month"])])
+    # Rain-frequency proxy for the climatology feature.
+    # 06 cache has binary column ge0.5_h0; 07 cache has amount_h0 (instantaneous mm/hr).
+    if "ge0.5_h0" in y.columns:
+        r_col = y["ge0.5_h0"].to_numpy()
+    elif "amount_h0" in y.columns:
+        r_col = (y["amount_h0"].to_numpy() > 0.5).astype("float32")
+    else:
+        r_col = None
+    if r_col is not None:
+        rc = pd.DataFrame({"cell": meta["cell"].to_numpy(), "month": meta["month"].to_numpy(),
+                           "r": r_col})[pre].dropna()
+        tab, glob = rc.groupby(["cell", "month"])["r"].mean(), float(rc["r"].mean())
+        X["precip_clim"] = np.array([tab.get(k, glob) for k in zip(meta["cell"], meta["month"])])
 
     terr = _terrain_static()
     keys = list(zip(meta["lat"].round(2), meta["lon"].round(2)))
