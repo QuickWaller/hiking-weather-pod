@@ -467,11 +467,57 @@ def blend(
 
 # ─────────────────────────────────────────────── main train + eval ──────────────────────────────
 
+def _save_plume_examples(
+    preds_te: dict[str, np.ndarray],
+    blended_te: dict[str, np.ndarray],
+    y_te: np.ndarray,
+    meta_te: pd.DataFrame,
+    clim_table: dict,
+    global_stats: dict,
+    n_examples: int = 20,
+) -> None:
+    """Save N plume examples (raw / blended / climatology quantiles + y_obs) to plumes.json.
+
+    Requires 'time' in meta_te (populated when the cache was built with build_ensemble_dataset).
+    Each plume covers all horizons for one (cell, time) endpoint, sorted by horizon.
+    """
+    if "time" not in meta_te.columns:
+        print("  _save_plume_examples: 'time' column absent — skipping (re-build cache)", flush=True)
+        return
+    meta_te = meta_te.reset_index(drop=True)
+    unique_eps = meta_te.drop_duplicates(subset=["cell", "time"])[["cell", "time"]].reset_index(drop=True)
+    if len(unique_eps) > n_examples:
+        unique_eps = unique_eps.sample(n=n_examples, random_state=42).reset_index(drop=True)
+    examples = []
+    for _, row in unique_eps.iterrows():
+        cell, t = row["cell"], row["time"]
+        mask = ((meta_te["cell"] == cell) & (meta_te["time"] == t)).to_numpy()
+        if not mask.any():
+            continue
+        sub = meta_te[mask].sort_values("horizon_h").reset_index()
+        pos = sub["index"].to_numpy()   # positions in preds_te / y_te
+        clim_p = _clim_preds(clim_table, global_stats, sub)
+        examples.append({
+            "cell": str(cell),
+            "time": str(t),
+            "horizons": [float(h) for h in sub["horizon_h"].tolist()],
+            "y_obs": [float(y_te[i]) for i in pos],
+            "raw":     {n: [float(preds_te[n][i])   for i in pos] for n in MODEL_NAMES},
+            "blended": {n: [float(blended_te[n][i]) for i in pos] for n in MODEL_NAMES},
+            "clim":    {n: clim_p[n].tolist()                      for n in MODEL_NAMES},
+        })
+    out_path = OUT / "plumes.json"
+    with open(out_path, "w") as f:
+        json.dump(examples, f, indent=2)
+    print(f"  saved {len(examples)} plume examples → {out_path}", flush=True)
+
+
 def train_ensemble(
     cache_dir: Path = CACHE_DIR,
     n_cells: int | None = None,
     seed: int = 42,
     n_boot: int = 200,
+    save_plumes: bool = False,
 ) -> dict:
     """Train the phase-07 distributional ensemble and evaluate on the 2024 test set.
 
@@ -505,9 +551,11 @@ def train_ensemble(
 
     # Expand to long (one row per endpoint × horizon, horizon_h as a feature), then split by year.
     # Carry only the model-feature columns (so the fit's X[feats] is a no-op, not a 3.5 GB copy of
-    # the 38M-row matrix) and only the meta columns read downstream (cell/month/year → split + clim).
+    # the 38M-row matrix) and only the meta columns read downstream. "time" is included so that
+    # --save-plumes can reconstruct per-endpoint plumes from the long-format test set.
+    meta_cols = ["cell", "month", "year"] + (["time"] if "time" in meta.columns else [])
     X_long, y_long, meta_long = to_long_format(
-        X[[f for f in avail_feats if f != "horizon_h"]], y, meta[["cell", "month", "year"]])
+        X[[f for f in avail_feats if f != "horizon_h"]], y, meta[meta_cols])
     del X, y, meta
     years = meta_long["year"].to_numpy()
     tr, vl, te = np.isin(years, list(TRAIN_YEARS)), years == VAL_YEAR, years == TEST_YEAR
@@ -590,6 +638,9 @@ def train_ensemble(
     pd.DataFrame(imp_rows).to_csv(OUT / "importance.csv", index=False)
     with open(OUT / "cell_weights.json", "w") as f:
         json.dump({str(k): v for k, v in weights.items()}, f, indent=2)
+
+    if save_plumes:
+        _save_plume_examples(preds_te, blended_te, y_te, meta_te, clim_table, global_stats)
 
     print(f"ensemble results → {OUT}", flush=True)
     return {"models": len(MODEL_NAMES), "horizons": len(ENSEMBLE_HORIZONS), "out": str(OUT)}
@@ -878,6 +929,8 @@ if __name__ == "__main__":
                     help="year range '2014-2024' or list '2016,2024'")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--n-boot", type=int, default=200, help="bootstrap iterations for ablation CIs")
+    ap.add_argument("--save-plumes", action="store_true",
+                    help="save 20 example plumes (raw/blended/clim) to outputs/ensemble/plumes.json")
     args = ap.parse_args()
 
     if args.years and "-" in args.years and "," not in args.years:
@@ -892,7 +945,7 @@ if __name__ == "__main__":
         print(build_cache(yrs, k_per_cell_month=args.k,
                           all_cells=args.all_cells, n_cells=args.n_cells, seed=args.seed))
     elif args.from_cache:
-        print(train_ensemble(n_cells=args.n_cells, seed=args.seed))
+        print(train_ensemble(n_cells=args.n_cells, seed=args.seed, save_plumes=args.save_plumes))
     elif args.ablation:
         print(ensemble_feature_ablation(n_cells=args.n_cells, seed=args.seed, n_boot=args.n_boot))
     else:
