@@ -439,6 +439,7 @@ def fit_cell_weights(
     clim_table: dict,
     global_stats: dict,
     feats: list[str],
+    wet_quantiles: bool = False,
 ) -> dict[str, float]:
     """Per-cell trust weight w(cell) = per-cell CRPSS vs deterministic climatological mean.
 
@@ -449,18 +450,36 @@ def fit_cell_weights(
     same bar used in CRPSS reporting, so the weights stay consistent with the reported skill:
     cells with CRPSS ≈ 0.45 get w ≈ 0.45, genuinely negative-skill cells still get w = 0
     (fallback to climatology, never worse).
+
+    wet_quantiles: if True, compute weights on wet-only rows (y > 0). Wet-conditional quantile
+      heads are penalised heavily on dry hours (they predict positive rain where y=0), so
+      all-hours CRPS collapses weights to near-zero. Wet-only weights correctly measure whether
+      the model beats wet climatology when it is actually raining.
     """
     preds_val = predict(models, X_val, feats)
-    crps_val = crps_from_quantiles(y_val, preds_val)
     clim_mean_val = _clim_preds(clim_table, global_stats, meta_val)["mean"]
-    # Deterministic baseline: CRPS of a point forecast at the climatological mean = MAE.
-    crps_clim_det = np.abs(y_val - clim_mean_val)
+
+    if wet_quantiles:
+        wet = y_val > 0
+        if wet.sum() < 50:
+            return {}
+        y_w = y_val[wet]
+        preds_w = {n: preds_val[n][wet] for n in MODEL_NAMES}
+        clim_w = clim_mean_val[wet]
+        meta_w = meta_val[wet] if hasattr(meta_val, "iloc") else meta_val
+        crps_val_use = crps_from_quantiles(y_w, preds_w)
+        crps_clim_use = np.abs(y_w - clim_w)
+        cells_use = meta_w["cell"].to_numpy() if hasattr(meta_w, "__getitem__") else meta_val["cell"].to_numpy()[wet]
+    else:
+        crps_val_use = crps_from_quantiles(y_val, preds_val)
+        crps_clim_use = np.abs(y_val - clim_mean_val)
+        cells_use = meta_val["cell"].to_numpy()
 
     weights: dict[str, float] = {}
     df = pd.DataFrame({
-        "cell": meta_val["cell"].to_numpy(),
-        "crps_model": crps_val,
-        "crps_clim": crps_clim_det,
+        "cell": cells_use,
+        "crps_model": crps_val_use,
+        "crps_clim": crps_clim_use,
     })
     for cell, g in df.groupby("cell"):
         mc = float(g["crps_clim"].mean())
@@ -600,7 +619,8 @@ def train_ensemble(
 
     # 2. Per-cell trust weights (fitted on validation only)
     weights = fit_cell_weights(models, X_vl, y_vl,
-                               meta_vl, clim_table, global_stats, avail_feats)
+                               meta_vl, clim_table, global_stats, avail_feats,
+                               wet_quantiles=wet_quantiles)
     print(f"  cell weights: {len(weights)} cells, mean w={np.mean(list(weights.values())):.3f}",
           flush=True)
 
