@@ -37,6 +37,7 @@ from podml.train_ensemble import (
     blend, predict,
 )
 from podml.labels_gpm import load_gpm_cells_hourly
+from podml.static_features import load_dem_grid
 
 TRACE_DIR = OUT / "storm_trace"
 FIG_DIR = OUT.parent.parent / "docs" / "figures" / "ensemble"
@@ -117,10 +118,13 @@ def build_dense_trace_cache(
     (valid_pos caps it at ~700/month in practice).  Only processes the requested cells,
     so this is fast: 3 cells × 12 months × ~700 endpoints × 25 horizons ≈ 630 K rows.
     """
-    cells = pd.DataFrame(
-        [{"name": cid, "lat": _cell_to_latlon(cid)[0], "lon": _cell_to_latlon(cid)[1]}
-         for cid in cell_ids]
-    )
+    dem = load_dem_grid()
+    rows = []
+    for cid in cell_ids:
+        lat, lon = _cell_to_latlon(cid)
+        elev = float(max(float(dem.sel(lat=lat, lon=lon, method="nearest").values), 0.0))
+        rows.append({"name": cid, "lat": lat, "lon": lon, "elevation_m": elev})
+    cells = pd.DataFrame(rows)
     print(f"build_dense_trace_cache: {len(cells)} cells, year={year}", flush=True)
 
     gpm_times, precip = load_gpm_cells_hourly(
