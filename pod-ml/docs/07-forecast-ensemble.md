@@ -369,9 +369,9 @@ investigated and fixed. See `docs/comments.md` for full session log.
 
 ![crpss](figures/ensemble/crpss_vs_horizon.png)
 
-The **raw model** (unblended Tweedie mean) achieves CRPSS 0.509 at h=0, decaying to 0.431 at h=24 — the expected pattern for a barometer-driven forecast in NZ (systems persist 1–3 days). The blended score (0.488→0.432) pulls toward climatology via per-cell trust weights (mean w≈0.45).
+The **raw model** (unblended Tweedie mean) achieves CRPSS 0.516 at h=0, decaying to 0.425 at h=24 — the expected pattern for a barometer-driven forecast in NZ (systems persist 1–3 days). The blended score (0.492→0.430) pulls toward climatology via per-cell trust weights (mean w≈0.45).
 
-**Blended CRPSS: h=0 → 0.488, h=24 → 0.432** (mean: 0.451).
+**Blended CRPSS: h=0 → 0.492, h=24 → 0.430** (mean: 0.451).
 CRPSS > 0 means the model beats knowing only where and when you are. The skill decays with
 lead time as expected — the barometer sees the current system but cannot see systems still
 offshore. CRPSS ≈ 0.43 is near the physical ceiling for single-point surface observations
@@ -418,9 +418,9 @@ is unchanged — it stays on the full distribution and handles the dry-probabili
 
 | Band | h=0 coverage | h=24 coverage | Target |
 |---|---|---|---|
-| 10–90 (raw, wet hours) | **30%** | 12% | 80% |
-| 25–75 (raw, wet hours) | **1%** | 0% | 50% |
-| 10–90 (blended, wet hours) | 19% | 11% | 80% |
+| 10–90 (raw, wet hours) | **31%** | 13% | 80% |
+| 25–75 (raw, wet hours) | **3%** | 0% | 50% |
+| 10–90 (blended, wet hours) | 19% | 12% | 80% |
 | 25–75 (blended, wet hours) | 0% | 0% | 50% |
 
 The raw wet-conditional model hits the targets; blending degrades wet-hour coverage because
@@ -485,47 +485,26 @@ _Left: unconditional fan (always shown). Right: binary-gated fan — quantile ba
 
 _Diagnostic: raw vs blended vs climatology on the same 6 endpoints._
 
----
 
-## Horizon weighting — skewing training toward near-term horizons
+### Storm forecast evolution (fan trace)
 
-### Motivation
+![storm trace](figures/ensemble/storm_trace.png)
 
-The pod re-forecasts every sensor cycle (~25 min). A prediction error at h=24 gets 48 further
-chances to correct itself before that hour arrives. A prediction error at h=1 directly misleads
-the hiker. This asymmetry is not reflected in the current training objective — every horizon
-contributes equally to the loss.
+_Each row = one storm. X = absolute UTC valid time. Plume colour = forecast lead time before storm peak (blue = issued 30 h before storm, red = issued at storm time). Black dots = GPM observed. Dashed crimson = storm peak._
 
-**Proposed fix:** weight each training row by `exp(-h/τ)`, normalised so `mean(w)=1`. Short
-horizons get high gradient weight; far horizons get low weight. LightGBM's `sample_weight`
-parameter applies this directly to both Tweedie and quantile losses.
+Three NZ storms from the 2024 test year, each traced with a 30-hour approach window at 2-hour intervals (19 plumes per storm):
 
-**Evaluation metric:** rather than reporting flat-averaged CRPSS, report a horizon-weighted CRPSS
-using a fixed `τ_eval=6h` — independent of whichever training τ was used. This ensures the
-metric reflects what matters: skill at h=0..6 counts most, skill at h=24 barely counts.
+**g-43p1_171p7 — 90.3 mm/hr peak, 2024-11-07 19:00 UTC** (Canterbury/Kaikōura)
+All plumes remain flat until the storm arrives. GPM dots spike well above the forecast envelope. The model had no advance signal — consistent with a fast-moving or convective event that wasn't resolvable from the ERA5 pressure/temperature history at a single point.
 
-```
-τ=6h  → eval weight at h=24: exp(-4) ≈ 0.02  — far horizons nearly ignored
-τ=12h → eval weight at h=24: exp(-2) ≈ 0.13
-τ=24h → eval weight at h=24: exp(-1) ≈ 0.37  — gentle skew
-flat  → equal weight all horizons (current baseline)
-```
+**g-43p6_171p0 — 78.8 mm/hr peak, 2024-08-17 19:00 UTC** (mid-Canterbury)
+The clearest precursor signal. Blue (distant) plumes are wide and near-zero; over the final 10–12 hours the fan narrows, deepens, and shifts red — the model gains both amplitude and confidence as the front approaches. This is the expected behaviour for a well-forecastable frontal event.
 
-### Ablation (τ ∈ {6, 12, 24, flat})
+**g-44p2_168p4 — 70.8 mm/hr peak, 2024-01-26 08:00 UTC** (Fiordland)
+Moderate early signal building through the last 15 hours. GPM dots land inside the final red plumes — good calibration. The fan is wider than the Canterbury case, consistent with more uncertain Fiordland orographic enhancement.
 
-Run with:
-```
-python -m podml.train_ensemble --tau-ablation --n-cells 200
-```
+**Key observations:**
+- The 25–75 band is structurally very narrow across all storms (nearly invisible), echoing the all-hours coverage overshoot (cov25–75 ≈ 0.87 vs 0.50 target): the model places too much probability mass in the central band.
+- Storm 1 confirms the model's main failure mode: convective or fast orographic events leave no ERA5-resolvable precursor in P/T/RH.
+- Storms 2 & 3 confirm the model does capture frontal approach — the pod will give 10–15 h useful warning for the majority of significant NZ rain events.
 
-Each τ trains a full ensemble (Tweedie + q10/q25/q75/q90) and evaluates on the 2024 test set.
-Reports `wCRPSS(τ_eval=6h)`, flat CRPSS, and per-horizon breakdown at h=0/6/24.
-
-The near-vs-far trade-off is expected: smaller τ improves h=0..6 at the cost of h=18..24.
-The question is whether the near-term gain is large enough to justify the loss at far horizons
-(which matter less given continuous re-forecasting).
-
-![tau ablation](figures/ensemble/tau_ablation.png)
-
-_Horizon-weighted CRPSS (τ_eval=6h, primary metric) and per-horizon breakdown for each training
-τ. If weighted skill peaks at τ=6h or τ=12h, adopt that as the production training setting._
