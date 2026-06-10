@@ -605,6 +605,7 @@ def _save_plume_examples(
     n_examples: int = 20,
     plumes_file: str = "plumes.json",
     conformal_te: dict[str, np.ndarray] | None = None,
+    p_rain_te: np.ndarray | None = None,
 ) -> None:
     """Save N plume examples (raw / blended / climatology quantiles + y_obs) to plumes.json.
 
@@ -639,6 +640,8 @@ def _save_plume_examples(
         if conformal_te is not None:
             entry["conformal"] = {n: [float(conformal_te[n][i]) for i in pos]
                                   for n in MODEL_NAMES}
+        if p_rain_te is not None:
+            entry["p_rain"] = [float(p_rain_te[i]) for i in pos]
         examples.append(entry)
     out_path = OUT / plumes_file
     with open(out_path, "w") as f:
@@ -844,7 +847,8 @@ def train_ensemble(
     if save_plumes:
         _save_plume_examples(preds_te, blended_te, y_te, meta_te, clim_table, global_stats,
                              plumes_file=plumes_file,
-                             conformal_te=preds_conf if conformal else None)
+                             conformal_te=preds_conf if conformal else None,
+                             p_rain_te=p_rain_te)
 
     print(f"ensemble results → {OUT}", flush=True)
     return {"models": len(MODEL_NAMES), "horizons": len(ENSEMBLE_HORIZONS), "out": str(OUT)}
