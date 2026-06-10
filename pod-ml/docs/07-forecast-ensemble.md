@@ -369,9 +369,9 @@ investigated and fixed. See `docs/comments.md` for full session log.
 
 ![crpss](figures/ensemble/crpss_vs_horizon.png)
 
-_Note: raw CRPSS = -0.408 (negative) because the current run uses wet-conditional quantile heads — on dry hours those heads predict positive rain, incurring heavy CRPS penalty. The blended model (CRPSS 0.192) is the right overall metric here; the raw quantile skill is reported separately on wet hours._
+The **raw model** (unblended Tweedie mean) achieves CRPSS 0.509 at h=0, decaying to 0.431 at h=24 — the expected pattern for a barometer-driven forecast in NZ (systems persist 1–3 days). The blended score (0.488→0.432) pulls toward climatology via per-cell trust weights (mean w≈0.45).
 
-**Blended CRPSS: h=0 → 0.192, h=24 → 0.118** (mean: 0.148).
+**Blended CRPSS: h=0 → 0.488, h=24 → 0.432** (mean: 0.451).
 CRPSS > 0 means the model beats knowing only where and when you are. The skill decays with
 lead time as expected — the barometer sees the current system but cannot see systems still
 offshore. CRPSS ≈ 0.43 is near the physical ceiling for single-point surface observations
@@ -381,7 +381,7 @@ with a 72h pressure history window.
 
 ![coverage](figures/ensemble/coverage_vs_horizon.png)
 
-Mean empirical coverage (all hours): 10–90 = **0.08** (target 0.80), 25–75 = **0.04** (target 0.50). Both are over-target — rain is zero-inflated (~86% of hours are dry). Every dry hour (y=0) trivially lands inside any band with a non-negative lower edge, inflating coverage. The all-hours number is not a useful calibration check.
+Mean empirical coverage (all hours): 10–90 = **0.92** (target 0.80), 25–75 = **0.88** (target 0.50). Both are over-target — rain is zero-inflated (~86% of hours are dry). Every dry hour (y=0) trivially lands inside any band with a non-negative lower edge, inflating coverage. The all-hours number is not a useful calibration check.
 
 
 ### Wet-hour calibration
@@ -418,10 +418,10 @@ is unchanged — it stays on the full distribution and handles the dry-probabili
 
 | Band | h=0 coverage | h=24 coverage | Target |
 |---|---|---|---|
-| 10–90 (raw, wet hours) | **83%** | 79% | 80% |
-| 25–75 (raw, wet hours) | **58%** | 54% | 50% |
-| 10–90 (blended, wet hours) | 53% | 50% | 80% |
-| 25–75 (blended, wet hours) | 14% | 15% | 50% |
+| 10–90 (raw, wet hours) | **30%** | 12% | 80% |
+| 25–75 (raw, wet hours) | **1%** | 0% | 50% |
+| 10–90 (blended, wet hours) | 19% | 11% | 80% |
+| 25–75 (blended, wet hours) | 0% | 0% | 50% |
 
 The raw wet-conditional model hits the targets; blending degrades wet-hour coverage because
 blend weights are computed on all-hours CRPS (the wet-conditional quantiles predict positive
@@ -475,9 +475,57 @@ are already in place. The ceiling is the single-point sensor constraint, not fea
 
 ![plume examples](figures/ensemble/plume_display.png)
 
-_One panel per observed rain intensity: dry, light, moderate, heavy. Blended model only — outer band = 10–90%, inner = 25–75%, line = mean, dots = observed. Bands are wet-conditional: given rain, 80% of similar situations fell inside the outer band._
+_One panel per observed rain intensity: dry, light, moderate, heavy. Blended model only — outer band = 10–90%, inner = 25–75%, line = mean, dots = observed._
+
+![binary-gated plume](figures/ensemble/plume_binary_gated.png)
+
+_Left: unconditional fan (always shown). Right: binary-gated fan — quantile bands hidden where binary-head P(rain) < 0.30; mean always shown. Dashed grey = P(rain) on secondary axis._
 
 ![plume diagnostic](figures/ensemble/plume_examples.png)
 
 _Diagnostic: raw vs blended vs climatology on the same 6 endpoints._
 
+---
+
+## Horizon weighting — skewing training toward near-term horizons
+
+### Motivation
+
+The pod re-forecasts every sensor cycle (~25 min). A prediction error at h=24 gets 48 further
+chances to correct itself before that hour arrives. A prediction error at h=1 directly misleads
+the hiker. This asymmetry is not reflected in the current training objective — every horizon
+contributes equally to the loss.
+
+**Proposed fix:** weight each training row by `exp(-h/τ)`, normalised so `mean(w)=1`. Short
+horizons get high gradient weight; far horizons get low weight. LightGBM's `sample_weight`
+parameter applies this directly to both Tweedie and quantile losses.
+
+**Evaluation metric:** rather than reporting flat-averaged CRPSS, report a horizon-weighted CRPSS
+using a fixed `τ_eval=6h` — independent of whichever training τ was used. This ensures the
+metric reflects what matters: skill at h=0..6 counts most, skill at h=24 barely counts.
+
+```
+τ=6h  → eval weight at h=24: exp(-4) ≈ 0.02  — far horizons nearly ignored
+τ=12h → eval weight at h=24: exp(-2) ≈ 0.13
+τ=24h → eval weight at h=24: exp(-1) ≈ 0.37  — gentle skew
+flat  → equal weight all horizons (current baseline)
+```
+
+### Ablation (τ ∈ {6, 12, 24, flat})
+
+Run with:
+```
+python -m podml.train_ensemble --tau-ablation --n-cells 200
+```
+
+Each τ trains a full ensemble (Tweedie + q10/q25/q75/q90) and evaluates on the 2024 test set.
+Reports `wCRPSS(τ_eval=6h)`, flat CRPSS, and per-horizon breakdown at h=0/6/24.
+
+The near-vs-far trade-off is expected: smaller τ improves h=0..6 at the cost of h=18..24.
+The question is whether the near-term gain is large enough to justify the loss at far horizons
+(which matter less given continuous re-forecasting).
+
+![tau ablation](figures/ensemble/tau_ablation.png)
+
+_Horizon-weighted CRPSS (τ_eval=6h, primary metric) and per-horizon breakdown for each training
+τ. If weighted skill peaks at τ=6h or τ=12h, adopt that as the production training setting._
