@@ -920,19 +920,27 @@ def ensemble_tau_ablation(
         keep = set(rng0.choice(meta["cell"].unique(),
                                size=min(n_cells, meta["cell"].nunique()), replace=False))
         mask = meta["cell"].isin(keep).to_numpy()
-        X, y, meta = X[mask].reset_index(drop=True), y[mask], meta[mask].reset_index(drop=True)
-
-    tr_mask  = meta["year"].isin(TRAIN_YEARS).to_numpy()
-    vl_mask  = (meta["year"] == VAL_YEAR).to_numpy()
-    te_mask  = (meta["year"] == TEST_YEAR).to_numpy()
-    X_tr, y_tr = X[tr_mask], y[tr_mask]
-    X_vl, y_vl = X[vl_mask], y[vl_mask]
-    X_te, y_te = X[te_mask], y[te_mask]
-    meta_te    = meta[te_mask].reset_index(drop=True)
+        X, y, meta = X[mask].reset_index(drop=True), y[mask].reset_index(drop=True), meta[mask].reset_index(drop=True)
 
     avail_feats = [f for f in ENSEMBLE_FEATURES if f in X.columns]
-    clim_table, global_stats = build_clim_distribution(y, meta, tr_mask)
-    weights = fit_cell_weights(X, y, meta, clim_table, global_stats, avail_feats, seed=seed)
+
+    # Convert wide→long before splitting (same pattern as train_ensemble / feature ablation)
+    X_long, y_long, meta_long = to_long_format(X, y, meta)
+    del X, y, meta
+    years = meta_long["year"].to_numpy()
+    tr_mask = np.isin(years, list(TRAIN_YEARS))
+    vl_mask = years == VAL_YEAR
+    te_mask = years == TEST_YEAR
+    X_tr,  y_tr  = X_long[tr_mask].reset_index(drop=True), y_long[tr_mask].to_numpy()
+    X_vl,  y_vl  = X_long[vl_mask].reset_index(drop=True), y_long[vl_mask].to_numpy()
+    X_te,  y_te  = X_long[te_mask].reset_index(drop=True), y_long[te_mask].to_numpy()
+    meta_tr = meta_long[tr_mask].reset_index(drop=True)
+    meta_vl = meta_long[vl_mask].reset_index(drop=True)
+    meta_te = meta_long[te_mask].reset_index(drop=True)
+    del X_long, y_long, meta_long
+
+    clim_table, global_stats = build_clim_distribution(
+        pd.Series(y_tr, name="amount"), meta_tr, np.ones(len(y_tr), dtype=bool))
 
     EVAL_TAU = 6.0
     rows = []
@@ -941,6 +949,8 @@ def ensemble_tau_ablation(
         print(f"\n── tau ablation: {label} ──", flush=True)
         models = fit_ensemble(X_tr, y_tr, X_vl, y_vl, avail_feats, seed=seed,
                               horizon_tau=tau)
+        weights = fit_cell_weights(models, X_vl, y_vl, meta_vl,
+                                   clim_table, global_stats, avail_feats)
         preds_te  = predict(models, X_te, avail_feats)
         blended   = blend(preds_te, clim_table, global_stats, weights, meta_te)
         crps_te   = crps_from_quantiles(y_te, blended)
