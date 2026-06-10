@@ -32,7 +32,8 @@ def _read(name: str) -> pd.DataFrame:
 
 
 def _load() -> dict:
-    d = {n: _read(n) for n in ["metrics_overall", "coverage", "pit_histogram", "importance"]}
+    d = {n: _read(n) for n in ["metrics_overall", "coverage", "pit_histogram", "importance",
+                                "v3_ablation", "v3_conditional"]}
     weights_path = OUT / "cell_weights.json"
     if weights_path.exists():
         with open(weights_path) as f:
@@ -206,6 +207,92 @@ def fig_trust_weights(weights: list) -> None:
     ax.grid(alpha=0.3)
     fig.tight_layout()
     fig.savefig(FIG / "trust_weights.png", dpi=120)
+    plt.close(fig)
+
+
+def fig_ablation(abl: pd.DataFrame, cond: pd.DataFrame) -> None:
+    """v3 feature ablation — delta CRPSS with 95% CI, plus conditional skill on event subsets."""
+    if abl.empty:
+        return
+
+    # Top panel: per-feature delta CRPSS forest plot
+    main = abl[abl["verdict"] != "informational"].copy()
+    group = abl[abl["verdict"] == "informational"].copy()
+
+    n_main = len(main)
+    fig, axes = plt.subplots(1, 2, figsize=(14, max(4, n_main * 0.7 + 1)),
+                             gridspec_kw={"width_ratios": [2, 1]})
+
+    ax = axes[0]
+    colors = {"KEEP": "#2ca02c", "CUT": "#d62728",
+              "weak": "#ff7f0e", "weak* (check conditional)": "#9467bd",
+              "CUT* (check conditional)": "#e377c2"}
+    for i, (_, row) in enumerate(main.iterrows()):
+        color = colors.get(row["verdict"], "tab:gray")
+        ax.errorbar(
+            row["delta_crpss_mean"], i,
+            xerr=[[row["delta_crpss_mean"] - row["delta_crpss_lo"]],
+                  [row["delta_crpss_hi"] - row["delta_crpss_mean"]]],
+            fmt="o", color=color, capsize=4, markersize=6,
+        )
+        ax.text(max(row["delta_crpss_hi"], 0) + 0.00005, i, f"  {row['verdict']}",
+                va="center", fontsize=8, color=color)
+
+    if not group.empty:
+        for _, row in group.iterrows():
+            ax.axhline(n_main - 0.5, color="gray", ls=":", lw=0.8)
+            ax.errorbar(
+                row["delta_crpss_mean"], n_main,
+                xerr=[[row["delta_crpss_mean"] - row["delta_crpss_lo"]],
+                      [row["delta_crpss_hi"] - row["delta_crpss_mean"]]],
+                fmt="D", color="gray", capsize=4, markersize=6,
+                label=f"{row['feature']} (group, informational)",
+            )
+    else:
+        pass
+
+    ax.axvline(0, color="k", lw=1, ls="--", alpha=0.5)
+    feat_labels = list(main["feature"]) + ([group.iloc[0]["feature"]] if not group.empty else [])
+    ax.set_yticks(np.arange(len(feat_labels)))
+    ax.set_yticklabels(feat_labels, fontsize=9)
+    ax.set_xlabel("Δ CRPSS (drop − full, normalised by clim CRPS)\n+ve = feature helps · −ve = feature hurts · CI from 200 bootstrap cell resamples")
+    ax.set_title("v3 feature ablation — drop-one CRPSS delta", fontsize=10)
+    ax.grid(alpha=0.3, axis="x")
+
+    # Right panel: conditional CRPSS on event subsets
+    ax2 = axes[1]
+    if not cond.empty:
+        conditions = cond["condition"].unique()
+        y2, labels2, colors2 = [], [], []
+        for c in conditions:
+            sub = cond[cond["condition"] == c]
+            full_row = sub[sub["feature"] == "full_model"]
+            drop_rows = sub[sub["feature"] != "full_model"]
+            cond_label = c.split("(")[0].strip()
+            if not full_row.empty:
+                y2.append(float(full_row["crpss"].iloc[0]))
+                labels2.append(f"{cond_label}\nfull model")
+                colors2.append("tab:blue")
+            for _, dr in drop_rows.iterrows():
+                feat_short = dr["feature"].replace("drop_", "")
+                y2.append(float(dr["crpss"]))
+                labels2.append(f"{cond_label}\n−{feat_short}")
+                colors2.append("tab:orange")
+        ax2.barh(np.arange(len(y2)), y2, color=colors2, alpha=0.8, edgecolor="k", linewidth=0.4)
+        ax2.set_yticks(np.arange(len(labels2)))
+        ax2.set_yticklabels(labels2, fontsize=7)
+        ax2.set_xlabel("CRPSS on subset")
+        ax2.set_title("Conditional skill\n(event subsets)", fontsize=10)
+        ax2.axvline(0, color="k", lw=0.8)
+        ax2.grid(alpha=0.3, axis="x")
+    else:
+        ax2.set_visible(False)
+
+    fig.suptitle("v3 feature ablation — all features show negligible marginal gain\n"
+                 "Base features (sp_hPa, sp_rate, humidity, horizon_h) carry the model",
+                 fontsize=11)
+    fig.tight_layout()
+    fig.savefig(FIG / "v3_ablation.png", dpi=120)
     plt.close(fig)
 
 
@@ -458,6 +545,8 @@ def main() -> None:
     fig_trust_weights(d["weights"])
     if d["plumes"]:
         fig_plumes(d["plumes"])
+    if len(d["v3_ablation"]):
+        fig_ablation(d["v3_ablation"], d["v3_conditional"])
 
     write_report(d)
     print(f"figures -> {FIG}")

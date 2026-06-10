@@ -3,66 +3,76 @@ We were working in repo:
 cyber-deck-and-weather-station/pod-ml
 
 Context:
-Phase/update 07 is the ensemble rain-amount forecaster. It trains LightGBM heads for mean, q10, q25, q75, q90, then blends raw model predictions with climatology using per-cell trust weights.
+Phase/update 07 is the ensemble rain-amount forecaster. It trains LightGBM heads for mean, q10, q25,
+q75, q90, then blends raw model predictions with climatology using per-cell trust weights.
 
-What happened (session ending 2026-06-10):
-A full baseline run completed on the VM (2,861 cells). Then a cheap 200-cell diagnostic run was done.
-The blended model collapsed to climatology — trust weights averaged ~0.04, so the blend was ~96% climatology.
-Raw-vs-blended diagnostic code was committed (commit 80394b0), but the CSV in outputs/ensemble/ was saved
-before that commit ran — so metrics_overall.csv currently has NO crpss_raw column.
+What happened (session 2026-06-10, continued):
+
+1. Blending fix (commit a881cb7):
+   fit_cell_weights was using distributional climatology as the baseline → weights ~0.036 (96%
+   climatology). Fixed to use deterministic baseline (MAE from clim mean), consistent with CRPSS
+   reporting. Weights now mean ~0.445. Blended CRPSS now tracks raw: h=0 blend=0.474 vs raw=0.508,
+   h=24 blend=0.432 vs raw=0.431.
+
+2. Wet-conditional coverage (commit db19646):
+   Added cov_wet_10_90 / cov_wet_25_75 (y > 0.5 mm/hr) to metrics_overall.csv and
+   a new figure coverage_wet_vs_all.png. Strips zero-inflation from calibration check — shows
+   whether bands are honest when it actually rains. NOT yet run on VM (needs --from-cache re-run).
+
+3. v3 feature ablation (completed 2026-06-10, 200-cell run):
+   Outputs: outputs/ensemble/v3_ablation.csv, v3_conditional.csv, figures/ensemble/v3_ablation.png
+
+   Tested features: sp_accel_nested, sp_accel_disjoint, td_trend_3h, td_trend_6h,
+                    t2m_trend_6h, dewpoint_dep, moisture_group (joint drop)
+
+   Result: ALL features show Δ CRPSS ≈ 0.000 (±0.0004 range). None survive CI as individually
+   positive. Conditional analysis confirms the same on fast-front and moisture-advection subsets.
+
+   Verdict: CUT all v3 features. Base features carry the model:
+     sp_hPa, sp_rate_3h/6h/12h/24h/48h/72h, rh, rh_trend_3h, t2m_C, t2m_trend_3h,
+     month_sin/cos, hour_sin/cos, elevation, zone, horizon_h
+
+   Key insight: N_HISTORY = 72h already. PRESSURE_TREND_HOURS = [3, 6, 12, 24, 48, 72].
+   The model already has 72h of pressure history. "Longer history" is NOT a new avenue —
+   it's already in the base feature set. The ceiling is the single-point sensor constraint.
+
+4. Ablation figure added to report_ensemble.py (fig_ablation). Run python -m podml.report_ensemble
+   to regenerate all figures including the ablation forest plot.
 
 Current state of outputs/ensemble/:
-- metrics_overall.csv — blended CRPSS only (h=0..24, n_test~120). Columns: horizon_h, crpss, mean_crps, cov_10_90, cov_25_75, n_test.
-  NOTE: crpss_raw, cov_raw_10_90, cov_raw_25_75 are missing — need re-run on VM to generate them.
-- coverage.csv — blended coverage only (no raw coverage columns).
-- cell_weights.json — only 3 cells (tiny diagnostic run artifact; not the 200-cell run weights).
-  NOTE: very low weights (mean ~0.0003) because it hit a very small subset.
-- pit_histogram.csv — PIT calibration by horizon.
-- importance.csv — feature gain per model head.
-- No plumes.json yet — needs --save-plumes added to train_ensemble.py (see below).
-- No _fullrun_backup/ — the 200-cell run overwrote full-run outputs.
+- metrics_overall.csv — blended + raw CRPSS, coverage, n_test per horizon. Has crpss_raw.
+  MISSING: cov_wet_10_90 / cov_wet_25_75 (needs --from-cache re-run after db19646 commit)
+- coverage.csv — blended coverage per horizon
+- cell_weights.json — 200-cell weights, mean ~0.445
+- pit_histogram.csv — PIT calibration by horizon
+- importance.csv — feature gain per model head
+- plumes.json — 20 example plumes (raw/blended/clim)
+- v3_ablation.csv — per-feature delta CRPSS + verdict (from 200-cell run)
+- v3_conditional.csv — conditional skill on fast-front + moisture-advection subsets
 
-Approximate diagnostic results from console output (200-cell run, before CSV was updated):
-- h=0:  raw CRPSS ≈ 0.509, blended ≈ 0.460
-- h=6:  raw ≈ 0.475, blended ≈ 0.445
-- h=12: raw ≈ 0.453, blended ≈ 0.434
-- h=24: raw ≈ 0.431, blended ≈ 0.428
-(These were console output, not from CSV. Current CSV blended values differ slightly.)
+What's still open:
+1. Run --from-cache --n-cells 200 on VM to get wet-conditional coverage metrics (new columns
+   from db19646). Then SCP + python -m podml.report_ensemble to see coverage_wet_vs_all.png.
 
-Tree counts from 200-cell run with lr=0.05 config:
-- mean: 58 trees
-- q10: 1 tree (early stopping killed it — noisy quantile loss at this small n)
-- q25: 1 tree (same)
-- q75: 23 trees
-- q90: 91 trees
-q10/q25 stopping at 1 tree is a red flag — worth checking on the full run.
+2. Decide what to do with wet-conditional calibration:
+   - Q: are bands underdispersed on wet hours? (My prediction: yes, since q10/q25 ≈ 0 always
+     due to 85% dry training distribution)
+   - If underdispersed: consider training quantile heads on wet-endpoint rows only + P(wet) gate
+     from Tweedie mean. This is a more principled zero-inflated model structure.
 
-What was built in this session (2026-06-10):
-1. src/podml/report_ensemble.py — new report script. Reads outputs/ensemble/ CSVs, generates
-   figures in docs/figures/ensemble/, appends/updates a "## 10. Results" section in
-   docs/07-forecast-ensemble.md. Handles both with/without crpss_raw gracefully.
-   Run: python -m podml.report_ensemble
+3. Decide next model direction:
+   - The v3 features add nothing. Base features already have 72h pressure history.
+   - CRPSS ~0.42 is likely near the physical ceiling for single-point barometer+thermometer.
+   - Options: accept ceiling and move to wet-hour calibration, or try different feature forms
+     (e.g. absolute T-24h pressure delta vs slope, humidity integral, range stats over 72h).
 
-2. train_ensemble.py — added:
-   - "time" column passed through to_long_format (for plume endpoint identification)
-   - _save_plume_examples() function: saves 20 example plumes as outputs/ensemble/plumes.json
-     (raw, blended, climatology quantiles + y_obs for each (cell, time) endpoint)
-   - --save-plumes CLI flag (adds plume save to the --from-cache run)
+4. Eventually: full run on all cells with final feature set (cut v3 features from FEATURE_COLUMNS),
+   then m2cgen → C code generation for pod deployment.
 
-To get the full diagnostic picture, run on the VM:
+VM re-run commands:
+  ssh claude-vm
+  cd ~/cyber-deck-and-weather-station && git pull --rebase
+  cd pod-ml && source .venv/bin/activate
   python -m podml.train_ensemble --from-cache --n-cells 200 --save-plumes
   python -m podml.report_ensemble
-
-This will produce crpss_raw in metrics_overall.csv and plume examples in plumes.json,
-which the report script will incorporate into the figures and the 07 markdown results section.
-
-Main conclusion (unchanged from previous session):
-The amount model did not fail. The raw model has real forecast skill and decays sensibly with horizon.
-The current per-cell trust-weight blend is over-conservative and suppresses the model into climatology.
-Next work should focus on fixing fit_cell_weights, not feature ablation yet.
-
-Next steps after re-run:
-1. Diagnose fit_cell_weights: plot raw CRPSS per-cell vs weight, check if the formula
-   w = 1 - crps_model/crps_clim clipped to [0,1] is biased downward on one validation year.
-2. Consider alternatives: sigmoid instead of linear, or a floor weight (w ≥ 0.3 everywhere).
-3. Once blending is fixed, proceed to v3 feature ablation (--ablation on VM).
+  (then SCP outputs/ensemble/*.csv and outputs/ensemble/plumes.json back to laptop)
