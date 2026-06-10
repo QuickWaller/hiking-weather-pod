@@ -38,6 +38,7 @@ from podml.train_ensemble import (
 )
 from podml.labels_gpm import load_gpm_cells_hourly
 from podml.static_features import load_dem_grid
+from podml.train_motion import ensure_model_features
 
 TRACE_DIR = OUT / "storm_trace"
 FIG_DIR = OUT.parent.parent / "docs" / "figures" / "ensemble"
@@ -164,6 +165,7 @@ def _load_dense_long(trace_dir: Path) -> tuple[pd.DataFrame, pd.Series, pd.DataF
         [pd.read_parquet(p) for p in sorted(trace_dir.glob("meta_*.parquet"))],
         ignore_index=True,
     )
+    ensure_model_features(X, y, meta)
     return to_long_format(X, y, meta)
 
 
