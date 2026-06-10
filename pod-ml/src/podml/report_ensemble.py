@@ -46,6 +46,12 @@ def _load() -> dict:
             d["plumes"] = json.load(f)
     else:
         d["plumes"] = []
+    uncond_path = OUT / "plumes_uncond.json"
+    if uncond_path.exists():
+        with open(uncond_path) as f:
+            d["plumes_uncond"] = json.load(f)
+    else:
+        d["plumes_uncond"] = []
     return d
 
 
@@ -377,12 +383,360 @@ def fig_plumes(plumes: list) -> None:
     plt.close(fig)
 
 
+def fig_coverage_explainer(plumes_uncond: list, plumes_wetcond: list) -> None:
+    """Three-panel diagram explaining wet-hour coverage differences between options 2 and 3.
+
+    Panel 1 — distribution of observed y values, showing the zero spike and where
+               unconditional vs wet-conditional quantile lines land.
+    Panel 2 — coverage bar chart: option 2 vs 3, wet hours only, both bands.
+    Panel 3 — concrete single-forecast example for one wet observation.
+    """
+    if not plumes_uncond:
+        return
+
+    # ── collect all (y_obs, raw quantiles) from both plume sets ─────────────
+    def _collect(plumes: list) -> tuple[list, list, list, list, list]:
+        ys, q10s, q25s, q75s, q90s = [], [], [], [], []
+        for pl in plumes:
+            obs = pl["y_obs"]
+            r   = pl.get("raw", {})
+            q10 = r.get("q10", [0] * len(obs))
+            q25 = r.get("q25", [0] * len(obs))
+            q75 = r.get("q75", [0] * len(obs))
+            q90 = r.get("q90", [0] * len(obs))
+            for i, y in enumerate(obs):
+                ys.append(y)
+                q10s.append(q10[i])
+                q25s.append(q25[i])
+                q75s.append(q75[i])
+                q90s.append(q90[i])
+        return ys, q10s, q25s, q75s, q90s
+
+    u_ys, u_q10, u_q25, u_q75, u_q90 = _collect(plumes_uncond)
+    w_ys, w_q10, w_q25, w_q75, w_q90 = _collect(plumes_wetcond)
+
+    def _wet_coverage(ys, q_lo, q_hi):
+        hits = tot = 0
+        for y, lo, hi in zip(ys, q_lo, q_hi):
+            if y > 0.5:
+                tot += 1
+                if lo <= y <= hi:
+                    hits += 1
+        return (hits / tot) if tot else float("nan")
+
+    u_cov_1090 = _wet_coverage(u_ys, u_q10, u_q90)
+    u_cov_2575 = _wet_coverage(u_ys, u_q25, u_q75)
+    w_cov_1090 = _wet_coverage(w_ys, w_q10, w_q90)
+    w_cov_2575 = _wet_coverage(w_ys, w_q25, w_q75)
+
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5.5))
+
+    # ── Panel 1: y distribution + quantile positions ─────────────────────────
+    ax = axes[0]
+    all_y = np.array(u_ys)
+    # histogram of non-zero values on a log-ish x scale
+    wet_y = all_y[all_y > 0.05]
+    dry_frac = (all_y <= 0.05).mean()
+    ax.hist(wet_y, bins=40, color="tab:blue", alpha=0.7, density=True, label="wet hours (y > 0.05)")
+    ax.set_xlabel("observed rain rate (mm/hr)", fontsize=9)
+    ax.set_ylabel("density (wet hours only)", fontsize=9)
+    ax.set_title(f"Observed distribution\n({dry_frac:.0%} of all hours are dry — not shown)", fontsize=9)
+
+    # mark median unconditional quantiles across all hours
+    for val, label, color, ls in [
+        (float(np.median(u_q10)), "uncond q10", "tab:orange", "--"),
+        (float(np.median(u_q25)), "uncond q25", "tab:orange", "-."),
+        (float(np.median(u_q75)), "uncond q75", "tab:orange", ":"),
+        (float(np.median(u_q90)), "uncond q90", "tab:orange", "-"),
+        (float(np.median(w_q10)), "wet-cond q10", "tab:purple", "--"),
+        (float(np.median(w_q25)), "wet-cond q25", "tab:purple", "-."),
+        (float(np.median(w_q75)), "wet-cond q75", "tab:purple", ":"),
+        (float(np.median(w_q90)), "wet-cond q90", "tab:purple", "-"),
+    ]:
+        if val > 0.01:
+            ax.axvline(val, color=color, ls=ls, lw=1.5, alpha=0.85, label=f"{label}={val:.2f}")
+        else:
+            # mark at left edge with a text note
+            ax.text(0.02, 0.97 - 0.07 * label.count("uncond"), f"{label}≈0 (collapsed)",
+                    transform=ax.transAxes, fontsize=6.5, color=color, va="top")
+    ax.legend(fontsize=6, loc="upper right", ncol=1)
+    ax.grid(alpha=0.25)
+    # add annotation explaining the collapse
+    ax.text(0.5, 0.60,
+            "Unconditional q10/q25/q75\ncollapse to 0 because\n86% of training data is zero\n→ their percentiles are 0",
+            transform=ax.transAxes, fontsize=8, color="tab:orange",
+            ha="center", va="top",
+            bbox=dict(facecolor="#fff3e0", edgecolor="tab:orange", alpha=0.9, pad=4))
+
+    # ── Panel 2: coverage bar chart ──────────────────────────────────────────
+    ax = axes[1]
+    x = np.array([0, 1, 3, 4])
+    heights = [u_cov_1090, w_cov_1090, u_cov_2575, w_cov_2575]
+    targets = [0.80, 0.80, 0.50, 0.50]
+    colors  = ["tab:orange", "tab:purple", "tab:orange", "tab:purple"]
+    ax.bar(x, heights, color=colors, alpha=0.8, edgecolor="k", linewidth=0.5, width=0.7)
+    for xi, hi, ti in zip(x, heights, targets):
+        ax.axhline(ti, xmin=(xi - 0.35) / 5, xmax=(xi + 0.35) / 5,
+                   color="black", lw=2.0, ls="--", zorder=5)
+        ax.text(xi, hi + 0.02, f"{hi:.0%}", ha="center", fontsize=10, fontweight="bold")
+    ax.set_xticks(x)
+    ax.set_xticklabels(["10–90\nuncond", "10–90\nwet-cond", "25–75\nuncond", "25–75\nwet-cond"],
+                       fontsize=9)
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("fraction of wet observations inside band", fontsize=9)
+    ax.set_title("Wet-hour coverage (y > 0.5 mm/hr)\nDashed = target (80% / 50%)", fontsize=9)
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(color="tab:orange", label="Option 2 — unconditional"),
+                       Patch(color="tab:purple", label="Option 3 — wet-conditional")],
+              fontsize=8, loc="upper left")
+    ax.grid(alpha=0.25, axis="y")
+
+    # ── Panel 3: concrete single-forecast example ────────────────────────────
+    ax = axes[2]
+    # pick a wet hour from uncond plumes where the two options differ most
+    best_i, best_gap = None, -1
+    for i, (y, lo_u, hi_u, lo_w, hi_w) in enumerate(
+            zip(u_ys, u_q10, u_q90, w_q10, w_q90)):
+        if y < 0.5:
+            continue
+        gap = (hi_w - hi_u)  # wet-cond q90 - uncond q90
+        if gap > best_gap:
+            best_gap, best_i = gap, i
+
+    if best_i is not None:
+        y_ex = u_ys[best_i]
+        ex_vals = {
+            "uncond":   dict(q10=u_q10[best_i], q25=u_q25[best_i],
+                             q75=u_q75[best_i], q90=u_q90[best_i]),
+            "wet-cond": dict(q10=w_q10[best_i], q25=w_q25[best_i],
+                             q75=w_q75[best_i], q90=w_q90[best_i]),
+        }
+        opt_colors = {"uncond": "tab:orange", "wet-cond": "tab:purple"}
+        opt_labels = {"uncond": "Option 2 — unconditional", "wet-cond": "Option 3 — wet-conditional"}
+        x_pos      = {"uncond": 0.25, "wet-cond": 0.75}
+        bw = 0.18
+
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, max(y_ex * 1.4, float(max(w_q90[best_i], u_q90[best_i])) * 1.2, 1.5))
+        ax.axhline(y_ex, color="black", lw=2, ls="-", zorder=6, label=f"observed  {y_ex:.1f} mm/hr")
+        ax.text(0.98, y_ex, f"  observed: {y_ex:.1f} mm/hr", va="center", ha="right",
+                fontsize=9, fontweight="bold", transform=ax.get_yaxis_transform())
+
+        for key, vals in ex_vals.items():
+            xc   = x_pos[key]
+            col  = opt_colors[key]
+            q10v = max(vals["q10"], 0)
+            q25v = max(vals["q25"], 0)
+            q75v = max(vals["q75"], 0)
+            q90v = max(vals["q90"], 0)
+            ax.fill_between([xc - bw, xc + bw], [q10v, q10v], [q90v, q90v],
+                            alpha=0.20, color=col)
+            ax.fill_between([xc - bw, xc + bw], [q25v, q25v], [q75v, q75v],
+                            alpha=0.45, color=col)
+            for v, ls in [(q10v, "--"), (q25v, ":"), (q75v, ":"), (q90v, "--")]:
+                ax.hlines(v, xc - bw, xc + bw, colors=col, linestyles=ls, lw=1.4)
+            ax.text(xc, -0.06, opt_labels[key], ha="center", va="top",
+                    transform=ax.get_xaxis_transform(), fontsize=8, color=col, fontweight="bold")
+            inside_1090 = q10v <= y_ex <= q90v
+            inside_2575 = q25v <= y_ex <= q75v
+            verdict = "INSIDE ✓" if inside_1090 else "OUTSIDE ✗"
+            ax.text(xc, ax.get_ylim()[1] * 0.97,
+                    f"10–90: {verdict}\n25–75: {'INSIDE ✓' if inside_2575 else 'OUTSIDE ✗'}",
+                    ha="center", va="top", fontsize=8.5,
+                    color="green" if inside_1090 else "red",
+                    bbox=dict(facecolor="white", edgecolor=col, alpha=0.85, pad=3))
+
+        ax.set_xticks([])
+        ax.set_ylabel("rain rate (mm/hr)", fontsize=9)
+        ax.set_title(f"Single wet-hour example (y = {y_ex:.1f} mm/hr)\nDo the bands contain the observation?",
+                     fontsize=9)
+        ax.grid(alpha=0.2, axis="y")
+
+    fig.suptitle(
+        "Why wet-hour coverage differs: unconditional quantiles collapse to zero because 86% of training data is dry",
+        fontsize=11, fontweight="bold",
+    )
+    fig.tight_layout()
+    fig.savefig(FIG / "coverage_explainer.png", dpi=120)
+    plt.close(fig)
+    print("  saved coverage_explainer.png", flush=True)
+
+
 _RAIN_CATS = [
     (0.0,  0.5,  "Dry / clear",   "#2ca02c"),
     (0.5,  2.5,  "Light rain",    "#1f77b4"),
     (2.5,  7.6,  "Moderate rain", "#9467bd"),
     (7.6,  None, "Heavy rain",    "#d62728"),
 ]
+
+_OPTION_META = [
+    (
+        "Option 1 — Mean only",
+        "tab:blue",
+        "One line: the blended Tweedie mean (expected mm/hr, accounting\n"
+        "for the chance it stays dry). No bands.\n\n"
+        "Reading: 'the line is my best guess at intensity.'\n"
+        "Loss: no uncertainty signal — can't tell a sharp vs uncertain forecast.",
+    ),
+    (
+        "Option 2 — Unconditional fan",
+        "tab:orange",
+        "Full distribution trained on ALL hours (including zeros).\n"
+        "On dry-ish days the band collapses toward zero — correctly\n"
+        "showing 'most likely nothing, small chance of light rain.'\n\n"
+        "Reading: 'the band is the realistic range including chance of no rain.'\n"
+        "Loss: wet-hour coverage only ~19% (bands too narrow when it rains).",
+    ),
+    (
+        "Option 3 — Wet-conditional fan (gated)",
+        "tab:purple",
+        "Quantile heads trained on WET rows only. Fan shown only when\n"
+        "Tweedie mean > gate threshold (dashed line).\n\n"
+        "Reading: 'rain expected — if it rains, 80% chance inside outer band.'\n"
+        "Loss: two separate concepts (gate + conditional band) need explaining.\n"
+        "Gain: wet-hour coverage 83% — statistically most honest when raining.",
+    ),
+]
+
+# Gate threshold for option 3 display (mm/hr Tweedie mean)
+_WET_GATE_MM = 0.3
+
+
+def fig_option_comparison(plumes_uncond: list, plumes_wetcond: list) -> None:
+    """Side-by-side comparison of the three plume display options across rain categories.
+
+    Rows = one representative plume per rain category (dry, light, moderate, heavy).
+    Columns = the three display options.
+    Each column has a header annotation explaining the option's trade-off.
+    """
+    if not plumes_uncond or not plumes_wetcond:
+        return
+
+    # Index wet-conditional plumes by (cell, time) for matching
+    wetcond_idx = {(p["cell"], p["time"]): p for p in plumes_wetcond}
+
+    # Find best plume per category from unconditional set, matched in wet-conditional
+    selected: list[tuple[str, str, dict, dict]] = []  # (label, color, uncond_pl, wetcond_pl)
+    for lo, hi, label, color in _RAIN_CATS:
+        pl_u = _best_plume(plumes_uncond, lo, hi)
+        if pl_u is None:
+            continue
+        key = (pl_u["cell"], pl_u["time"])
+        pl_w = wetcond_idx.get(key)
+        if pl_w is None:
+            # Try any wetcond plume in same category as fallback
+            pl_w = _best_plume(plumes_wetcond, lo, hi) or pl_u
+        selected.append((label, color, pl_u, pl_w))
+
+    if not selected:
+        return
+
+    n_rows = len(selected)
+    n_cols = 3
+    fig = plt.figure(figsize=(6.5 * n_cols, 4 * n_rows + 2.5))
+
+    # Header row: option descriptions
+    for col_i, (opt_title, opt_color, opt_desc) in enumerate(_OPTION_META):
+        ax_h = fig.add_axes([col_i / n_cols + 0.01, 1 - 1.8 / (4 * n_rows + 2.5),
+                             1 / n_cols - 0.02, 1.5 / (4 * n_rows + 2.5)])
+        ax_h.set_xlim(0, 1)
+        ax_h.set_ylim(0, 1)
+        ax_h.axis("off")
+        ax_h.text(0.5, 1.0, opt_title, ha="center", va="top",
+                  fontsize=11, fontweight="bold", color=opt_color,
+                  transform=ax_h.transAxes)
+        ax_h.text(0.5, 0.75, opt_desc, ha="center", va="top",
+                  fontsize=7.5, color="#333333", transform=ax_h.transAxes,
+                  linespacing=1.5)
+
+    # Data rows
+    axes_grid = []
+    for row_i in range(n_rows):
+        row_axes = []
+        for col_i in range(n_cols):
+            top = 1 - 1.8 / (4 * n_rows + 2.5)
+            h = top / n_rows
+            ax = fig.add_axes([
+                col_i / n_cols + 0.05 / n_cols,
+                top - (row_i + 1) * h + 0.03,
+                1 / n_cols - 0.10 / n_cols,
+                h - 0.05,
+            ])
+            row_axes.append(ax)
+        axes_grid.append(row_axes)
+
+    for row_i, (cat_label, cat_color, pl_u, pl_w) in enumerate(selected):
+        hs = np.array(pl_u["horizons"])
+        y_obs = np.maximum(np.array(pl_u["y_obs"]), 0)
+
+        # --- shared y-scale across all 3 options for this row ---
+        all_q90 = []
+        for src, key in [(pl_u, "raw"), (pl_u, "blended"), (pl_w, "raw")]:
+            p = src.get(key, {})
+            q90v = np.array(p.get("q90", np.zeros_like(hs)))
+            all_q90.extend(q90v.tolist())
+        y_max = max(float(max(all_q90)), float(y_obs.max()), 0.6)
+        y_top = y_max * 1.18
+
+        for col_i in range(n_cols):
+            ax = axes_grid[row_i][col_i]
+            ax.set_xlim(hs.min(), hs.max())
+            ax.set_ylim(0, y_top)
+            ax.grid(alpha=0.2)
+            ax.scatter(hs, y_obs, s=14, color="black", zorder=5)
+            _add_rain_levels(ax, y_max)
+            if col_i == 0:
+                ax.set_ylabel(f"{cat_label}\n(mm/hr)", fontsize=8, color=cat_color, fontweight="bold")
+            if row_i == n_rows - 1:
+                ax.set_xlabel("lead time (h)", fontsize=8)
+            else:
+                ax.set_xticklabels([])
+
+            opt_color = _OPTION_META[col_i][1]
+
+            if col_i == 0:
+                # Option 1: mean line only (use unconditional blended mean)
+                b = pl_u.get("blended", {})
+                mu = np.maximum(np.array(b.get("mean", np.zeros_like(hs))), 0)
+                ax.plot(hs, mu, "-", color=opt_color, lw=2.0, label="blended mean")
+
+            elif col_i == 1:
+                # Option 2: unconditional fan (raw from uncond run = trained on all hours)
+                r = pl_u.get("raw", {})
+                q10 = np.maximum(np.array(r.get("q10", np.zeros_like(hs))), 0)
+                q25 = np.maximum(np.array(r.get("q25", np.zeros_like(hs))), 0)
+                q75 = np.maximum(np.array(r.get("q75", np.zeros_like(hs))), 0)
+                q90 = np.maximum(np.array(r.get("q90", np.zeros_like(hs))), 0)
+                mu  = np.maximum(np.array(r.get("mean", np.zeros_like(hs))), 0)
+                ax.fill_between(hs, q10, q90, alpha=0.18, color=opt_color)
+                ax.fill_between(hs, q25, q75, alpha=0.35, color=opt_color)
+                ax.plot(hs, mu, "-", color=opt_color, lw=2.0)
+
+            else:
+                # Option 3: wet-conditional fan (raw from wetcond run), gated on blended mean
+                b = pl_w.get("blended", {})
+                mu_blend = np.maximum(np.array(b.get("mean", np.zeros_like(hs))), 0)
+                r = pl_w.get("raw", {})
+                q10 = np.maximum(np.array(r.get("q10", np.zeros_like(hs))), 0)
+                q25 = np.maximum(np.array(r.get("q25", np.zeros_like(hs))), 0)
+                q75 = np.maximum(np.array(r.get("q75", np.zeros_like(hs))), 0)
+                q90 = np.maximum(np.array(r.get("q90", np.zeros_like(hs))), 0)
+                gate = mu_blend >= _WET_GATE_MM
+                ax.axhline(_WET_GATE_MM, color="gray", ls="--", lw=1.0, alpha=0.7,
+                           label=f"gate ({_WET_GATE_MM} mm/hr)")
+                if gate.any():
+                    ax.fill_between(hs, q10, q90, alpha=0.18, color=opt_color, where=gate)
+                    ax.fill_between(hs, q25, q75, alpha=0.35, color=opt_color, where=gate)
+                ax.plot(hs, np.where(gate, mu_blend, np.nan), "-", color=opt_color, lw=2.0)
+
+    fig.suptitle(
+        "Plume display options — three approaches to communicating forecast uncertainty\n"
+        "Dots = observed · horizontal lines = light/heavy/storm thresholds",
+        fontsize=11, y=0.995,
+    )
+    fig.savefig(FIG / "plume_options.png", dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    print("  saved plume_options.png", flush=True)
 
 
 def _best_plume(plumes: list, lo: float, hi: float | None) -> dict | None:
@@ -535,6 +889,8 @@ the bands are honest **when it actually rains** — the only time the hiker care
 
 **The zero-inflation problem (why unconditional quantiles fail on wet hours):**
 
+![coverage explainer](figures/ensemble/coverage_explainer.png)
+
 The q10/q25/q75/q90 heads are trained on the full distribution which is ~86% zeros.
 The unconditional quantiles of a distribution that is 86% zero are:
 - q10 ≈ 0 (10th percentile of a dataset where >10% are zero is zero — trivially)
@@ -542,9 +898,11 @@ The unconditional quantiles of a distribution that is 86% zero are:
 - q75 ≈ 0 (same — 86% > 75%)
 - q90 = first non-trivial value (only 14% of data is wet)
 
-So for a wet observation where y = 1 mm/hr, the predicted band is roughly [0, q90_small].
-Most wet observations exceed q90, so coverage collapses. **Before the fix:** wet-hour 10–90
-coverage was ~19%, 25–75 was ~0% — the inner band was useless for rainy hours.
+The left panel above shows this directly: orange unconditional lines collapse at the y-axis,
+while the purple wet-conditional lines spread across the actual wet distribution.
+The middle panel shows the coverage consequence: unconditional gets 17% on the 10–90 band
+(target 80%), 0% on 25–75. The right panel shows a single real observation of 0.8 mm/hr —
+the unconditional band only reaches 0.4 mm/hr and misses it; the wet-conditional band catches it.
 
 **The fix — wet-conditional quantile heads (`--wet-quantiles`):**
 
@@ -721,6 +1079,9 @@ def main() -> None:
     if d["plumes"]:
         fig_plumes(d["plumes"])
         fig_plumes_display(d["plumes"])
+    if d["plumes_uncond"] and d["plumes"]:
+        fig_option_comparison(d["plumes_uncond"], d["plumes"])
+        fig_coverage_explainer(d["plumes_uncond"], d["plumes"])
     if len(d["v3_ablation"]):
         fig_ablation(d["v3_ablation"], d["v3_conditional"])
 
