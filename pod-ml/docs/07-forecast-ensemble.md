@@ -393,6 +393,8 @@ the bands are honest **when it actually rains** — the only time the hiker care
 
 **The zero-inflation problem (why unconditional quantiles fail on wet hours):**
 
+![coverage explainer](figures/ensemble/coverage_explainer.png)
+
 The q10/q25/q75/q90 heads are trained on the full distribution which is ~86% zeros.
 The unconditional quantiles of a distribution that is 86% zero are:
 - q10 ≈ 0 (10th percentile of a dataset where >10% are zero is zero — trivially)
@@ -400,9 +402,11 @@ The unconditional quantiles of a distribution that is 86% zero are:
 - q75 ≈ 0 (same — 86% > 75%)
 - q90 = first non-trivial value (only 14% of data is wet)
 
-So for a wet observation where y = 1 mm/hr, the predicted band is roughly [0, q90_small].
-Most wet observations exceed q90, so coverage collapses. **Before the fix:** wet-hour 10–90
-coverage was ~19%, 25–75 was ~0% — the inner band was useless for rainy hours.
+The left panel above shows this directly: orange unconditional lines collapse at the y-axis,
+while the purple wet-conditional lines spread across the actual wet distribution.
+The middle panel shows the coverage consequence: unconditional gets 17% on the 10–90 band
+(target 80%), 0% on 25–75. The right panel shows a single real observation of 0.8 mm/hr —
+the unconditional band only reaches 0.4 mm/hr and misses it; the wet-conditional band catches it.
 
 **The fix — wet-conditional quantile heads (`--wet-quantiles`):**
 
@@ -469,5 +473,11 @@ are already in place. The ceiling is the single-point sensor constraint, not fea
 
 ### Plume examples
 
-![plume examples](figures/ensemble/plume_examples.png)
+![plume examples](figures/ensemble/plume_display.png)
+
+_One panel per observed rain intensity: dry, light, moderate, heavy. Blended model only — outer band = 10–90%, inner = 25–75%, line = mean, dots = observed. Bands are wet-conditional: given rain, 80% of similar situations fell inside the outer band._
+
+![plume diagnostic](figures/ensemble/plume_examples.png)
+
+_Diagnostic: raw vs blended vs climatology on the same 6 endpoints._
 
