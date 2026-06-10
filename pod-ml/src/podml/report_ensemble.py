@@ -52,6 +52,18 @@ def _load() -> dict:
             d["plumes_uncond"] = json.load(f)
     else:
         d["plumes_uncond"] = []
+    conf_path = OUT / "plumes_conf.json"
+    if conf_path.exists():
+        with open(conf_path) as f:
+            d["plumes_conf"] = json.load(f)
+    else:
+        d["plumes_conf"] = []
+    corr_path = OUT / "conformal_corrections.json"
+    if corr_path.exists():
+        with open(corr_path) as f:
+            d["conformal_corrections"] = json.load(f)
+    else:
+        d["conformal_corrections"] = {}
     return d
 
 
@@ -585,7 +597,7 @@ _OPTION_META = [
         "On dry-ish days the band collapses toward zero — correctly\n"
         "showing 'most likely nothing, small chance of light rain.'\n\n"
         "Reading: 'the band is the realistic range including chance of no rain.'\n"
-        "Loss: wet-hour coverage only ~19% (bands too narrow when it rains).",
+        "Loss: wet-hour coverage only ~17% (bands too narrow when it rains).",
     ),
     (
         "Option 3 — Wet-conditional fan (gated)",
@@ -596,17 +608,31 @@ _OPTION_META = [
         "Loss: two separate concepts (gate + conditional band) need explaining.\n"
         "Gain: wet-hour coverage 83% — statistically most honest when raining.",
     ),
+    (
+        "Option 4 — CQR (conformal)",
+        "tab:red",
+        "Unconditional model + flat per-quantile offset fitted on val wet hours.\n"
+        "Guarantees marginal coverage on wet hours. No gating needed.\n\n"
+        "Offsets: q10+0.67, q25+1.01, q75+3.45, q90+5.57 mm/hr.\n"
+        "Reading: 'band shows calibrated range — always at least 5.6 mm/hr wide.'\n"
+        "Loss: floor never touches zero; offset is feature-independent (same width\n"
+        "on dry-looking and rainy-looking forecasts).",
+    ),
 ]
 
 # Gate threshold for option 3 display (mm/hr Tweedie mean)
 _WET_GATE_MM = 0.3
 
 
-def fig_option_comparison(plumes_uncond: list, plumes_wetcond: list) -> None:
-    """Side-by-side comparison of the three plume display options across rain categories.
+def fig_option_comparison(
+    plumes_uncond: list,
+    plumes_wetcond: list,
+    plumes_conf: list | None = None,
+) -> None:
+    """Side-by-side comparison of plume display options across rain categories.
 
     Rows = one representative plume per rain category (dry, light, moderate, heavy).
-    Columns = the three display options.
+    Columns = options 1-3 always; option 4 (CQR) added when plumes_conf provided.
     Each column has a header annotation explaining the option's trade-off.
     """
     if not plumes_uncond or not plumes_wetcond:
@@ -616,38 +642,37 @@ def fig_option_comparison(plumes_uncond: list, plumes_wetcond: list) -> None:
     wetcond_idx = {(p["cell"], p["time"]): p for p in plumes_wetcond}
 
     # Find best plume per category from unconditional set, matched in wet-conditional
-    selected: list[tuple[str, str, dict, dict]] = []  # (label, color, uncond_pl, wetcond_pl)
+    conf_idx = {(p["cell"], p["time"]): p for p in (plumes_conf or [])}
+    n_cols = 4 if plumes_conf else 3
+    active_meta = _OPTION_META[:n_cols]
+
+    selected: list[tuple] = []  # (label, color, pl_uncond, pl_wetcond, pl_conf|None)
     for lo, hi, label, color in _RAIN_CATS:
         pl_u = _best_plume(plumes_uncond, lo, hi)
         if pl_u is None:
             continue
         key = (pl_u["cell"], pl_u["time"])
-        pl_w = wetcond_idx.get(key)
-        if pl_w is None:
-            # Try any wetcond plume in same category as fallback
-            pl_w = _best_plume(plumes_wetcond, lo, hi) or pl_u
-        selected.append((label, color, pl_u, pl_w))
+        pl_w = wetcond_idx.get(key) or _best_plume(plumes_wetcond, lo, hi) or pl_u
+        pl_c = conf_idx.get(key) or (_best_plume(plumes_conf, lo, hi) if plumes_conf else None)
+        selected.append((label, color, pl_u, pl_w, pl_c))
 
     if not selected:
         return
 
     n_rows = len(selected)
-    n_cols = 3
-    fig = plt.figure(figsize=(6.5 * n_cols, 4 * n_rows + 2.5))
+    fig = plt.figure(figsize=(6.0 * n_cols, 4 * n_rows + 2.5))
 
-    # Header row: option descriptions
-    for col_i, (opt_title, opt_color, opt_desc) in enumerate(_OPTION_META):
-        ax_h = fig.add_axes([col_i / n_cols + 0.01, 1 - 1.8 / (4 * n_rows + 2.5),
-                             1 / n_cols - 0.02, 1.5 / (4 * n_rows + 2.5)])
+    # Header row
+    for col_i, (opt_title, opt_color, opt_desc) in enumerate(active_meta):
+        ax_h = fig.add_axes([col_i / n_cols + 0.005, 1 - 1.8 / (4 * n_rows + 2.5),
+                             1 / n_cols - 0.01, 1.5 / (4 * n_rows + 2.5)])
         ax_h.set_xlim(0, 1)
         ax_h.set_ylim(0, 1)
         ax_h.axis("off")
         ax_h.text(0.5, 1.0, opt_title, ha="center", va="top",
-                  fontsize=11, fontweight="bold", color=opt_color,
-                  transform=ax_h.transAxes)
+                  fontsize=10, fontweight="bold", color=opt_color, transform=ax_h.transAxes)
         ax_h.text(0.5, 0.75, opt_desc, ha="center", va="top",
-                  fontsize=7.5, color="#333333", transform=ax_h.transAxes,
-                  linespacing=1.5)
+                  fontsize=7, color="#333333", transform=ax_h.transAxes, linespacing=1.4)
 
     # Data rows
     axes_grid = []
@@ -657,25 +682,27 @@ def fig_option_comparison(plumes_uncond: list, plumes_wetcond: list) -> None:
             top = 1 - 1.8 / (4 * n_rows + 2.5)
             h = top / n_rows
             ax = fig.add_axes([
-                col_i / n_cols + 0.05 / n_cols,
+                col_i / n_cols + 0.04 / n_cols,
                 top - (row_i + 1) * h + 0.03,
-                1 / n_cols - 0.10 / n_cols,
+                1 / n_cols - 0.08 / n_cols,
                 h - 0.05,
             ])
             row_axes.append(ax)
         axes_grid.append(row_axes)
 
-    for row_i, (cat_label, cat_color, pl_u, pl_w) in enumerate(selected):
-        hs = np.array(pl_u["horizons"])
+    for row_i, (cat_label, cat_color, pl_u, pl_w, pl_c) in enumerate(selected):
+        hs    = np.array(pl_u["horizons"])
         y_obs = np.maximum(np.array(pl_u["y_obs"]), 0)
 
-        # --- shared y-scale across all 3 options for this row ---
-        all_q90 = []
-        for src, key in [(pl_u, "raw"), (pl_u, "blended"), (pl_w, "raw")]:
-            p = src.get(key, {})
-            q90v = np.array(p.get("q90", np.zeros_like(hs)))
-            all_q90.extend(q90v.tolist())
-        y_max = max(float(max(all_q90)), float(y_obs.max()), 0.6)
+        # shared y-scale: max q90 across all sources
+        all_q90 = list(y_obs)
+        for src, skey in [(pl_u, "raw"), (pl_u, "blended"), (pl_w, "raw"),
+                          (pl_c, "conformal") if pl_c else (None, None)]:
+            if src is None:
+                continue
+            p = src.get(skey, {})
+            all_q90.extend(np.array(p.get("q90", np.zeros_like(hs))).tolist())
+        y_max = max(float(max(all_q90)), 0.6)
         y_top = y_max * 1.18
 
         for col_i in range(n_cols):
@@ -686,23 +713,24 @@ def fig_option_comparison(plumes_uncond: list, plumes_wetcond: list) -> None:
             ax.scatter(hs, y_obs, s=14, color="black", zorder=5)
             _add_rain_levels(ax, y_max)
             if col_i == 0:
-                ax.set_ylabel(f"{cat_label}\n(mm/hr)", fontsize=8, color=cat_color, fontweight="bold")
+                ax.set_ylabel(f"{cat_label}\n(mm/hr)", fontsize=8,
+                              color=cat_color, fontweight="bold")
             if row_i == n_rows - 1:
                 ax.set_xlabel("lead time (h)", fontsize=8)
             else:
                 ax.set_xticklabels([])
 
-            opt_color = _OPTION_META[col_i][1]
+            opt_color = active_meta[col_i][1]
 
             if col_i == 0:
-                # Option 1: mean line only (use unconditional blended mean)
-                b = pl_u.get("blended", {})
+                # Option 1: mean line only
+                b  = pl_u.get("blended", {})
                 mu = np.maximum(np.array(b.get("mean", np.zeros_like(hs))), 0)
-                ax.plot(hs, mu, "-", color=opt_color, lw=2.0, label="blended mean")
+                ax.plot(hs, mu, "-", color=opt_color, lw=2.0)
 
             elif col_i == 1:
-                # Option 2: unconditional fan (raw from uncond run = trained on all hours)
-                r = pl_u.get("raw", {})
+                # Option 2: unconditional fan
+                r   = pl_u.get("raw", {})
                 q10 = np.maximum(np.array(r.get("q10", np.zeros_like(hs))), 0)
                 q25 = np.maximum(np.array(r.get("q25", np.zeros_like(hs))), 0)
                 q75 = np.maximum(np.array(r.get("q75", np.zeros_like(hs))), 0)
@@ -712,25 +740,41 @@ def fig_option_comparison(plumes_uncond: list, plumes_wetcond: list) -> None:
                 ax.fill_between(hs, q25, q75, alpha=0.35, color=opt_color)
                 ax.plot(hs, mu, "-", color=opt_color, lw=2.0)
 
-            else:
-                # Option 3: wet-conditional fan (raw from wetcond run), gated on blended mean
-                b = pl_w.get("blended", {})
+            elif col_i == 2:
+                # Option 3: wet-conditional, gated
+                b        = pl_w.get("blended", {})
                 mu_blend = np.maximum(np.array(b.get("mean", np.zeros_like(hs))), 0)
-                r = pl_w.get("raw", {})
+                r   = pl_w.get("raw", {})
                 q10 = np.maximum(np.array(r.get("q10", np.zeros_like(hs))), 0)
                 q25 = np.maximum(np.array(r.get("q25", np.zeros_like(hs))), 0)
                 q75 = np.maximum(np.array(r.get("q75", np.zeros_like(hs))), 0)
                 q90 = np.maximum(np.array(r.get("q90", np.zeros_like(hs))), 0)
                 gate = mu_blend >= _WET_GATE_MM
-                ax.axhline(_WET_GATE_MM, color="gray", ls="--", lw=1.0, alpha=0.7,
-                           label=f"gate ({_WET_GATE_MM} mm/hr)")
+                ax.axhline(_WET_GATE_MM, color="gray", ls="--", lw=1.0, alpha=0.7)
                 if gate.any():
                     ax.fill_between(hs, q10, q90, alpha=0.18, color=opt_color, where=gate)
                     ax.fill_between(hs, q25, q75, alpha=0.35, color=opt_color, where=gate)
                 ax.plot(hs, np.where(gate, mu_blend, np.nan), "-", color=opt_color, lw=2.0)
 
+            else:
+                # Option 4: CQR conformal
+                if pl_c is None:
+                    ax.text(0.5, 0.5, "no data", ha="center", va="center",
+                            transform=ax.transAxes, color="gray")
+                    continue
+                r   = pl_c.get("conformal", {})
+                mu  = np.maximum(np.array(pl_c.get("raw", {}).get("mean", np.zeros_like(hs))), 0)
+                q10 = np.maximum(np.array(r.get("q10", np.zeros_like(hs))), 0)
+                q25 = np.maximum(np.array(r.get("q25", np.zeros_like(hs))), 0)
+                q75 = np.maximum(np.array(r.get("q75", np.zeros_like(hs))), 0)
+                q90 = np.maximum(np.array(r.get("q90", np.zeros_like(hs))), 0)
+                ax.fill_between(hs, q10, q90, alpha=0.18, color=opt_color)
+                ax.fill_between(hs, q25, q75, alpha=0.35, color=opt_color)
+                ax.plot(hs, mu, "-", color=opt_color, lw=2.0)
+
+    n_opt_label = "four" if n_cols == 4 else "three"
     fig.suptitle(
-        "Plume display options — three approaches to communicating forecast uncertainty\n"
+        f"Plume display options — {n_opt_label} approaches to communicating forecast uncertainty\n"
         "Dots = observed · horizontal lines = light/heavy/storm thresholds",
         fontsize=11, y=0.995,
     )
@@ -1080,7 +1124,8 @@ def main() -> None:
         fig_plumes(d["plumes"])
         fig_plumes_display(d["plumes"])
     if d["plumes_uncond"] and d["plumes"]:
-        fig_option_comparison(d["plumes_uncond"], d["plumes"])
+        fig_option_comparison(d["plumes_uncond"], d["plumes"],
+                              d["plumes_conf"] or None)
         fig_coverage_explainer(d["plumes_uncond"], d["plumes"])
     if len(d["v3_ablation"]):
         fig_ablation(d["v3_ablation"], d["v3_conditional"])
