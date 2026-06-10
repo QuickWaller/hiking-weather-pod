@@ -32,7 +32,8 @@ from pathlib import Path
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
-from lightgbm import LGBMRegressor
+from lightgbm import LGBMClassifier, LGBMRegressor
+from sklearn.metrics import roc_auc_score
 
 from podml.config import CONFIG_PATH, ROOT
 from podml.features import build_features_endpoint
@@ -370,6 +371,36 @@ def fit_ensemble(
     return models
 
 
+def fit_binary_head(
+    X_tr: pd.DataFrame,
+    y_tr: np.ndarray,
+    X_val: pd.DataFrame,
+    y_val: np.ndarray,
+    feats: list[str],
+    seed: int = 42,
+) -> LGBMClassifier:
+    """Train a binary classifier for P(rain > WET_THRESHOLD_MM) on all hours.
+
+    Separate from the quantile heads — optimises directly for wet/dry discrimination
+    (binary cross-entropy) rather than using the Tweedie mean as a proxy.
+    """
+    lgb_common = dict(
+        n_estimators=1500, learning_rate=0.05, num_leaves=127,
+        min_child_samples=50, reg_lambda=0.5,
+        verbose=-1, random_state=seed,
+    )
+    callbacks = [lgb.early_stopping(100, verbose=False), lgb.log_evaluation(500)]
+    y_tr_bin  = (y_tr  > WET_THRESHOLD_MM).astype(int)
+    y_val_bin = (y_val > WET_THRESHOLD_MM).astype(int)
+    Xtr_f  = X_tr[feats]
+    Xval_f = X_val[feats]
+    print("  fitting binary (rain occurrence)…", flush=True)
+    clf = LGBMClassifier(objective="binary", **lgb_common)
+    clf.fit(Xtr_f, y_tr_bin, eval_set=[(Xval_f, y_val_bin)], callbacks=callbacks)
+    print(f"    binary: {clf.best_iteration_} trees", flush=True)
+    return clf
+
+
 def predict(
     models: dict[str, LGBMRegressor],
     X: pd.DataFrame,
@@ -624,6 +655,7 @@ def train_ensemble(
     wet_quantiles: bool = False,
     plumes_file: str = "plumes.json",
     conformal: bool = False,
+    binary: bool = False,
 ) -> dict:
     """Train the phase-07 distributional ensemble and evaluate on the 2024 test set.
 
@@ -679,6 +711,8 @@ def train_ensemble(
     # 1. Train (val set used for early stopping only — not for weight fitting)
     models = fit_ensemble(X_tr, y_tr, X_vl, y_vl, avail_feats, seed=seed,
                           wet_quantiles=wet_quantiles)
+    binary_model = fit_binary_head(X_tr, y_tr, X_vl, y_vl, avail_feats, seed=seed) \
+        if binary else None
 
     # 2. Per-cell trust weights (fitted on validation only)
     weights = fit_cell_weights(models, X_vl, y_vl,
@@ -700,6 +734,8 @@ def train_ensemble(
     preds_te   = predict(models, X_te, avail_feats)
     preds_conf = apply_conformal(preds_te, conf_corrections) if conformal else {}
     blended_te = blend(preds_te, clim_table, global_stats, weights, meta_te)
+    p_rain_te  = binary_model.predict_proba(X_te[avail_feats])[:, 1] \
+        if binary_model is not None else None
 
     crps_te = crps_from_quantiles(y_te, blended_te)
     # Diagnostic: score the RAW (unblended) model too. If raw CRPSS shows horizon decay / beats
@@ -749,6 +785,18 @@ def train_ensemble(
             else:
                 conf_row = {"cov_conf_10_90": float("nan"), "cov_conf_25_75": float("nan")}
 
+        bin_row: dict = {}
+        if p_rain_te is not None:
+            y_bin_h = (y_h > WET_THRESHOLD_MM).astype(int)
+            if y_bin_h.sum() > 10 and y_bin_h.sum() < len(y_bin_h) - 10:
+                p_h = p_rain_te[h_mask]
+                auc_bin     = float(roc_auc_score(y_bin_h, p_h))
+                auc_tweedie = float(roc_auc_score(y_bin_h, pr["mean"]))
+                bin_row = {"auc_binary": auc_bin, "auc_tweedie": auc_tweedie,
+                           "auc_gain": auc_bin - auc_tweedie}
+                print(f"    binary AUC={auc_bin:.4f}  tweedie-as-clf AUC={auc_tweedie:.4f}"
+                      f"  gain={auc_bin - auc_tweedie:+.4f}", flush=True)
+
         overall.append({
             "horizon_h": h, "crpss": cs, "crpss_raw": cs_raw,
             "mean_crps": float(np.mean(cr_h)),
@@ -757,7 +805,7 @@ def train_ensemble(
             "cov_wet_10_90": cov_wet_10_90, "cov_wet_25_75": cov_wet_25_75,
             "cov_wet_raw_10_90": cov_wet_raw_10_90, "cov_wet_raw_25_75": cov_wet_raw_25_75,
             "n_test": int(h_mask.sum()), "n_wet": n_wet,
-            **conf_row,
+            **conf_row, **bin_row,
         })
         pit = pit_histogram(y_h, pb)
         pit["horizon_h"] = h
@@ -782,6 +830,16 @@ def train_ensemble(
     pd.DataFrame(imp_rows).to_csv(OUT / "importance.csv", index=False)
     with open(OUT / "cell_weights.json", "w") as f:
         json.dump({str(k): v for k, v in weights.items()}, f, indent=2)
+
+    if binary and any("auc_binary" in row for row in overall):
+        bin_df = pd.DataFrame([
+            {k: row[k] for k in ("horizon_h", "auc_binary", "auc_tweedie", "auc_gain", "n_wet")}
+            for row in overall if "auc_binary" in row
+        ])
+        bin_df.to_csv(OUT / "binary_metrics.csv", index=False)
+        print(f"  binary_metrics.csv → mean AUC binary={bin_df['auc_binary'].mean():.4f}"
+              f"  tweedie={bin_df['auc_tweedie'].mean():.4f}"
+              f"  gain={bin_df['auc_gain'].mean():+.4f}", flush=True)
 
     if save_plumes:
         _save_plume_examples(preds_te, blended_te, y_te, meta_te, clim_table, global_stats,
@@ -1083,6 +1141,8 @@ if __name__ == "__main__":
                     help="train q10/q25/q75/q90 on wet-only rows (y>0); Tweedie mean unchanged")
     ap.add_argument("--conformal", action="store_true",
                     help="fit CQR offsets on val wet hours and apply to test predictions")
+    ap.add_argument("--binary", action="store_true",
+                    help="train a dedicated binary head for P(rain>0.5mm/hr) and report AUC vs Tweedie")
     args = ap.parse_args()
 
     if args.years and "-" in args.years and "," not in args.years:
@@ -1099,7 +1159,7 @@ if __name__ == "__main__":
     elif args.from_cache:
         print(train_ensemble(n_cells=args.n_cells, seed=args.seed, save_plumes=args.save_plumes,
                              wet_quantiles=args.wet_quantiles, plumes_file=args.plumes_file,
-                             conformal=args.conformal))
+                             conformal=args.conformal, binary=args.binary))
     elif args.ablation:
         print(ensemble_feature_ablation(n_cells=args.n_cells, seed=args.seed, n_boot=args.n_boot))
     else:
