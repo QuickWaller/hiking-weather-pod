@@ -931,7 +931,7 @@ def ensemble_tau_ablation(
     meta_te    = meta[te_mask].reset_index(drop=True)
 
     avail_feats = [f for f in ENSEMBLE_FEATURES if f in X.columns]
-    clim_table, global_stats = build_clim_distribution(meta[tr_mask], y_tr)
+    clim_table, global_stats = build_clim_distribution(y, meta, tr_mask)
     weights = fit_cell_weights(X, y, meta, clim_table, global_stats, avail_feats, seed=seed)
 
     EVAL_TAU = 6.0
