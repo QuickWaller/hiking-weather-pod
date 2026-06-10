@@ -32,7 +32,7 @@ import pandas as pd
 
 from podml.train_ensemble import (
     OUT, CACHE_DIR, ENSEMBLE_FEATURES,
-    SAMPLED_CSV, MotionSimParams,
+    MotionSimParams,
     build_ensemble_dataset, load_ensemble_state, to_long_format,
     blend, predict,
 )
@@ -40,6 +40,13 @@ from podml.labels_gpm import load_gpm_cells_hourly
 
 TRACE_DIR = OUT / "storm_trace"
 FIG_DIR = OUT.parent.parent / "docs" / "figures" / "ensemble"
+
+
+def _cell_to_latlon(cell_id: str) -> tuple[float, float]:
+    """Parse lat/lon from cell ID format 'g-43p1_171p7' → (-43.1, 171.7)."""
+    rest = cell_id[1:]          # strip leading 'g'
+    lat_s, lon_s = rest.split("_")
+    return float(lat_s.replace("p", ".")), float(lon_s.replace("p", "."))
 
 
 # ─────────────────────────────────────────────── storm finder ────────────────────────────────────
@@ -110,10 +117,10 @@ def build_dense_trace_cache(
     (valid_pos caps it at ~700/month in practice).  Only processes the requested cells,
     so this is fast: 3 cells × 12 months × ~700 endpoints × 25 horizons ≈ 630 K rows.
     """
-    all_cells = pd.read_csv(SAMPLED_CSV)
-    cells = all_cells[all_cells["name"].isin(cell_ids)].reset_index(drop=True)
-    if cells.empty:
-        raise ValueError(f"No SAMPLED_CSV rows for: {cell_ids}")
+    cells = pd.DataFrame(
+        [{"name": cid, "lat": _cell_to_latlon(cid)[0], "lon": _cell_to_latlon(cid)[1]}
+         for cid in cell_ids]
+    )
     print(f"build_dense_trace_cache: {len(cells)} cells, year={year}", flush=True)
 
     gpm_times, precip = load_gpm_cells_hourly(
