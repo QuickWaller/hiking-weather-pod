@@ -857,6 +857,114 @@ def fig_plumes_display(plumes: list) -> None:
     plt.close(fig)
 
 
+_GATE_THRESHOLD = 0.30  # binary-head P(rain) above which quantile bands are shown
+
+
+def fig_binary_gated_comparison(plumes: list) -> None:
+    """Compare unconditional fan vs binary-head-gated fan across rain categories.
+
+    Left column: unconditional — blended quantile bands shown at every horizon.
+    Right column: binary-gated — bands hidden where binary P(rain) < GATE_THRESHOLD;
+                  mean always shown; P(rain) plotted as a dashed line on a secondary axis.
+
+    Rows = one representative plume per intensity category (dry → heavy).
+    """
+    has_p_rain = any("p_rain" in p for p in plumes)
+    if not plumes or not has_p_rain:
+        print("  fig_binary_gated_comparison: no p_rain in plumes — skipping", flush=True)
+        return
+
+    picks = [(label, color, _best_plume(plumes, lo, hi))
+             for lo, hi, label, color in _RAIN_CATS]
+    picks = [(label, color, pl) for label, color, pl in picks
+             if pl is not None and "p_rain" in pl]
+    if not picks:
+        return
+
+    n_rows = len(picks)
+    fig, axes = plt.subplots(n_rows, 2, figsize=(11, 4 * n_rows + 1.5),
+                             squeeze=False, constrained_layout=True)
+
+    col_titles = [
+        "Option 2 — Unconditional fan\n(always show full band)",
+        f"Option 3b — Binary-gated (P > {_GATE_THRESHOLD})\n(bands shown only where model predicts rain)",
+    ]
+    for col_i, title in enumerate(col_titles):
+        axes[0, col_i].set_title(title, fontsize=10, fontweight="bold", pad=8)
+
+    for row_i, (cat_label, color, pl) in enumerate(picks):
+        hs    = np.array(pl["horizons"])
+        y_obs = np.maximum(np.array(pl["y_obs"]), 0)
+        b     = pl.get("blended", {})
+        p_rain = np.array(pl["p_rain"])
+
+        q10 = np.maximum(np.array(b.get("q10", np.zeros_like(hs))), 0)
+        q25 = np.maximum(np.array(b.get("q25", np.zeros_like(hs))), 0)
+        q75 = np.maximum(np.array(b.get("q75", np.zeros_like(hs))), 0)
+        q90 = np.maximum(np.array(b.get("q90", np.zeros_like(hs))), 0)
+        mu  = np.maximum(np.array(b.get("mean", np.zeros_like(hs))), 0)
+
+        y_max = max(float(q90.max()), float(y_obs.max()), 0.6)
+        y_top = y_max * 1.22
+
+        # ── left: unconditional ──────────────────────────────────────────────
+        ax = axes[row_i, 0]
+        ax.fill_between(hs, q10, q90, alpha=0.18, color=color)
+        ax.fill_between(hs, q25, q75, alpha=0.35, color=color)
+        ax.plot(hs, mu, "-", color=color, lw=2.0)
+        ax.scatter(hs, y_obs, s=16, color="black", zorder=5)
+        ax.set_ylim(0, y_top)
+        _add_rain_levels(ax, y_max)
+        ax.set_ylabel(f"{cat_label}\nrain (mm/hr)", fontsize=8, color=color)
+        ax.grid(alpha=0.25)
+        if row_i == n_rows - 1:
+            ax.set_xlabel("lead time (h)", fontsize=9)
+
+        # ── right: binary-gated ──────────────────────────────────────────────
+        ax2 = axes[row_i, 1]
+        gate = p_rain >= _GATE_THRESHOLD
+
+        # Draw bands only at gated horizons using segment-wise fill_between
+        # Mask arrays to NaN where gate is off so fill_between skips those spans
+        q10_g = np.where(gate, q10, np.nan)
+        q25_g = np.where(gate, q25, np.nan)
+        q75_g = np.where(gate, q75, np.nan)
+        q90_g = np.where(gate, q90, np.nan)
+        ax2.fill_between(hs, q10_g, q90_g, alpha=0.18, color=color,
+                         label="10–90% (gated)")
+        ax2.fill_between(hs, q25_g, q75_g, alpha=0.35, color=color,
+                         label="25–75% (gated)")
+        ax2.plot(hs, mu, "-", color=color, lw=2.0, label="mean (always)")
+        ax2.scatter(hs, y_obs, s=16, color="black", zorder=5, label="observed")
+
+        ax2.set_ylim(0, y_top)
+        _add_rain_levels(ax2, y_max)
+        ax2.grid(alpha=0.25)
+        if row_i == n_rows - 1:
+            ax2.set_xlabel("lead time (h)", fontsize=9)
+
+        # P(rain) secondary axis
+        ax2r = ax2.twinx()
+        ax2r.plot(hs, p_rain, "--", color="#888888", lw=1.2, label="P(rain)")
+        ax2r.axhline(_GATE_THRESHOLD, color="#888888", lw=0.8, ls=":", alpha=0.7)
+        ax2r.set_ylim(0, 1.05)
+        ax2r.set_ylabel("P(rain)", fontsize=7, color="#888888")
+        ax2r.tick_params(axis="y", labelsize=7, labelcolor="#888888")
+
+    # shared legend from last right panel
+    h1, l1 = axes[-1, 1].get_legend_handles_labels()
+    fig.legend(h1, l1, loc="lower center", ncol=4, fontsize=8,
+               bbox_to_anchor=(0.5, -0.02))
+
+    fig.suptitle(
+        "Binary-head gate vs unconditional fan  ·  dashed grey = P(rain), dotted line = gate threshold",
+        fontsize=10,
+    )
+    fig.savefig(FIG / "plume_binary_gated.png", dpi=120)
+    plt.close(fig)
+    print(" saved plume_binary_gated.png", flush=True)
+
+
 # --------------------------------------------------------------------------- report
 
 def _results_section(d: dict) -> str:
@@ -1005,13 +1113,20 @@ The two heads are never blended together — they answer orthogonal questions.
         )
         weight_fig = ""
 
+    has_binary_plume = (FIG / "plume_binary_gated.png").exists()
     plume_fig = (
         "![plume examples](figures/ensemble/plume_display.png)\n\n"
         "_One panel per observed rain intensity: dry, light, moderate, heavy. "
-        "Blended model only — outer band = 10–90%, inner = 25–75%, line = mean, dots = observed. "
-        "Bands are wet-conditional: given rain, 80% of similar situations fell inside the outer band._\n\n"
-        "![plume diagnostic](figures/ensemble/plume_examples.png)\n\n"
-        "_Diagnostic: raw vs blended vs climatology on the same 6 endpoints._\n"
+        "Blended model only — outer band = 10–90%, inner = 25–75%, line = mean, dots = observed._\n\n"
+        + (
+            "![binary-gated plume](figures/ensemble/plume_binary_gated.png)\n\n"
+            "_Left: unconditional fan (always shown). "
+            "Right: binary-gated fan — quantile bands hidden where binary-head P(rain) < 0.30; "
+            "mean always shown. Dashed grey = P(rain) on secondary axis._\n\n"
+            if has_binary_plume else ""
+        )
+        + "![plume diagnostic](figures/ensemble/plume_examples.png)\n\n"
+          "_Diagnostic: raw vs blended vs climatology on the same 6 endpoints._\n"
         if d.get("plumes") else
         "_Plume examples not yet saved — re-run with `--save-plumes` flag._\n"
     )
@@ -1123,6 +1238,7 @@ def main() -> None:
     if d["plumes"]:
         fig_plumes(d["plumes"])
         fig_plumes_display(d["plumes"])
+        fig_binary_gated_comparison(d["plumes"])
     if d["plumes_uncond"] and d["plumes"]:
         fig_option_comparison(d["plumes_uncond"], d["plumes"],
                               d["plumes_conf"] or None)
