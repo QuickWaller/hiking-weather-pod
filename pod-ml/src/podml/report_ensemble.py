@@ -33,7 +33,7 @@ def _read(name: str) -> pd.DataFrame:
 
 def _load() -> dict:
     d = {n: _read(n) for n in ["metrics_overall", "coverage", "pit_histogram", "importance",
-                                "v3_ablation", "v3_conditional"]}
+                                "v3_ablation", "v3_conditional", "tau_ablation"]}
     weights_path = OUT / "cell_weights.json"
     if weights_path.exists():
         with open(weights_path) as f:
@@ -965,6 +965,65 @@ def fig_binary_gated_comparison(plumes: list) -> None:
     print(" saved plume_binary_gated.png", flush=True)
 
 
+def fig_tau_ablation(tau_df: pd.DataFrame) -> None:
+    """Bar chart of horizon-weighted CRPSS (τ_eval=6h) vs training tau.
+
+    Also shows per-horizon CRPSS at h=0, h=6, h=24 as grouped bars so the
+    reader can see the near-vs-far trade-off directly.
+    """
+    if tau_df.empty:
+        return
+
+    labels = tau_df["tau"].tolist()
+    x = np.arange(len(labels))
+    width = 0.2
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.5))
+
+    # Left: headline metric — horizon-weighted CRPSS
+    bars = tau_df["wcrpss_tau6"].tolist()
+    flat_bar = tau_df["crpss_flat"].tolist()
+    ax1.bar(x - width / 2, bars,     width, label="wCRPSS (τ_eval=6h)", color="#1f77b4")
+    ax1.bar(x + width / 2, flat_bar, width, label="CRPSS flat",          color="#aec7e8")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(labels)
+    ax1.set_xlabel("training τ")
+    ax1.set_ylabel("CRPSS")
+    ax1.set_title("Headline skill: weighted vs flat CRPSS", fontsize=10)
+    ax1.legend(fontsize=8)
+    ax1.grid(axis="y", alpha=0.3)
+    ylo = min(min(bars), min(flat_bar)) * 0.97
+    yhi = max(max(bars), max(flat_bar)) * 1.03
+    ax1.set_ylim(ylo, yhi)
+    for xi, (b, f) in enumerate(zip(bars, flat_bar)):
+        ax1.text(xi - width / 2, b + 0.001, f"{b:.4f}", ha="center", va="bottom", fontsize=7)
+        ax1.text(xi + width / 2, f + 0.001, f"{f:.4f}", ha="center", va="bottom", fontsize=7)
+
+    # Right: per-horizon breakdown
+    h0  = tau_df["crpss_h0"].tolist()
+    h6  = tau_df["crpss_h6"].tolist()
+    h24 = tau_df["crpss_h24"].tolist()
+    ax2.bar(x - width,     h0,  width, label="h=0  (now)",    color="#d62728")
+    ax2.bar(x,             h6,  width, label="h=6  (6h out)",  color="#ff7f0e")
+    ax2.bar(x + width,     h24, width, label="h=24 (24h out)", color="#bcbd22")
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(labels)
+    ax2.set_xlabel("training τ")
+    ax2.set_ylabel("CRPSS")
+    ax2.set_title("CRPSS by horizon — near-vs-far trade-off", fontsize=10)
+    ax2.legend(fontsize=8)
+    ax2.grid(axis="y", alpha=0.3)
+
+    fig.suptitle(
+        "Horizon decay weighting ablation  ·  τ=6h weights near horizons heavily, flat=equal weight",
+        fontsize=10,
+    )
+    fig.tight_layout()
+    fig.savefig(FIG / "tau_ablation.png", dpi=120)
+    plt.close(fig)
+    print(" saved tau_ablation.png", flush=True)
+
+
 # --------------------------------------------------------------------------- report
 
 def _results_section(d: dict) -> str:
@@ -1245,6 +1304,8 @@ def main() -> None:
         fig_coverage_explainer(d["plumes_uncond"], d["plumes"])
     if len(d["v3_ablation"]):
         fig_ablation(d["v3_ablation"], d["v3_conditional"])
+    if len(d["tau_ablation"]):
+        fig_tau_ablation(d["tau_ablation"])
 
     write_report(d)
     print(f"figures -> {FIG}")

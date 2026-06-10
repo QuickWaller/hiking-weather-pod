@@ -60,6 +60,9 @@ QUANTILE_LEVELS = [0.10, 0.25, 0.75, 0.90]
 MODEL_NAMES = ["mean"] + [f"q{int(a*100):02d}" for a in QUANTILE_LEVELS]
 # → ["mean", "q10", "q25", "q75", "q90"]
 
+# Horizon decay taus to sweep in the tau ablation.
+TAU_ABLATION_VALUES: list[float | None] = [6.0, 12.0, 24.0, None]  # None = flat / no weighting
+
 # Model feature list: same as the phase-06 binary model + horizon_h (the key new input).
 ENSEMBLE_FEATURES = MODEL_FEATURES + ["horizon_h"]
 
@@ -308,6 +311,18 @@ def pit_histogram(y_true: np.ndarray, preds: dict[str, np.ndarray]) -> pd.DataFr
 
 # ─────────────────────────────────────────────── training ───────────────────────────────────────
 
+def horizon_weights(horizon_h: np.ndarray, tau: float | None) -> np.ndarray | None:
+    """Exponential horizon decay weights: w(h) = exp(-h/tau), normalised so mean=1.
+
+    Returns None when tau is None (flat / no weighting — standard equal-weight training).
+    Normalising keeps the effective learning rate stable regardless of tau.
+    """
+    if tau is None:
+        return None
+    w = np.exp(-horizon_h / tau)
+    return w / w.mean()
+
+
 def fit_ensemble(
     X_tr: pd.DataFrame,
     y_tr: np.ndarray,
@@ -316,6 +331,7 @@ def fit_ensemble(
     feats: list[str],
     seed: int = 42,
     wet_quantiles: bool = False,
+    horizon_tau: float | None = None,
 ) -> dict[str, LGBMRegressor]:
     """Train the five-model ensemble on rain amount (mm/hr) with early stopping on the val set.
 
@@ -342,11 +358,17 @@ def fit_ensemble(
     callbacks = [lgb.early_stopping(100, verbose=False), lgb.log_evaluation(500)]
     Xtr_f = X_tr if list(X_tr.columns) == list(feats) else X_tr[feats]
     Xval_f = X_val if list(X_val.columns) == list(feats) else X_val[feats]
+
+    w_tr = horizon_weights(X_tr["horizon_h"].to_numpy(), horizon_tau)
+    w_vl = horizon_weights(X_val["horizon_h"].to_numpy(), horizon_tau)
+    ew_vl = [w_vl] if w_vl is not None else None  # eval_sample_weight expects a list
+
     models: dict[str, LGBMRegressor] = {}
     print("  fitting mean (Tweedie)…", flush=True)
     models["mean"] = LGBMRegressor(
         objective="tweedie", tweedie_variance_power=1.5, **lgb_common
-    ).fit(Xtr_f, y_tr, eval_set=[(Xval_f, y_val)], callbacks=callbacks)
+    ).fit(Xtr_f, y_tr, sample_weight=w_tr,
+          eval_set=[(Xval_f, y_val)], eval_sample_weight=ew_vl, callbacks=callbacks)
     print(f"    mean: {models['mean'].best_iteration_} trees", flush=True)
 
     if wet_quantiles:
@@ -355,18 +377,23 @@ def fit_ensemble(
         wet_vl = y_val > 0
         Xtr_q, ytr_q = Xtr_f[wet_tr], y_tr[wet_tr]
         Xvl_q, yvl_q = Xval_f[wet_vl], y_val[wet_vl]
+        w_tr_q = w_tr[wet_tr] if w_tr is not None else None
+        w_vl_q = w_vl[wet_vl] if w_vl is not None else None
+        ew_vl_q = [w_vl_q] if w_vl_q is not None else None
         wet_pct = 100.0 * wet_tr.mean()
         print(f"  wet_quantiles: training on {wet_tr.sum():,} wet rows ({wet_pct:.1f}% of train)",
               flush=True)
     else:
         Xtr_q, ytr_q = Xtr_f, y_tr
         Xvl_q, yvl_q = Xval_f, y_val
+        w_tr_q, ew_vl_q = w_tr, ew_vl
 
     for alpha, name in zip(QUANTILE_LEVELS, MODEL_NAMES[1:]):
         print(f"  fitting {name} (α={alpha})…", flush=True)
         models[name] = LGBMRegressor(
             objective="quantile", alpha=alpha, **lgb_common
-        ).fit(Xtr_q, ytr_q, eval_set=[(Xvl_q, yvl_q)], callbacks=callbacks)
+        ).fit(Xtr_q, ytr_q, sample_weight=w_tr_q,
+              eval_set=[(Xvl_q, yvl_q)], eval_sample_weight=ew_vl_q, callbacks=callbacks)
         print(f"    {name}: {models[name].best_iteration_} trees", flush=True)
     return models
 
@@ -659,6 +686,7 @@ def train_ensemble(
     plumes_file: str = "plumes.json",
     conformal: bool = False,
     binary: bool = False,
+    horizon_tau: float | None = None,
 ) -> dict:
     """Train the phase-07 distributional ensemble and evaluate on the 2024 test set.
 
@@ -712,8 +740,10 @@ def train_ensemble(
         pd.Series(y_tr, name="amount"), meta_tr, np.ones(len(y_tr), dtype=bool))
 
     # 1. Train (val set used for early stopping only — not for weight fitting)
+    tau_label = f"τ={horizon_tau}h" if horizon_tau is not None else "flat"
+    print(f"  horizon weighting: {tau_label}", flush=True)
     models = fit_ensemble(X_tr, y_tr, X_vl, y_vl, avail_feats, seed=seed,
-                          wet_quantiles=wet_quantiles)
+                          wet_quantiles=wet_quantiles, horizon_tau=horizon_tau)
     binary_model = fit_binary_head(X_tr, y_tr, X_vl, y_vl, avail_feats, seed=seed) \
         if binary else None
 
@@ -827,7 +857,21 @@ def train_ensemble(
             imp_rows.append({"model": name, "feature": feat, "gain": float(gain)})
 
     OUT.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(overall).to_csv(OUT / "metrics_overall.csv", index=False)
+    overall_df = pd.DataFrame(overall)
+    # Horizon-weighted CRPSS: emphasises near-term horizons that matter most on-device.
+    # Uses τ=6h as the fixed evaluation weight (independent of training tau).
+    EVAL_TAU = 6.0
+    hs_arr = overall_df["horizon_h"].to_numpy(dtype=float)
+    eval_w  = np.exp(-hs_arr / EVAL_TAU)
+    eval_w /= eval_w.sum()
+    wcrpss_blend = float((overall_df["crpss"].to_numpy() * eval_w).sum())
+    wcrpss_raw   = float((overall_df["crpss_raw"].to_numpy() * eval_w).sum()) \
+        if "crpss_raw" in overall_df.columns else float("nan")
+    overall_df["eval_weight_tau6"] = eval_w
+    overall_df.to_csv(OUT / "metrics_overall.csv", index=False)
+    print(f"  horizon-weighted CRPSS (τ_eval=6h): blend={wcrpss_blend:.4f}  raw={wcrpss_raw:.4f}",
+          flush=True)
+
     pd.concat(pit_rows, ignore_index=True).to_csv(OUT / "pit_histogram.csv", index=False)
     pd.DataFrame(cov_rows).to_csv(OUT / "coverage.csv", index=False)
     pd.DataFrame(imp_rows).to_csv(OUT / "importance.csv", index=False)
@@ -852,6 +896,85 @@ def train_ensemble(
 
     print(f"ensemble results → {OUT}", flush=True)
     return {"models": len(MODEL_NAMES), "horizons": len(ENSEMBLE_HORIZONS), "out": str(OUT)}
+
+
+# ─────────────────────────────────────────────── horizon tau ablation ───────────────────────────
+
+def ensemble_tau_ablation(
+    n_cells: int | None = 200,
+    seed: int = 42,
+    taus: list[float | None] = TAU_ABLATION_VALUES,
+) -> str:
+    """Train one ensemble per horizon decay tau and compare horizon-weighted CRPSS.
+
+    Fixed evaluation weight τ_eval=6h for all runs so the metric is comparable.
+    Outputs tau_ablation.csv with one row per tau.
+    """
+    from podml.train_motion import (TRAIN_YEARS, VAL_YEAR, TEST_YEAR)
+
+    X, y, meta = load_cache(CACHE_DIR)
+    ensure_model_features(X, y, meta)
+
+    if n_cells is not None:
+        rng0 = np.random.default_rng(seed)
+        keep = set(rng0.choice(meta["cell"].unique(),
+                               size=min(n_cells, meta["cell"].nunique()), replace=False))
+        mask = meta["cell"].isin(keep).to_numpy()
+        X, y, meta = X[mask].reset_index(drop=True), y[mask], meta[mask].reset_index(drop=True)
+
+    tr_mask  = meta["year"].isin(TRAIN_YEARS).to_numpy()
+    vl_mask  = (meta["year"] == VAL_YEAR).to_numpy()
+    te_mask  = (meta["year"] == TEST_YEAR).to_numpy()
+    X_tr, y_tr = X[tr_mask], y[tr_mask]
+    X_vl, y_vl = X[vl_mask], y[vl_mask]
+    X_te, y_te = X[te_mask], y[te_mask]
+    meta_te    = meta[te_mask].reset_index(drop=True)
+
+    avail_feats = [f for f in ENSEMBLE_FEATURES if f in X.columns]
+    clim_table, global_stats = build_clim_distribution(meta[tr_mask], y_tr)
+    weights = fit_cell_weights(X, y, meta, clim_table, global_stats, avail_feats, seed=seed)
+
+    EVAL_TAU = 6.0
+    rows = []
+    for tau in taus:
+        label = f"tau={tau}h" if tau is not None else "flat"
+        print(f"\n── tau ablation: {label} ──", flush=True)
+        models = fit_ensemble(X_tr, y_tr, X_vl, y_vl, avail_feats, seed=seed,
+                              horizon_tau=tau)
+        preds_te  = predict(models, X_te, avail_feats)
+        blended   = blend(preds_te, clim_table, global_stats, weights, meta_te)
+        crps_te   = crps_from_quantiles(y_te, blended)
+
+        per_h = []
+        for h in ENSEMBLE_HORIZONS:
+            h_mask = meta_te["horizon_h"].to_numpy() == h
+            if h_mask.sum() < 50:
+                continue
+            y_h  = y_te[h_mask]
+            cr_h = crps_te[h_mask]
+            clim_mean_h = _clim_preds(clim_table, global_stats, meta_te[h_mask])["mean"]
+            per_h.append({"h": h, "crpss": crpss(cr_h, y_h, clim_mean_h)})
+
+        ph_df   = pd.DataFrame(per_h)
+        hs_arr  = ph_df["h"].to_numpy(dtype=float)
+        eval_w  = np.exp(-hs_arr / EVAL_TAU)
+        eval_w /= eval_w.sum()
+        wcrpss  = float((ph_df["crpss"].to_numpy() * eval_w).sum())
+        flat    = float(ph_df["crpss"].mean())
+        crpss_h0  = float(ph_df.loc[ph_df["h"] == 0,  "crpss"].iloc[0])
+        crpss_h6  = float(ph_df.loc[ph_df["h"] == 6,  "crpss"].iloc[0])
+        crpss_h24 = float(ph_df.loc[ph_df["h"] == 24, "crpss"].iloc[0])
+        rows.append({
+            "tau": str(tau), "wcrpss_tau6": wcrpss, "crpss_flat": flat,
+            "crpss_h0": crpss_h0, "crpss_h6": crpss_h6, "crpss_h24": crpss_h24,
+        })
+        print(f"  wCRPSS(τ=6)={wcrpss:.4f}  flat={flat:.4f}"
+              f"  h0={crpss_h0:.3f} h6={crpss_h6:.3f} h24={crpss_h24:.3f}", flush=True)
+
+    out_df = pd.DataFrame(rows)
+    out_df.to_csv(OUT / "tau_ablation.csv", index=False)
+    print(f"\ntau_ablation.csv → {OUT}", flush=True)
+    return out_df.to_string(index=False)
 
 
 # ─────────────────────────────────────────────── feature ablation ───────────────────────────────
@@ -1147,6 +1270,10 @@ if __name__ == "__main__":
                     help="fit CQR offsets on val wet hours and apply to test predictions")
     ap.add_argument("--binary", action="store_true",
                     help="train a dedicated binary head for P(rain>0.5mm/hr) and report AUC vs Tweedie")
+    ap.add_argument("--horizon-tau", type=float, default=None,
+                    help="horizon decay tau (hours) for training weights; None = flat (default)")
+    ap.add_argument("--tau-ablation", action="store_true",
+                    help="sweep tau in [6, 12, 24, flat] and compare horizon-weighted CRPSS")
     args = ap.parse_args()
 
     if args.years and "-" in args.years and "," not in args.years:
@@ -1163,8 +1290,11 @@ if __name__ == "__main__":
     elif args.from_cache:
         print(train_ensemble(n_cells=args.n_cells, seed=args.seed, save_plumes=args.save_plumes,
                              wet_quantiles=args.wet_quantiles, plumes_file=args.plumes_file,
-                             conformal=args.conformal, binary=args.binary))
+                             conformal=args.conformal, binary=args.binary,
+                             horizon_tau=args.horizon_tau))
     elif args.ablation:
         print(ensemble_feature_ablation(n_cells=args.n_cells, seed=args.seed, n_boot=args.n_boot))
+    elif args.tau_ablation:
+        print(ensemble_tau_ablation(n_cells=args.n_cells, seed=args.seed))
     else:
         ap.print_help()
