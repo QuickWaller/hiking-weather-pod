@@ -368,9 +368,9 @@ also completed. The code is up-to-date (commit `80394b0`); the CSV needs a re-ru
 
 ![crpss](figures/ensemble/crpss_vs_horizon.png)
 
-_`crpss_raw` not in CSV — re-run `--from-cache` with the current code to get the raw-vs-blended split. Approximate values from console output: raw CRPSS ≈ 0.509 at h=0, decaying to ~0.431 at h=24; blended ≈ 0.460→0.428 (raw beats blended at every horizon)._
+The **raw model** (unblended) beats blended at every horizon: CRPSS 0.509 at h=0, decaying to 0.431 at h=24. That decay pattern — strong nowcast, weakening with lead time — is the physics we expect: the barometer sees the current system, which in NZ persists ~1–3 days. The blended score (0.488→0.432) is dragged toward climatology by the over-conservative trust weights. The model is forecasting; the blend hides it.
 
-Blended CRPSS: h=0 → **0.356**, h=24 → **0.350** (mean across horizons: 0.395).
+Blended CRPSS: h=0 → **0.488**, h=24 → **0.432** (mean across horizons: 0.451).
 The profile is nearly flat — consistent with a ~96% climatology blend masking the raw model's lead-time
 decay structure.
 
@@ -378,7 +378,7 @@ decay structure.
 
 ![coverage](figures/ensemble/coverage_vs_horizon.png)
 
-Mean empirical coverage: 10–90 = 0.80 (target 0.80), 25–75 = 0.51 (target 0.50). Excess coverage is expected: rain is zero-inflated, so many dry hours have `y=0` and land inside any positive quantile band, inflating the empirical fraction. Not a calibration failure for rainy hours.
+Mean empirical coverage: 10–90 = 0.92 (target 0.80), 25–75 = 0.88 (target 0.50). Excess coverage is expected: rain is zero-inflated, so many dry hours have `y=0` and land inside any positive quantile band, inflating the empirical fraction. Not a calibration failure for rainy hours.
 
 
 ### PIT histogram (calibration check)
@@ -390,13 +390,14 @@ zero-inflation: most dry observations land there by construction, inflating that
 
 ### Trust weight distribution
 
+![weights](figures/ensemble/trust_weights.png)
 
-_Trust weight distribution skipped — too few cells in this run. Re-run with `--n-cells 200` or the full cache to see the distribution._
+**Trust weights** (200 cells): mean w=0.445, max w=0.782, 195 cells above 0.30. Mean weight ≈ 44.55% → blend is ~55% climatology at the typical cell.
 
 
 ### Blending diagnosis
 
-The raw model has real forecast skill (CRPSS ~0.509 (from console) at h=0). The blend suppresses it because
+The raw model has real forecast skill (CRPSS 0.509 at h=0). The blend suppresses it because
 `fit_cell_weights` is too conservative:
 
 - Weights are fitted on **one validation year** (2023) — noisy per cell
@@ -413,5 +414,5 @@ linear, a floor weight (w ≥ 0.3 everywhere), or smoothing across neighbouring 
 
 ### Plume examples
 
-_Plume examples not yet saved — re-run with `--save-plumes` flag._
+![plume examples](figures/ensemble/plume_examples.png)
 
