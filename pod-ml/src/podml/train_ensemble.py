@@ -1280,8 +1280,8 @@ if __name__ == "__main__":
                     help="fit CQR offsets on val wet hours and apply to test predictions")
     ap.add_argument("--binary", action="store_true",
                     help="train a dedicated binary head for P(rain>0.5mm/hr) and report AUC vs Tweedie")
-    ap.add_argument("--horizon-tau", type=float, default=None,
-                    help="horizon decay tau (hours) for training weights; None = flat (default)")
+    ap.add_argument("--horizon-tau", type=float, default=6.0,
+                    help="horizon decay tau (hours) for training weights; default=6.0, 0=flat")
     ap.add_argument("--tau-ablation", action="store_true",
                     help="sweep tau in [6, 12, 24, flat] and compare horizon-weighted CRPSS")
     args = ap.parse_args()
@@ -1298,10 +1298,11 @@ if __name__ == "__main__":
         print(build_cache(yrs, k_per_cell_month=args.k,
                           all_cells=args.all_cells, n_cells=args.n_cells, seed=args.seed))
     elif args.from_cache:
+        tau = None if (args.horizon_tau == 0) else args.horizon_tau
         print(train_ensemble(n_cells=args.n_cells, seed=args.seed, save_plumes=args.save_plumes,
                              wet_quantiles=args.wet_quantiles, plumes_file=args.plumes_file,
                              conformal=args.conformal, binary=args.binary,
-                             horizon_tau=args.horizon_tau))
+                             horizon_tau=tau))
     elif args.ablation:
         print(ensemble_feature_ablation(n_cells=args.n_cells, seed=args.seed, n_boot=args.n_boot))
     elif args.tau_ablation:
