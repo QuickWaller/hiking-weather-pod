@@ -314,6 +314,7 @@ def fit_ensemble(
     y_val: np.ndarray,
     feats: list[str],
     seed: int = 42,
+    wet_quantiles: bool = False,
 ) -> dict[str, LGBMRegressor]:
     """Train the five-model ensemble on rain amount (mm/hr) with early stopping on the val set.
 
@@ -326,6 +327,11 @@ def fit_ensemble(
       reg_lambda=0.5 — L2 regularisation; keeps quantile heads from crossing under extrapolation.
       Tweedie power=1.5 — midpoint of compound Poisson-gamma, well-matched to hourly rain amounts.
       Early stopping patience=100 — stops if val loss doesn't improve for 100 rounds.
+
+    wet_quantiles: if True, train q10/q25/q75/q90 heads on wet-only rows (y > 0). The Tweedie mean
+      head always uses the full distribution. Wet-only training gives honest conditional uncertainty
+      on rainy hours; the cost is that on dry hours the quantile predictions are inflated (the pod
+      gates display on the Tweedie mean, so this is acceptable in practice).
     """
     lgb_common = dict(
         n_estimators=1500, learning_rate=0.05, num_leaves=127,
@@ -333,9 +339,6 @@ def fit_ensemble(
         verbose=-1, random_state=seed,
     )
     callbacks = [lgb.early_stopping(100, verbose=False), lgb.log_evaluation(500)]
-    # Select the model feature columns once (shared across all five heads). When the caller already
-    # passes exactly `feats` (the train path does), this is a no-op — avoiding a full copy of the
-    # multi-GB train matrix on top of the original. Ablation passes a subset, so it does copy.
     Xtr_f = X_tr if list(X_tr.columns) == list(feats) else X_tr[feats]
     Xval_f = X_val if list(X_val.columns) == list(feats) else X_val[feats]
     models: dict[str, LGBMRegressor] = {}
@@ -344,11 +347,25 @@ def fit_ensemble(
         objective="tweedie", tweedie_variance_power=1.5, **lgb_common
     ).fit(Xtr_f, y_tr, eval_set=[(Xval_f, y_val)], callbacks=callbacks)
     print(f"    mean: {models['mean'].best_iteration_} trees", flush=True)
+
+    if wet_quantiles:
+        # Filter to wet rows only for the quantile heads.
+        wet_tr = y_tr > 0
+        wet_vl = y_val > 0
+        Xtr_q, ytr_q = Xtr_f[wet_tr], y_tr[wet_tr]
+        Xvl_q, yvl_q = Xval_f[wet_vl], y_val[wet_vl]
+        wet_pct = 100.0 * wet_tr.mean()
+        print(f"  wet_quantiles: training on {wet_tr.sum():,} wet rows ({wet_pct:.1f}% of train)",
+              flush=True)
+    else:
+        Xtr_q, ytr_q = Xtr_f, y_tr
+        Xvl_q, yvl_q = Xval_f, y_val
+
     for alpha, name in zip(QUANTILE_LEVELS, MODEL_NAMES[1:]):
         print(f"  fitting {name} (α={alpha})…", flush=True)
         models[name] = LGBMRegressor(
             objective="quantile", alpha=alpha, **lgb_common
-        ).fit(Xtr_f, y_tr, eval_set=[(Xval_f, y_val)], callbacks=callbacks)
+        ).fit(Xtr_q, ytr_q, eval_set=[(Xvl_q, yvl_q)], callbacks=callbacks)
         print(f"    {name}: {models[name].best_iteration_} trees", flush=True)
     return models
 
@@ -524,6 +541,7 @@ def train_ensemble(
     seed: int = 42,
     n_boot: int = 200,
     save_plumes: bool = False,
+    wet_quantiles: bool = False,
 ) -> dict:
     """Train the phase-07 distributional ensemble and evaluate on the 2024 test set.
 
@@ -577,7 +595,8 @@ def train_ensemble(
         pd.Series(y_tr, name="amount"), meta_tr, np.ones(len(y_tr), dtype=bool))
 
     # 1. Train (val set used for early stopping only — not for weight fitting)
-    models = fit_ensemble(X_tr, y_tr, X_vl, y_vl, avail_feats, seed=seed)
+    models = fit_ensemble(X_tr, y_tr, X_vl, y_vl, avail_feats, seed=seed,
+                          wet_quantiles=wet_quantiles)
 
     # 2. Per-cell trust weights (fitted on validation only)
     weights = fit_cell_weights(models, X_vl, y_vl,
@@ -951,6 +970,8 @@ if __name__ == "__main__":
     ap.add_argument("--n-boot", type=int, default=200, help="bootstrap iterations for ablation CIs")
     ap.add_argument("--save-plumes", action="store_true",
                     help="save 20 example plumes (raw/blended/clim) to outputs/ensemble/plumes.json")
+    ap.add_argument("--wet-quantiles", action="store_true",
+                    help="train q10/q25/q75/q90 on wet-only rows (y>0); Tweedie mean unchanged")
     args = ap.parse_args()
 
     if args.years and "-" in args.years and "," not in args.years:
@@ -965,7 +986,8 @@ if __name__ == "__main__":
         print(build_cache(yrs, k_per_cell_month=args.k,
                           all_cells=args.all_cells, n_cells=args.n_cells, seed=args.seed))
     elif args.from_cache:
-        print(train_ensemble(n_cells=args.n_cells, seed=args.seed, save_plumes=args.save_plumes))
+        print(train_ensemble(n_cells=args.n_cells, seed=args.seed, save_plumes=args.save_plumes,
+                             wet_quantiles=args.wet_quantiles))
     elif args.ablation:
         print(ensemble_feature_ablation(n_cells=args.n_cells, seed=args.seed, n_boot=args.n_boot))
     else:
