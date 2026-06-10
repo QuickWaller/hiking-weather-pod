@@ -377,6 +377,88 @@ def fig_plumes(plumes: list) -> None:
     plt.close(fig)
 
 
+_RAIN_CATS = [
+    (0.0,  0.5,  "Dry / clear",   "#2ca02c"),
+    (0.5,  2.5,  "Light rain",    "#1f77b4"),
+    (2.5,  7.6,  "Moderate rain", "#9467bd"),
+    (7.6,  None, "Heavy rain",    "#d62728"),
+]
+
+
+def _best_plume(plumes: list, lo: float, hi: float | None) -> dict | None:
+    """Pick the most illustrative plume in the [lo, hi) observed-peak bucket."""
+    candidates = []
+    for pl in plumes:
+        mx = max(pl["y_obs"])
+        if mx < lo or (hi is not None and mx >= hi):
+            continue
+        b = pl.get("blended", {})
+        mean_sum = sum(b.get("mean", [0]))
+        wet_hrs = sum(1 for v in pl["y_obs"] if v > 0.5)
+        # Score: rainy categories prefer more wet hours; dry prefers highest model signal
+        score = wet_hrs * 10 + mean_sum
+        candidates.append((score, pl))
+    if not candidates:
+        return None
+    return max(candidates, key=lambda x: x[0])[1]
+
+
+def fig_plumes_display(plumes: list) -> None:
+    """Blended-only plume fan, one panel per rain intensity category.
+
+    This is the hiker-facing view — no raw / climatology noise. The four panels cover
+    the four observed-intensity regimes so the reader sees what the plume looks like
+    in each situation.
+    """
+    if not plumes:
+        return
+
+    picks = [(label, color, _best_plume(plumes, lo, hi))
+             for lo, hi, label, color in _RAIN_CATS]
+    picks = [(label, color, pl) for label, color, pl in picks if pl is not None]
+    if not picks:
+        return
+
+    n = len(picks)
+    fig, axes = plt.subplots(1, n, figsize=(5 * n, 4.5), squeeze=False)
+    axes = axes[0]
+
+    for ax, (cat_label, color, pl) in zip(axes, picks):
+        hs   = np.array(pl["horizons"])
+        y_obs = np.array(pl["y_obs"])
+        b     = pl.get("blended", {})
+        q10   = np.maximum(np.array(b.get("q10", np.zeros_like(hs))), 0)
+        q25   = np.maximum(np.array(b.get("q25", np.zeros_like(hs))), 0)
+        q75   = np.maximum(np.array(b.get("q75", np.zeros_like(hs))), 0)
+        q90   = np.maximum(np.array(b.get("q90", np.zeros_like(hs))), 0)
+        mu    = np.maximum(np.array(b.get("mean", np.zeros_like(hs))), 0)
+
+        ax.fill_between(hs, q10, q90, alpha=0.18, color=color, label="10–90% band")
+        ax.fill_between(hs, q25, q75, alpha=0.35, color=color, label="25–75% band")
+        ax.plot(hs, mu, "-", color=color, lw=2.0, label="blended mean")
+        ax.scatter(hs, np.maximum(y_obs, 0), s=16, color="black", zorder=5, label="observed")
+
+        y_max = max(float(q90.max()), float(max(y_obs)), 0.6)
+        ax.set_ylim(bottom=0, top=y_max * 1.18)
+        _add_rain_levels(ax, y_max)
+
+        ax.set_xlabel("lead time (h)", fontsize=9)
+        ax.set_ylabel("rain (mm/hr)", fontsize=9)
+        ax.set_title(cat_label, fontsize=11, fontweight="bold", color=color)
+        ax.grid(alpha=0.25)
+
+    handles, labels_leg = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels_leg, loc="upper right", fontsize=9, ncol=2,
+               bbox_to_anchor=(1.0, 1.0))
+    fig.suptitle(
+        "Forecast plume — blended model · outer band: 10–90% · inner: 25–75% · line: mean · dots: observed",
+        fontsize=10,
+    )
+    fig.tight_layout()
+    fig.savefig(FIG / "plume_display.png", dpi=120)
+    plt.close(fig)
+
+
 # --------------------------------------------------------------------------- report
 
 def _results_section(d: dict) -> str:
@@ -522,7 +604,12 @@ The two heads are never blended together — they answer orthogonal questions.
         weight_fig = ""
 
     plume_fig = (
-        "![plume examples](figures/ensemble/plume_examples.png)\n"
+        "![plume examples](figures/ensemble/plume_display.png)\n\n"
+        "_One panel per observed rain intensity: dry, light, moderate, heavy. "
+        "Blended model only — outer band = 10–90%, inner = 25–75%, line = mean, dots = observed. "
+        "Bands are wet-conditional: given rain, 80% of similar situations fell inside the outer band._\n\n"
+        "![plume diagnostic](figures/ensemble/plume_examples.png)\n\n"
+        "_Diagnostic: raw vs blended vs climatology on the same 6 endpoints._\n"
         if d.get("plumes") else
         "_Plume examples not yet saved — re-run with `--save-plumes` flag._\n"
     )
@@ -633,6 +720,7 @@ def main() -> None:
     fig_trust_weights(d["weights"])
     if d["plumes"]:
         fig_plumes(d["plumes"])
+        fig_plumes_display(d["plumes"])
     if len(d["v3_ablation"]):
         fig_ablation(d["v3_ablation"], d["v3_conditional"])
 

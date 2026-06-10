@@ -517,6 +517,7 @@ def _save_plume_examples(
     clim_table: dict,
     global_stats: dict,
     n_examples: int = 20,
+    plumes_file: str = "plumes.json",
 ) -> None:
     """Save N plume examples (raw / blended / climatology quantiles + y_obs) to plumes.json.
 
@@ -548,7 +549,7 @@ def _save_plume_examples(
             "blended": {n: [float(blended_te[n][i]) for i in pos] for n in MODEL_NAMES},
             "clim":    {n: clim_p[n].tolist()                      for n in MODEL_NAMES},
         })
-    out_path = OUT / "plumes.json"
+    out_path = OUT / plumes_file
     with open(out_path, "w") as f:
         json.dump(examples, f, indent=2)
     print(f"  saved {len(examples)} plume examples → {out_path}", flush=True)
@@ -561,6 +562,7 @@ def train_ensemble(
     n_boot: int = 200,
     save_plumes: bool = False,
     wet_quantiles: bool = False,
+    plumes_file: str = "plumes.json",
 ) -> dict:
     """Train the phase-07 distributional ensemble and evaluate on the 2024 test set.
 
@@ -699,7 +701,8 @@ def train_ensemble(
         json.dump({str(k): v for k, v in weights.items()}, f, indent=2)
 
     if save_plumes:
-        _save_plume_examples(preds_te, blended_te, y_te, meta_te, clim_table, global_stats)
+        _save_plume_examples(preds_te, blended_te, y_te, meta_te, clim_table, global_stats,
+                             plumes_file=plumes_file)
 
     print(f"ensemble results → {OUT}", flush=True)
     return {"models": len(MODEL_NAMES), "horizons": len(ENSEMBLE_HORIZONS), "out": str(OUT)}
@@ -990,6 +993,8 @@ if __name__ == "__main__":
     ap.add_argument("--n-boot", type=int, default=200, help="bootstrap iterations for ablation CIs")
     ap.add_argument("--save-plumes", action="store_true",
                     help="save 20 example plumes (raw/blended/clim) to outputs/ensemble/plumes.json")
+    ap.add_argument("--plumes-file", type=str, default="plumes.json",
+                    help="filename for saved plumes (in outputs/ensemble/, default: plumes.json)")
     ap.add_argument("--wet-quantiles", action="store_true",
                     help="train q10/q25/q75/q90 on wet-only rows (y>0); Tweedie mean unchanged")
     args = ap.parse_args()
@@ -1007,7 +1012,7 @@ if __name__ == "__main__":
                           all_cells=args.all_cells, n_cells=args.n_cells, seed=args.seed))
     elif args.from_cache:
         print(train_ensemble(n_cells=args.n_cells, seed=args.seed, save_plumes=args.save_plumes,
-                             wet_quantiles=args.wet_quantiles))
+                             wet_quantiles=args.wet_quantiles, plumes_file=args.plumes_file))
     elif args.ablation:
         print(ensemble_feature_ablation(n_cells=args.n_cells, seed=args.seed, n_boot=args.n_boot))
     else:
