@@ -676,6 +676,48 @@ def _save_plume_examples(
     print(f"  saved {len(examples)} plume examples → {out_path}", flush=True)
 
 
+def save_ensemble_state(
+    models: dict,
+    clim_table: dict,
+    global_stats: dict,
+    out_dir: Path = OUT,
+) -> None:
+    """Save LightGBM models + climatology state for post-hoc inference (storm trace, deployment)."""
+    d = out_dir / "models"
+    d.mkdir(parents=True, exist_ok=True)
+    for name, m in models.items():
+        m.booster_.save_model(str(d / f"{name}.txt"))
+    ct_serial = {f"{k[0]}\x1f{k[1]}": v for k, v in clim_table.items()}
+    with open(d / "clim_table.json", "w") as f:
+        json.dump(ct_serial, f)
+    with open(d / "global_stats.json", "w") as f:
+        json.dump(global_stats, f)
+    print(f"  saved {len(models)} models + clim state → {d}", flush=True)
+
+
+def load_ensemble_state(
+    out_dir: Path = OUT,
+) -> tuple[dict, dict, dict, dict]:
+    """Load saved LightGBM models + clim state + cell weights for inference."""
+    d = out_dir / "models"
+    models: dict = {}
+    for name in MODEL_NAMES:
+        p = d / f"{name}.txt"
+        if p.exists():
+            models[name] = lgb.Booster(model_file=str(p))
+    with open(d / "clim_table.json") as f:
+        ct_raw = json.load(f)
+    clim_table = {(k.split("\x1f")[0], int(k.split("\x1f")[1])): v for k, v in ct_raw.items()}
+    with open(d / "global_stats.json") as f:
+        global_stats = json.load(f)
+    weights: dict = {}
+    wpath = out_dir / "cell_weights.json"
+    if wpath.exists():
+        with open(wpath) as f:
+            weights = {k: float(v) for k, v in json.load(f).items()}
+    return models, clim_table, global_stats, weights
+
+
 def train_ensemble(
     cache_dir: Path = CACHE_DIR,
     n_cells: int | None = None,
@@ -687,6 +729,7 @@ def train_ensemble(
     conformal: bool = False,
     binary: bool = False,
     horizon_tau: float | None = None,
+    save_models: bool = True,
 ) -> dict:
     """Train the phase-07 distributional ensemble and evaluate on the 2024 test set.
 
@@ -877,6 +920,9 @@ def train_ensemble(
     pd.DataFrame(imp_rows).to_csv(OUT / "importance.csv", index=False)
     with open(OUT / "cell_weights.json", "w") as f:
         json.dump({str(k): v for k, v in weights.items()}, f, indent=2)
+
+    if save_models:
+        save_ensemble_state(models, clim_table, global_stats)
 
     if binary and any("auc_binary" in row for row in overall):
         bin_df = pd.DataFrame([
@@ -1284,6 +1330,8 @@ if __name__ == "__main__":
                     help="horizon decay tau (hours) for training weights; default=6.0, 0=flat")
     ap.add_argument("--tau-ablation", action="store_true",
                     help="sweep tau in [6, 12, 24, flat] and compare horizon-weighted CRPSS")
+    ap.add_argument("--no-save-models", action="store_true",
+                    help="skip saving LightGBM models to outputs/ensemble/models/ (saved by default)")
     args = ap.parse_args()
 
     if args.years and "-" in args.years and "," not in args.years:
@@ -1302,7 +1350,7 @@ if __name__ == "__main__":
         print(train_ensemble(n_cells=args.n_cells, seed=args.seed, save_plumes=args.save_plumes,
                              wet_quantiles=args.wet_quantiles, plumes_file=args.plumes_file,
                              conformal=args.conformal, binary=args.binary,
-                             horizon_tau=tau))
+                             horizon_tau=tau, save_models=not args.no_save_models))
     elif args.ablation:
         print(ensemble_feature_ablation(n_cells=args.n_cells, seed=args.seed, n_boot=args.n_boot))
     elif args.tau_ablation:
