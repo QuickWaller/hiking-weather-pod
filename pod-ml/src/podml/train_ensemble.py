@@ -384,6 +384,61 @@ def predict(
     return preds
 
 
+QUANTILE_ALPHA = {"q10": 0.10, "q25": 0.25, "q75": 0.75, "q90": 0.90}
+WET_THRESHOLD_MM = 0.5  # mm/hr — consistent with wet coverage metrics throughout
+
+
+def fit_conformal_corrections(
+    preds_val: dict[str, np.ndarray],
+    y_val: np.ndarray,
+) -> dict[str, float]:
+    """Compute per-quantile CQR offsets on wet validation hours.
+
+    For each quantile level α, finds δ_α = α-quantile of (y - q̂_α) on wet hours.
+    Applying q̂_α + δ_α to any future prediction achieves empirical coverage α
+    on the calibration (wet-hour) distribution.
+    """
+    wet = y_val > WET_THRESHOLD_MM
+    n_wet = int(wet.sum())
+    if n_wet < 50:
+        print(f"  conformal: only {n_wet} wet hours in val — skipping", flush=True)
+        return {name: 0.0 for name in QUANTILE_ALPHA}
+    y_wet = y_val[wet]
+    corrections: dict[str, float] = {}
+    for name, alpha in QUANTILE_ALPHA.items():
+        q_wet = preds_val[name][wet]
+        residuals = y_wet - q_wet
+        delta = float(np.quantile(residuals, alpha))
+        corrections[name] = delta
+        q_corr = np.maximum(q_wet + delta, 0.0)
+        if alpha >= 0.5:
+            cov_before = float((y_wet <= q_wet).mean())
+            cov_after  = float((y_wet <= q_corr).mean())
+        else:
+            cov_before = float((y_wet >= q_wet).mean())
+            cov_after  = float((y_wet >= q_corr).mean())
+        print(f"  conformal {name}: δ={delta:+.3f} mm/hr | "
+              f"wet coverage {cov_before:.0%} → {cov_after:.0%} (target {alpha:.0%})", flush=True)
+    return corrections
+
+
+def apply_conformal(
+    preds: dict[str, np.ndarray],
+    corrections: dict[str, float],
+) -> dict[str, np.ndarray]:
+    """Apply CQR offsets and re-sort to maintain quantile monotonicity."""
+    out = dict(preds)
+    for name, delta in corrections.items():
+        if name in out:
+            out[name] = np.maximum(out[name] + delta, 0.0)
+    # re-sort quantile columns to prevent crossings after correction
+    q_mat = np.column_stack([out[n] for n in MODEL_NAMES[1:]])
+    q_mat = np.sort(q_mat, axis=1)
+    for i, name in enumerate(MODEL_NAMES[1:]):
+        out[name] = q_mat[:, i]
+    return out
+
+
 # ─────────────────────────────────────────────── climatology blend ──────────────────────────────
 
 def build_clim_distribution(
@@ -518,6 +573,7 @@ def _save_plume_examples(
     global_stats: dict,
     n_examples: int = 20,
     plumes_file: str = "plumes.json",
+    conformal_te: dict[str, np.ndarray] | None = None,
 ) -> None:
     """Save N plume examples (raw / blended / climatology quantiles + y_obs) to plumes.json.
 
@@ -540,7 +596,7 @@ def _save_plume_examples(
         sub = meta_te[mask].sort_values("horizon_h").reset_index()
         pos = sub["index"].to_numpy()   # positions in preds_te / y_te
         clim_p = _clim_preds(clim_table, global_stats, sub)
-        examples.append({
+        entry: dict = {
             "cell": str(cell),
             "time": str(t),
             "horizons": [float(h) for h in sub["horizon_h"].tolist()],
@@ -548,7 +604,11 @@ def _save_plume_examples(
             "raw":     {n: [float(preds_te[n][i])   for i in pos] for n in MODEL_NAMES},
             "blended": {n: [float(blended_te[n][i]) for i in pos] for n in MODEL_NAMES},
             "clim":    {n: clim_p[n].tolist()                      for n in MODEL_NAMES},
-        })
+        }
+        if conformal_te is not None:
+            entry["conformal"] = {n: [float(conformal_te[n][i]) for i in pos]
+                                  for n in MODEL_NAMES}
+        examples.append(entry)
     out_path = OUT / plumes_file
     with open(out_path, "w") as f:
         json.dump(examples, f, indent=2)
@@ -563,6 +623,7 @@ def train_ensemble(
     save_plumes: bool = False,
     wet_quantiles: bool = False,
     plumes_file: str = "plumes.json",
+    conformal: bool = False,
 ) -> dict:
     """Train the phase-07 distributional ensemble and evaluate on the 2024 test set.
 
@@ -626,8 +687,18 @@ def train_ensemble(
     print(f"  cell weights: {len(weights)} cells, mean w={np.mean(list(weights.values())):.3f}",
           flush=True)
 
-    # 3. Test evaluation (2024 held-out)
+    # 3. Conformal corrections (fitted on val, applied to test raw predictions)
+    conf_corrections: dict[str, float] = {}
+    if conformal:
+        preds_vl = predict(models, X_vl, avail_feats)
+        conf_corrections = fit_conformal_corrections(preds_vl, y_vl)
+        with open(OUT / "conformal_corrections.json", "w") as f:
+            json.dump(conf_corrections, f, indent=2)
+        del preds_vl
+
+    # 4. Test evaluation (2024 held-out)
     preds_te   = predict(models, X_te, avail_feats)
+    preds_conf = apply_conformal(preds_te, conf_corrections) if conformal else {}
     blended_te = blend(preds_te, clim_table, global_stats, weights, meta_te)
 
     crps_te = crps_from_quantiles(y_te, blended_te)
@@ -657,7 +728,7 @@ def train_ensemble(
 
         # Wet-conditional coverage: filter to hours with y > 0.5 mm/hr (light rain threshold).
         # Strips dry-hour zero-inflation from the denominator — shows calibration when it matters.
-        wet = y_h > 0.5
+        wet = y_h > WET_THRESHOLD_MM
         n_wet = int(wet.sum())
         if n_wet >= 20:
             cov_wet_10_90     = coverage(y_h[wet], pb["q10"][wet], pb["q90"][wet])
@@ -667,6 +738,17 @@ def train_ensemble(
         else:
             cov_wet_10_90 = cov_wet_25_75 = cov_wet_raw_10_90 = cov_wet_raw_25_75 = float("nan")
 
+        conf_row: dict = {}
+        if preds_conf:
+            pc = {n: preds_conf[n][h_mask] for n in MODEL_NAMES}
+            if n_wet >= 20:
+                conf_row = {
+                    "cov_conf_10_90": coverage(y_h[wet], pc["q10"][wet], pc["q90"][wet]),
+                    "cov_conf_25_75": coverage(y_h[wet], pc["q25"][wet], pc["q75"][wet]),
+                }
+            else:
+                conf_row = {"cov_conf_10_90": float("nan"), "cov_conf_25_75": float("nan")}
+
         overall.append({
             "horizon_h": h, "crpss": cs, "crpss_raw": cs_raw,
             "mean_crps": float(np.mean(cr_h)),
@@ -675,6 +757,7 @@ def train_ensemble(
             "cov_wet_10_90": cov_wet_10_90, "cov_wet_25_75": cov_wet_25_75,
             "cov_wet_raw_10_90": cov_wet_raw_10_90, "cov_wet_raw_25_75": cov_wet_raw_25_75,
             "n_test": int(h_mask.sum()), "n_wet": n_wet,
+            **conf_row,
         })
         pit = pit_histogram(y_h, pb)
         pit["horizon_h"] = h
@@ -702,7 +785,8 @@ def train_ensemble(
 
     if save_plumes:
         _save_plume_examples(preds_te, blended_te, y_te, meta_te, clim_table, global_stats,
-                             plumes_file=plumes_file)
+                             plumes_file=plumes_file,
+                             conformal_te=preds_conf if conformal else None)
 
     print(f"ensemble results → {OUT}", flush=True)
     return {"models": len(MODEL_NAMES), "horizons": len(ENSEMBLE_HORIZONS), "out": str(OUT)}
@@ -997,6 +1081,8 @@ if __name__ == "__main__":
                     help="filename for saved plumes (in outputs/ensemble/, default: plumes.json)")
     ap.add_argument("--wet-quantiles", action="store_true",
                     help="train q10/q25/q75/q90 on wet-only rows (y>0); Tweedie mean unchanged")
+    ap.add_argument("--conformal", action="store_true",
+                    help="fit CQR offsets on val wet hours and apply to test predictions")
     args = ap.parse_args()
 
     if args.years and "-" in args.years and "," not in args.years:
@@ -1012,7 +1098,8 @@ if __name__ == "__main__":
                           all_cells=args.all_cells, n_cells=args.n_cells, seed=args.seed))
     elif args.from_cache:
         print(train_ensemble(n_cells=args.n_cells, seed=args.seed, save_plumes=args.save_plumes,
-                             wet_quantiles=args.wet_quantiles, plumes_file=args.plumes_file))
+                             wet_quantiles=args.wet_quantiles, plumes_file=args.plumes_file,
+                             conformal=args.conformal))
     elif args.ablation:
         print(ensemble_feature_ablation(n_cells=args.n_cells, seed=args.seed, n_boot=args.n_boot))
     else:
