@@ -330,19 +330,18 @@ POD is rank-based, so recalibration does not affect it.
 
 | Event | 1 h ahead | 6 h | 12 h | 24 h |
 |---|---|---|---|---|
-| Heavy (≥7.6) | **45%** | 31% | 27% | 23% |
-| Moderate (≥2.5) | 36% | 29% | 21% | 18% |
-| Any (≥0.5) | 30% | 24% | 21% | 18% |
+| Heavy (≥7.6) | **62%** | 51% | 46% | 37% |
+| Moderate (≥2.5) | 52% | 44% | 39% | 31% |
+| Any (≥0.5) | 46% | 41% | 36% | 31% |
+
+*(20% false-alarm rate — 1 in 5 dry hours gets flagged; updated 2026-06-11)*
 
 - **Heavier rain is detected better at every lead** — good for safety.
-- **Lead time matters for heavy rain (45→23 over 24 h), barely for light (30→18).** So light-rain skill is
+- **Lead time matters for heavy rain (62→37 over 24 h), barely for light (46→31).** So light-rain skill is
   *synoptic-regime awareness* ("a wet system is around"), available ~equally 1–24 h out — the model knows the
   regime, not the exact hour. For heavy rain, a nowcast would genuinely add value.
-- Even heavy POD is **under 50%** at a 20% false-alarm budget — it misses more than half of specific rainy
-  hours at a generous alarm. (More sensitive alarm → higher POD, more false alarms; the *shape* is robust.)
-
-> **Note:** the POD table above was computed at **10% FAR** (the original run). The code now uses 20% FAR;
-> re-run `display_check leadtime` to update the numbers.
+- Heavy rain POD now **exceeds 50%** at short leads at a 20% false-alarm budget — more than half of serious
+  events get flagged. (More sensitive alarm → higher POD, more false alarms; the *shape* is robust.)
 
 #### Confusion matrix — any rain (≥0.5 mm/hr), +1 h ahead, % of all hours
 
@@ -355,11 +354,11 @@ POD is rank-based, so recalibration does not affect it.
 
 | FAR setting | TP | FN | FP | TN | Precision |
 |---|---|---|---|---|---|
-| **10% FAR** *(actual run)* | 4% | 10% | 9% | 77% | 31% |
-| **20% FAR** *(re-run pending)* | TBD↑ | TBD↓ | 17% | 69% | TBD |
+| **10% FAR** *(original run)* | 4% | 10% | 9% | 77% | 31% |
+| **20% FAR** *(2026-06-11)* | 6% | 8% | 17% | 69% | 26% |
 
-*Precision = "when the model fires, how often it's real." FP/TN at 20% FAR follow from the base rate alone
-(17% = 20% × 86%); TP/FN require the re-run.*
+*Precision = "when the model fires, how often it's real." TP = POD × base rate = 46% × 14% ≈ 6%;
+FP = FAR × dry rate = 20% × 86% = 17%.*
 
 ### Season: no. Region: yes.
 

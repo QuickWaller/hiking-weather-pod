@@ -460,7 +460,7 @@ def run_leadtime() -> None:
     plt.close(fig)
 
     # printed summary
-    print("\n=== POD at 10% FAR — ANY RAIN (≥0.5), overall ===", flush=True)
+    print(f"\n=== POD at {int(FIXED_FAR*100)}% FAR — ANY RAIN (≥0.5), overall ===", flush=True)
     x, p = series("overall", "all", 0.5)
     for L, pp in zip(x, p):
         print(f"  {int(L):2d}h ahead: {pp*100:4.0f}% of events flagged", flush=True)
