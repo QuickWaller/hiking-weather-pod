@@ -1,7 +1,11 @@
 """Build the motion-training results review: figures + a Markdown report.
 
+STATUS: DISABLED — phase 06 is concluded and archived as docs/06-feature-testing.md. This module is kept for
+reference (the phase-07 ensemble report will reuse parts of it); its __main__ entry is a no-op so a stray run
+can't overwrite the archived doc. To force-regenerate the 06 archive, call main() directly.
+
 Reads outputs/motion/*.csv (from train_motion) and the static domain maps (from maps), writes figures to
-docs/figures/motion/ and a narrative report to docs/results-motion.md — the "full review of errors" with
+docs/figures/motion/ and a narrative report to docs/06-feature-testing.md — the "full review of errors" with
 maps, skill, motion impact, calibration, and the actionable error trade-off.
 """
 
@@ -19,7 +23,7 @@ plt.switch_backend("Agg")
 
 OUT = ROOT / "outputs" / "motion"
 FIG = ROOT / "docs" / "figures" / "motion"
-REPORT = ROOT / "docs" / "results-motion.md"
+REPORT = ROOT / "docs" / "06-feature-testing.md"
 STATIC_FROZEN = {"elevation", "zone", "precip_mean", "pressure_mean", "temp_mean"}
 
 
@@ -660,4 +664,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # DISABLED: phase 06 is concluded and archived as docs/06-feature-testing.md. Kept for reference — the
+    # phase-07 ensemble report will reuse parts of this module — but the entry point is a no-op so it can't
+    # overwrite the archived doc. To force-regenerate the 06 archive, replace this block with `main()`.
+    print(
+        "report_motion.py is DISABLED: phase 06 is archived as docs/06-feature-testing.md. "
+        "Build the phase-07 ensemble report generator (you can reuse this module's helpers). "
+        "To force-regenerate the 06 archive, call main() directly."
+    )

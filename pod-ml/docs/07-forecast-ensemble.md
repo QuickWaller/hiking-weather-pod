@@ -508,3 +508,12 @@ Moderate early signal building through the last 15 hours. GPM dots land inside t
 - Storm 1 confirms the model's main failure mode: convective or fast orographic events leave no ERA5-resolvable precursor in P/T/RH.
 - Storms 2 & 3 confirm the model does capture frontal approach — the pod will give 10–15 h useful warning for the majority of significant NZ rain events.
 
+---
+
+> **Phase 08 — rain *display* (forward pointer).** The phase-07 results above are sound — CRPSS 0.43–0.49 is a
+> valid distributional score, and the under-covered bands make it a slight *under*-estimate, not inflated. What
+> 07 left open is how to *present* this zero-inflated distribution: the quantile **fan** collapses on rain
+> (bands pin to 0 or balloon), and a read-only check found the threshold read-offs under-confident until
+> recalibrated. That work — the height+hue **exceedance-probability** plume, isotonic recalibration, and the
+> gate results — lives in [08-rain-display.md](08-rain-display.md). **No change to the phase-07 model.**
+

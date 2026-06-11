@@ -189,10 +189,101 @@ per cell, at the 10%-false-alarm banner point:
 
 ![season atlas](figures/motion/atlas/season_atlas.png)
 
-The actionable banner spec from the operating-point analysis (C3): at a 10% false-alarm budget the model
-**catches ~52% of heavy-rain (≥7.6 mm/hr) events 6 h ahead** (ROC-AUC 0.836). Designing the banner = picking a
-point on that curve — high-severity alerts lean toward recall but capped to limit false alarms, because
-**crying wolf erodes trust.**
+Mean BSS per season (±0.005 bootstrap uncertainty):
+
+| Season | Any rain +6h (≥0.5 mm/hr) | Heavy rain +6h (≥7.6 mm/hr) |
+|---|---|---|
+| JJA — winter | **0.204** | **0.112** |
+| MAM — autumn | 0.172 | 0.114 |
+| DJF — summer | 0.144 | 0.080 |
+| SON — spring | 0.136 | 0.078 |
+
+**Winter fronts are the model's home ground** — large-scale, pressure-driven systems from the Tasman that the barometer reads clearly. **Spring is the hardest**: convective cells mix with frontal passages, pressure alone is ambiguous, and the model is closest to climatology. Practically: trust yellow-banner calls more in May–August than in September–November.
+
+---
+
+## 6b. What the numbers mean in practice — banner operating points
+
+*The tables below answer: if the banner fires, how often is it right? If the banner is silent, how likely is rain anyway?*
+
+All numbers are on the 2024 held-out test set. **Base rate** (how often it rains without any model) is 20% for any-rain at +6 h, and 2.4% for heavy-rain at +6 h — these are the baselines you are comparing against.
+
+### Yellow banner — any rain ≥0.5 mm/hr, 6 h ahead
+
+| Decision threshold | Catches (recall) | False-alarm rate | Alarm precision | If silent, rain still comes |
+|---|---|---|---|---|
+| 0.20 (sensitive) | 72% of rain events | 31% of clear periods | 37% of alarms real | 9% |
+| 0.25 | 63% | 22% | 42% | 11% |
+| **0.30 (balanced)** | **53%** | **16%** | **45%** | **12%** |
+| 0.35 | 44% | 12% | 49% | 14% |
+| 0.40 (conservative) | 37% | 9% | 52% | 15% |
+
+At the **balanced point (0.30)**: the banner fires on 16% of hours that turn out dry, and misses 47% of rainy hours. When it fires, you have a 45% chance of actual rain — more than double the 20% base rate. When it is silent, rain chance drops to 12%.
+
+**Concrete worked example:** imagine 100 hours of hiking where it actually rains in 20 of them. At decision=0.30, the banner catches ~11 of those 20 (53%), misses ~9, fires ~22 false alarms on the 80 dry hours (16% × 80 = 13 false alarms). Total fires ≈ 24, of which 11 are real — so roughly **1-in-2 alarms is correct**, and the banner stays **silent through ~68% of dry hours**.
+
+### Red banner — heavy rain ≥7.6 mm/hr, 6 h ahead
+
+Base rate: 2.4% of hours see heavy rain (+6 h window).
+
+| Decision threshold | Catches (recall) | False-alarm rate | Alarm precision | If silent, heavy rain still comes |
+|---|---|---|---|---|
+| 0.05 (sensitive) | 43% of heavy-rain events | 7.1% of dry periods | 15% of alarms real | 1.5% |
+| **0.10** | **26%** | **3.0%** | **20%** | **1.9%** |
+| 0.15 | 16% | 1.6% | 23% | 2.1% |
+| 0.20 | 12% | 1.1% | 26% | 2.2% |
+
+Heavy rain is rare, so most red-banner alarms are false even at tight thresholds — but this is expected from the base rate. **The model raises your probability estimate 6–8× over the base rate** (e.g. 20% vs 2.4% at decision=0.05). Conversely, when the banner stays off, heavy rain is very unlikely (~1.5–2.2% vs 2.4% base) — the model's main value for red is "you can be fairly confident if it's quiet".
+
+ROC-AUC for heavy rain at +6 h is **0.836** — strong discrimination even if absolute recall looks low.
+
+### Plain reading: "if I predict X, how often am I right?"
+
+*Same numbers as above, re-stated the way you actually use them on the trail. This is the **predictive value** of a call: given what the banner says, what are the odds reality agrees? It is the precision (for a "rain" call) and the negative predictive value (for a "silent" call), read straight off the +6 h operating points.*
+
+**Yellow banner — any rain ≥0.5 mm/hr, +6 h** (base rate 20%):
+
+| If the banner says… | …it is TRUE with prob | …it is FALSE with prob |
+|---|---|---|
+| **"rain"** (sensitive, decision 0.20) | 37% | 63% |
+| **"rain"** (balanced, decision 0.30) | 45% | 55% |
+| **"rain"** (conservative, decision 0.40) | 52% | 48% |
+| **"no rain"** (silent, decision 0.30) | 88% | 12% |
+
+**Red banner — heavy rain ≥7.6 mm/hr, +6 h** (base rate 2.4%):
+
+| If the banner says… | …it is TRUE with prob | …it is FALSE with prob |
+|---|---|---|
+| **"heavy rain"** (sensitive, decision 0.05) | 15% | 85% |
+| **"heavy rain"** (decision 0.10) | 20% | 80% |
+| **"heavy rain"** (decision 0.20) | 26% | 74% |
+| **"no heavy rain"** (silent, decision 0.10) | 98.1% | 1.9% |
+
+**How to read this:** the asymmetry is the whole story. A **"rain" call is a coin-flip-plus** (45% true at the balanced point — better than the 20% base rate, but not a certainty), whereas a **"silent" call is trustworthy** (88% chance it really stays dry, rising to 98% for heavy rain). The device's honest value is in the *negative* call: when it is quiet, believe it; when it fires, treat it as "get the jacket within reach," not "it will rain." This is a hard ceiling of one barometer at 11 km resolution, not a tuning failure (see §10).
+
+### Worst-performing cells
+
+5% of cells (≈143 of 2,861) have negative BSS at ≥0.5 mm/hr, +6 h — the model is *worse* than just knowing the monthly climatology at those locations. The 15 worst (ranked by BSS):
+
+| Cell | Lat | Lon | Elev (m) | BSS |
+|---|---|---|---|---|
+| g-45p3_169p5 | −45.3 | 169.5 | 556 | −0.39 |
+| g-44p3_170p9 | −44.3 | 170.9 | 300 | −0.31 |
+| g-44p7_170p4 | −44.7 | 170.4 | 368 | −0.27 |
+| g-40p0_175p7 | −40.0 | 175.7 | 485 | −0.25 |
+| g-44p6_170p7 | −44.6 | 170.7 | 572 | −0.21 |
+| g-44p5_170p6 | −44.5 | 170.6 | 665 | −0.19 |
+| g-34p5_173p0 | −34.5 | 173.0 | 27 | −0.19 |
+| g-41p2_175p1 | −41.2 | 175.1 | 397 | −0.19 |
+| g-44p4_169p6 | −44.4 | 169.6 | 1083 | −0.17 |
+| g-37p5_174p9 | −37.5 | 174.9 | 117 | −0.16 |
+| g-43p6_169p5 | −43.6 | 169.5 | 0 | −0.16 |
+| g-39p1_176p7 | −39.1 | 176.7 | 281 | −0.15 |
+| g-36p6_174p6 | −36.6 | 174.6 | 58 | −0.14 |
+| g-43p5_172p1 | −43.5 | 172.1 | 191 | −0.14 |
+| g-41p9_172p7 | −41.9 | 172.7 | 810 | −0.14 |
+
+The negative-BSS cluster is concentrated in the **Canterbury/Mackenzie Basin lee** (−44 to −45 lat, 169–171 lon) — complex orographic rain-shadow terrain where sub-cell rain patterns are highly variable and the 11 km GPM truth is least reliable. A few urban cells (Auckland environs: −36.6/174.6, −37.5/174.9) are also poor, likely because city heat-island effects distort the pressure/temperature relationship the model relies on.
 
 ---
 
@@ -231,7 +322,104 @@ look marginal on average.
 - **Snow & river hazards are stubbed** (snow is derivable from GPM `probabilityLiquidPrecipitation` when we
   want it; river is out of scope).
 
-## 10. Next steps
+## 10. What to expect on a real trip
+
+*Operating points from §6b; assumes balanced yellow (0.30) and sensitive red (0.10).*
+
+**4-day tramp (48 active hours):**
+
+| | Yellow banner | Red banner |
+|---|---|---|
+| Banner fires (total) | ~11 times | ~2 times |
+| Real rain events caught | ~5 | ~0–1 |
+| False alarms | ~6 | ~1–2 |
+| Rain events that slip through silently | ~4 | ~1 |
+
+**Day tramp (12 hours):** yellow fires ~3 times (~1.3 real, ~1.6 false), red fires ~0–1 times.
+
+**How to read these numbers:** on a 4-day trip you will hear roughly equal real alerts and false alarms from the yellow banner. That sounds poor, but the alternative (climatology alone) gives you a 20% background rain chance with no early warning at all. The yellow banner shifts that to **45% when firing** and **12% when quiet** — a 2× push either direction. It is most valuable when *silent* (confidently low rain risk) and as a "get your jacket out" prompt when it fires, not as a reliable "it will definitely rain."
+
+The red banner will fire roughly twice on a 4-day trip and is likely to be a false alarm both times. Its real value is the **all-clear**: when the red banner stays off, heavy rain in the next 6 h is very unlikely (~1.9% vs 2.4% base).
+
+**The precision numbers are lower than you would want** for a reliable binary alarm. This is an intrinsic limit of predicting rain from a single barometer/thermometer/hygrometer at ~11 km resolution — not a model-specific failure. A commercial forecast service (MetService, OpenWeatherMap) uses synoptic model output, radar, and satellite at multiple altitudes; this model only has what the pod can sense plus where you are. Given that constraint the BSS of 0.18 (any rain, +6h) is at the upper end of what physics allows for this sensor set.
+
+---
+
+## 11. Is this worth building?
+
+**Yes — with a reframed expectation.** Build for probability shift, not binary certainty.
+
+| Claim | Evidence |
+|---|---|
+| Barometer beats climatology everywhere | 95% of cells have positive BSS; all 15 threshold×horizon combinations positive |
+| Skill peaks at 6–12 h | Exactly the actionable horizon for deciding shelter, campsite, route |
+| Moving hiker ≈ stationary hiker | Motion-sim + MSLP reduction limits skill loss to ~0.046 BSS on the move |
+| Winter reliable, spring uncertain | JJA BSS 0.20 vs SON 0.14; worth communicating seasonally on the display |
+| Canterbury lee is genuinely unreliable | 15 cells with negative BSS cluster in the Mackenzie Basin / Lindis area |
+
+**What the pod should do differently because of this analysis:**
+
+1. **Never show a binary "rain: yes/no"** — show probability or a 3-level banner. The underlying number is probabilistic and treating it as binary discards the calibration.
+2. **Tune the yellow threshold by season** — SON/DJF could run at a lower decision (0.20–0.25) to compensate for reduced skill; JJA/MAM can run at 0.30+.
+3. **Red banner: set sensitive** — the primary value is "all-clear confidence," not alarm precision. A threshold of 0.05–0.10 maximises the NPV.
+4. **Flag the Mackenzie/Lindis region** — cells around lat −44 to −45, lon 169–171 have negative BSS; if the pod ever knows it is in that area, reduce banner confidence or suppress it.
+5. **The 48h horizon is weakly useful** (BSS 0.099) — consider not displaying it on the device or showing it with a clear caveat.
+
+**What would improve the model:**
+- Method-evaluation rebuild (motion-vs-stationary, MSLP-vs-raw) to confirm the design bets earn their complexity.
+- Sensor noise sensitivity sweep to check the BMP180/AHT10 hardware is adequate.
+- 2025 ERA5/GPM data (now downloading) — marginal for common rain (learning curve plateaued) but meaningful for the heavy-rain tail.
+
+---
+
+## 11b. Ideas to raise skill — terrain exposure and the alternatives
+
+*Skill is ~0.18 BSS for any-rain +6 h and we want more. This section is a **candidate list, not a result** — nothing here has been measured yet. Per our standing rule (judge every option by a bootstrap ablation+CI, and judge it **conditionally** — a feature can be worthless on average and decisive in the niche that matters, e.g. the negative-BSS lee cells in §6b), each idea below carries a hypothesised mechanism, the verdict on whether it can actually ship, and how we'd test it.*
+
+### The filter that decides everything: pod-replicability
+
+The pod senses **only** pressure, temperature, humidity, and its GPS position — and it can carry **static lookup tables baked into firmware** (it already does, for climate zone and per-cell climatology). So every candidate feature falls into one of two buckets:
+
+- **Bakeable / sensible** — a static per-cell (or per-cell-month) value computed once on the cyberdeck and stored, *or* something the pod's own sensors can compute live. **These can ship.**
+- **Live external fields** — anything needing the real-time weather state at *other* places or in quantities the pod can't sense (instantaneous wind, spatial pressure gradients, neighbour-cell rain). High signal, but **the pod can never reproduce them**, so they can't go in a deployable model — only in an upper-bound study.
+
+This filter is what separates the good parts of the proposal below from the tempting-but-unshippable parts.
+
+### Option A — terrain wind-exposure (the Winstral Sx proposal)
+
+The idea: replace naive "horizon angle in one direction" with **Sx**, the standard snow-hydrology/meteorology shelter metric — sweep a ±30° sector around an upwind direction and take the **maximum** horizon angle across all rays (positive = terrain upwind is higher than you = sheltered; negative = you're on an exposed ridge). Compute it at **three distance bands** (local 0–20 km / regional 20–100 km / large-scale 100–250 km) for **four directions**, giving 12 features per cell. Optionally weight the directions by an **ERA5 wind-climatology prior** so the data, not hardcoded "NW front" intuition, picks the upwind sector per cell.
+
+**Verdict: shippable, and physically apt.** Sx is a static per-cell quantity — bake the 12 (or fewer) numbers per cell into firmware, look them up by GPS. The ERA5 wind-climatology prior is also static-per-cell, so it ships too (note: it's *climatological* wind, baked once — **not** live wind). This is squarely in the bakeable bucket.
+
+**The honest mechanism — and its ceiling.** A static feature *cannot* beat the baseline on its own, because our baseline **is** cell+month climatology, which already encodes "this cell is wet/dry." Sx can only help by **interacting** with the dynamic pressure features — letting LightGBM learn "falling pressure + windward exposure ⇒ rain soon" vs "falling pressure + deep lee ⇒ stay sceptical." That interaction is exactly the failure mode in §6b: the worst cells cluster in the **Canterbury/Mackenzie lee (−44…−45, 169–171)**, where the synoptic pressure signal says "front coming" but the terrain eats the rain. So the right way to score Sx is **conditionally on those lee cells**, not on the national-mean BSS where it will look marginal (cf. how lat/lon and ruggedness paid off 2–3× more for the rare heavy class in B3/B4).
+
+**Multi-scale is the strongest part of the proposal.** "Locally exposed but regionally sheltered" is precisely the Canterbury-foothills situation; one cutoff distance can't express it, three bands can.
+
+### Other options worth weighing first
+
+| Idea | Mechanism (hypothesis) | Ship? | Likely cheapest? |
+|---|---|---|---|
+| **Pressure anomaly vs cell-month climatology** | "1005 hPa is alarming for summer-Canterbury but normal for winter-Fiordland." Directly attacks what the baseline encodes; bake per-cell-month mean+sd MSLP, feed `(MSLP − mean)/sd`. | ✅ bakeable | **Yes — try first** |
+| **Dewpoint / saturation depression** | `T − Td` (how close to saturation) is a classic rain precursor and is **fully pod-sensible** from temp+humidity we already read. Possibly under-exploited vs raw humidity. | ✅ sensible | Yes |
+| **Pressure 2nd derivative (fall *acceleration*)** | A front's pressure trace curves, not just slopes; acceleration may lead the simple 3–6 h tendency. Cheap to add to the existing ladder. | ✅ sensible | Yes |
+| **Winstral Sx multi-scale (Option A)** | Modulate the pressure signal by orographic shelter; targets the lee-cell failures. | ✅ bakeable | Medium effort |
+| **ERA5 wind-climatology direction prior** | Per-cell "which upwind sector actually brings rain here" (SW in Otago, N/NE in Northland) — pairs with Sx. | ✅ bakeable (static) | Medium |
+| **Live ERA5 wind → upslope forcing** | `wind · terrain-gradient` is the most physical rain trigger of all. | ❌ **not pod-replicable** (live wind) | Upper-bound study only |
+| **Spatial pressure gradient / neighbour-cell tendency** | A pressure gradient across space *is* the wind/front-approach signal. | ❌ **not pod-replicable** (one device, one location) | Upper-bound study only |
+| **More 2025 data** | Heavy-rain tail still climbing in the learning curve (§7). | ✅ (already downloading) | Marginal for common, real for heavy |
+
+### Recommended order (cheapest, highest-confidence first)
+
+1. **Pressure anomaly vs cell-month climatology** — smallest change, attacks the baseline head-on, fully bakeable. Measure first.
+2. **Dewpoint depression + pressure-fall acceleration** — both free from existing sensors, one ablation run together.
+3. **Winstral Sx, multi-scale, 3 bands × 4 dirs** — more work; score it **conditionally on the lee cells** (§6b worst-15) and the heavy class, not on national mean. Add the ERA5 wind-climatology prior in the same experiment.
+4. **Upper-bound study (non-shippable):** train one model *with* live ERA5 wind / spatial gradients purely to measure the **headroom** terrain/wind information could give. If the gap over the bakeable model is small, Option A's ceiling is low and we stop; if it's large, it justifies pushing Sx harder. This is the honest way to know whether the terrain idea is worth its complexity before we invest in it.
+
+Each step is one cached rebuild with bootstrap CIs, comparable to the A–D scorecard, and should land as new rows there.
+
+---
+
+## 12. Remaining next steps
 
 1. **Method-evaluation suite (rebuilds):** motion-vs-stationary, MSLP-vs-raw, sensor clean-vs-degraded — do
    the *core* design choices earn their place (small-cell rebuilds).
