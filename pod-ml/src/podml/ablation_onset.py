@@ -124,8 +124,37 @@ def _run_one(label: str, X_tr, y_tr, meta_tr,
     ci_lo, ci_hi = float(np.nanpercentile(boot, 2.5)), float(np.nanpercentile(boot, 97.5))
 
     print(f"  CRPSS = {crpss:.4f}  95% CI [{ci_lo:.4f}, {ci_hi:.4f}]", flush=True)
+
+    # POD at fixed 20% FAR for each threshold — same operating point as display_check
+    from podml.display_check import FIXED_FAR, EVENT_THRESHOLDS
+    score = blended["mean"]
+    pod_rows = []
+    for t in EVENT_THRESHOLDS:
+        ev = y_te >= t
+        nev = ~ev
+        if ev.sum() < 20 or nev.sum() < 50:
+            continue
+        s_star = np.quantile(score[nev], 1.0 - FIXED_FAR)
+        pod = float(np.mean(score[ev] >= s_star))
+        pod_rows.append({"threshold": t, "pod": pod})
+        print(f"  POD ≥{t}mm/hr at {int(FIXED_FAR*100)}% FAR: {pod*100:.0f}%", flush=True)
+
+    # Confusion matrix at any-rain threshold (base rate ~14%)
+    base_rate = float((y_te >= WET_THRESHOLD_MM).mean())
+    dry_rate = 1.0 - base_rate
+    pod_05 = next((r["pod"] for r in pod_rows if r["threshold"] == WET_THRESHOLD_MM), None)
+    cm = {}
+    if pod_05 is not None:
+        cm = {"TP": pod_05 * base_rate, "FN": (1 - pod_05) * base_rate,
+              "FP": FIXED_FAR * dry_rate, "TN": (1 - FIXED_FAR) * dry_rate,
+              "precision": (pod_05 * base_rate) / (pod_05 * base_rate + FIXED_FAR * dry_rate)}
+        print(f"  confusion (≥0.5, +1h equiv): "
+              f"TP={cm['TP']*100:.0f}% FN={cm['FN']*100:.0f}% "
+              f"FP={cm['FP']*100:.0f}% TN={cm['TN']*100:.0f}% "
+              f"precision={cm['precision']*100:.0f}%", flush=True)
+
     return {"label": label, "crpss": crpss, "ci_lo": ci_lo, "ci_hi": ci_hi,
-            "crps_model": crps_m, "crps_clim": crps_c}
+            "crps_model": crps_m, "crps_clim": crps_c, "pod_rows": pod_rows, "cm": cm}
 
 
 def run_ablation(n_cells: int = 200, seed: int = 42, n_boot: int = 200) -> None:
@@ -197,8 +226,13 @@ def run_ablation(n_cells: int = 200, seed: int = 42, n_boot: int = 200) -> None:
     # ── save results ──────────────────────────────────────────────────────────────────────────────
     rows = []
     for r in (res_base, res_onset):
-        rows.append({"label": r["label"], "crpss": r["crpss"],
-                     "ci_lo": r["ci_lo"], "ci_hi": r["ci_hi"]})
+        row = {"label": r["label"], "crpss": r["crpss"],
+               "ci_lo": r["ci_lo"], "ci_hi": r["ci_hi"]}
+        for pr in r.get("pod_rows", []):
+            row[f"pod_at_{pr['threshold']}"] = pr["pod"]
+        for k, v in r.get("cm", {}).items():
+            row[f"cm_{k}"] = v
+        rows.append(row)
     rows.append({"label": "delta", "crpss": delta, "ci_lo": delta_lo, "ci_hi": delta_hi})
     pd.DataFrame(rows).to_csv(ABLATION_OUT / "results.csv", index=False)
 
