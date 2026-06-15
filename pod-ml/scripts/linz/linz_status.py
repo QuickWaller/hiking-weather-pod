@@ -18,7 +18,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from layer_config import LAYERS, BASE_DIR
 
-DASHBOARD_STATUS = Path("/home/claude/cyber-deck-and-weather-station/pod-ml/data/linz_status.json")
+REPO = Path(__file__).parent.parent.parent  # scripts/linz/../../ = pod-ml/
+DASHBOARD_STATUS = REPO / "data" / "linz_status.json"
 
 
 def layer_summary(name: str) -> dict:
