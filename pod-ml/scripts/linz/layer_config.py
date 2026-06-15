@@ -12,22 +12,22 @@ LINZ_WFS = "https://data.linz.govt.nz/services/wfs"
 # LINZ publishes quarterly changeset for topo layers; daily for roads in some regions
 LAYERS = {
     "contours": {
-        "linz_id": "50767",
+        "linz_id": "50768",
         "name": "nz-contours",
         "cadence_days": 90,
         "description": "NZ Contours (Topo, 1:50k) — 20m interval",
     },
     "tracks": {
-        "linz_id": "50149",
-        "name": "nz-walking-and-tramping-tracks",
+        "linz_id": "50364",
+        "name": "nz-track-centrelines",
         "cadence_days": 30,
-        "description": "NZ Walking and Tramping Tracks",
+        "description": "NZ Track Centrelines (Topo, 1:50k)",
     },
     "roads": {
         "linz_id": "50329",
         "name": "nz-road-centrelines",
         "cadence_days": 30,
-        "description": "NZ Road Centrelines",
+        "description": "NZ Road Centrelines (Topo, 1:50k)",
     },
     "lakes": {
         "linz_id": "50293",
@@ -39,24 +39,24 @@ LAYERS = {
         "linz_id": "50327",
         "name": "nz-river-centrelines",
         "cadence_days": 90,
-        "description": "NZ River Centrelines",
+        "description": "NZ River Centrelines (Topo, 1:50k)",
     },
     "coastline": {
         "linz_id": "51153",
         "name": "nz-coastlines-and-islands",
         "cadence_days": 365,
-        "description": "NZ Coastlines and Islands Polygons",
+        "description": "NZ Coastlines and Islands Polygons (Topo, 1:50k)",
     },
     "peaks": {
-        "linz_id": "50308",
-        "name": "nz-spot-heights",
+        "linz_id": "50284",
+        "name": "nz-height-points",
         "cadence_days": 365,
-        "description": "NZ Spot Heights (Topo, 1:50k)",
+        "description": "NZ Height Points (Topo, 1:50k) — named summits + spot heights",
     },
     "glaciers": {
-        "linz_id": "50209",
-        "name": "nz-glacier-polygons",
+        "linz_id": "50287",
+        "name": "nz-ice-polygons",
         "cadence_days": 365,
-        "description": "NZ Glacier Polygons",
+        "description": "NZ Ice Polygons (Topo, 1:50k) — glaciers and snowfields",
     },
 }

@@ -55,9 +55,20 @@ def _load_key() -> str:
     sys.exit("LINZ_KEY not set — set env var or write to ~/.linz_key")
 
 LINZ_KEY = _load_key()
-
-AUTH = {"Authorization": f"key {LINZ_KEY}"}
 TIMEOUT = 30
+
+
+def _get(url: str, timeout: int = TIMEOUT, **kwargs) -> requests.Response:
+    """GET with LINZ key as URL parameter (Authorization header rejected by some endpoints)."""
+    params = dict(kwargs.pop("params", {}))
+    params["key"] = LINZ_KEY
+    return requests.get(url, params=params, timeout=timeout, **kwargs)
+
+
+def _post(url: str, timeout: int = TIMEOUT, **kwargs) -> requests.Response:
+    params = dict(kwargs.pop("params", {}))
+    params["key"] = LINZ_KEY
+    return requests.post(url, params=params, timeout=timeout, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -102,11 +113,9 @@ def is_due(name: str, force: bool = False) -> bool:
 
 def get_layer_revision(layer_id: str) -> int | None:
     """Return the current published revision number for a layer."""
-    url = f"{LINZ_API}/layers/{layer_id}/"
-    r = requests.get(url, headers=AUTH, timeout=TIMEOUT)
+    r = _get(f"{LINZ_API}/layers/{layer_id}/")
     r.raise_for_status()
     data = r.json()
-    # Layer metadata includes 'data' dict with 'revision'
     return data.get("data", {}).get("revision") or data.get("revision")
 
 
@@ -122,7 +131,7 @@ def full_export(name: str, layer_id: str, out_path: Path) -> float:
         "projection": "EPSG:4326",
         "name": name,
     }
-    r = requests.post(f"{LINZ_API}/exports/", headers=AUTH, json=payload, timeout=TIMEOUT)
+    r = _post(f"{LINZ_API}/exports/", json=payload)
     r.raise_for_status()
     job = r.json()
     job_id = job["id"]
@@ -131,7 +140,7 @@ def full_export(name: str, layer_id: str, out_path: Path) -> float:
 
     for attempt in range(720):  # up to 12 hours
         time.sleep(60)
-        r = requests.get(poll_url, headers=AUTH, timeout=TIMEOUT)
+        r = _get(poll_url)
         r.raise_for_status()
         job = r.json()
         state = job.get("state", "processing")
@@ -156,7 +165,7 @@ def full_export(name: str, layer_id: str, out_path: Path) -> float:
 
     print(f"  [{name}] Downloading...")
     tmp = out_path.with_suffix(".tmp")
-    with requests.get(download_url, headers=AUTH, stream=True, timeout=300) as r:
+    with _get(download_url, stream=True, timeout=300) as r:
         r.raise_for_status()
         total = 0
         with open(tmp, "wb") as f:
@@ -195,16 +204,14 @@ def apply_changeset(name: str, layer_id: str, gpkg_path: Path, from_rev: int) ->
     import sqlite3
 
     print(f"  [{name}] Fetching changeset from revision {from_rev} to head...")
-    params = {
-        "key": LINZ_KEY,
+    r = _get(LINZ_WFS, params={
         "service": "WFS",
         "version": "2.0.0",
         "request": "GetFeature",
         "typeNames": f"layer-{layer_id}",
         "viewparams": f"from:{from_rev};to:head",
         "outputFormat": "application/json",
-    }
-    r = requests.get(LINZ_WFS, params=params, timeout=600)
+    }, timeout=600)
     r.raise_for_status()
     data = r.json()
     features = data.get("features", [])
