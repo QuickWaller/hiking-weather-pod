@@ -21,7 +21,16 @@ Output: /data/linz/<layer>/<name>.gpkg  + status.json per layer
 from __future__ import annotations
 
 import argparse
-import fcntl
+try:
+    import fcntl as _fcntl
+    def _flock(fh, flags): _fcntl.flock(fh, flags)
+    _LOCK_EX_NB = _fcntl.LOCK_EX | _fcntl.LOCK_NB
+    _LOCK_UN = _fcntl.LOCK_UN
+except ImportError:
+    # Windows — no-op locking (file-based locking not needed in tests)
+    def _flock(fh, flags): pass
+    _LOCK_EX_NB = 0
+    _LOCK_UN = 0
 import json
 import os
 import sys
@@ -281,7 +290,7 @@ def pull_layer(name: str, force: bool = False, full: bool = False) -> None:
     lock_path = d / "download.lock"
     lock_fh = open(lock_path, "w")
     try:
-        fcntl.flock(lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        _flock(lock_fh, _LOCK_EX_NB)
     except BlockingIOError:
         print(f"  [{name}] Already running — skipping")
         lock_fh.close()
@@ -343,7 +352,7 @@ def pull_layer(name: str, force: bool = False, full: bool = False) -> None:
         raise
 
     finally:
-        fcntl.flock(lock_fh, fcntl.LOCK_UN)
+        _flock(lock_fh, _LOCK_UN)
         lock_fh.close()
 
 

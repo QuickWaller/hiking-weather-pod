@@ -3,7 +3,8 @@ LINZ layer registry — verify IDs at https://data.linz.govt.nz/layer/<id>/
 Each layer gets /data/linz/<key>/<name>.gpkg on the VM.
 """
 
-BASE_DIR = "/data/linz"
+import os as _os
+BASE_DIR = _os.environ.get("LINZ_BASE_DIR", _os.path.expanduser("~/linz-data"))
 LINZ_API = "https://data.linz.govt.nz/services/api/v1"
 LINZ_WFS = "https://data.linz.govt.nz/services/wfs"
 
