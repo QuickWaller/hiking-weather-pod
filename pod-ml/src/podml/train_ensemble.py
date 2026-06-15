@@ -55,10 +55,15 @@ CACHE_DIR = OUT / "dataset"
 # Every integer hour 0-24: the full plume x-axis.
 ENSEMBLE_HORIZONS = ENSEMBLE_AMOUNT_HORIZONS  # [0, 1, 2, ..., 24]
 
-# Quantile levels: inner 50% + outer 80% prediction-interval bands (the e-ink fan).
-QUANTILE_LEVELS = [0.10, 0.25, 0.75, 0.90]
+# Quantile levels: upper-only fan for zero-inflated rain. Under ~86% dry, the lower half is
+# wasted (median pins to 0), so v2 keeps q50/q75/q90 — the three bottom-aligned display bands
+# (0→q50 solid red, q50→q75 red-lined, q75→q90 yellow). See docs/10 §1c.
+QUANTILE_LEVELS = [0.50, 0.75, 0.90]
 MODEL_NAMES = ["mean"] + [f"q{int(a*100):02d}" for a in QUANTILE_LEVELS]
-# → ["mean", "q10", "q25", "q75", "q90"]
+# → ["mean", "q50", "q75", "q90"]
+# Quantile heads: high backstop only — EARLY-STOPPING finds the real optimum (the quantile objective's
+# per-tree percentile-sort is single-threaded, so we make trees cheap via bagging rather than capping).
+QUANTILE_ROUNDS = 1500
 
 # Horizon decay taus to sweep in the tau ablation.
 TAU_ABLATION_VALUES: list[float | None] = [6.0, 12.0, 24.0, None]  # None = flat / no weighting
@@ -76,6 +81,78 @@ def _flush_year(flush_dir: Path, year: int, rows_X: list, rows_y: list, rows_met
     pd.DataFrame(rows_meta).to_parquet(flush_dir / f"meta_{year}.parquet")
 
 
+HEAVY_THRESHOLD_MM = 2.5   # mm/hr — "heavy" rain boundary for in-period stratification
+HARVEST_MIN_MM = 7.6       # mm/hr — earlier-year harvest takes ONLY genuinely heavy storms (rare tail)
+HARVEST_CAP = 2            # ≤2 storm endpoints per cell-month from harvest years (keeps it a tail add-on)
+
+def _stratified_pick(
+    vp: np.ndarray, fr: np.ndarray, k: int, mode: str,
+    target_wet: float, harvest_weight: float, rng: np.random.Generator,
+) -> list[tuple[int, float]]:
+    """Choose ≤k endpoints (values from vp) + importance weights for one (cell, month).
+
+    fr = forward-window max rain (mm/hr) for each candidate in vp. modes:
+      'uniform'  — k random, weight 1 (the §1b baseline behaviour).
+      'stratify' — ~target_wet of picks wet (≥0.5 mm/hr), heavy (≥2.5) prioritised; per-stratum
+                   importance weights w = true_frac / sampled_frac restore the cell-month's true
+                   wet rate, so oversampling adds examples without biasing the bands wet.
+      'harvest'  — heavy-only (≥2.5 mm/hr), ≤k, fixed harvest_weight (TRMM-era tail enrichment).
+    See docs/10 §1c.
+    """
+    n = vp.size
+    if n == 0:
+        return []
+    wet = fr >= WET_THRESHOLD_MM
+    heavy = fr >= HEAVY_THRESHOLD_MM
+
+    if mode == "harvest":
+        # Genuinely heavy storms only (≥7.6 mm/hr forward), ≤HARVEST_CAP per cell-month — a rare-tail
+        # add-on, NOT a re-sample of the earlier years (else it doubles the dataset, blows train RAM).
+        hidx = np.where(fr >= HARVEST_MIN_MM)[0]
+        if hidx.size == 0:
+            return []
+        kk = min(k, HARVEST_CAP)
+        take = hidx if hidx.size <= kk else rng.choice(hidx, size=kk, replace=False)
+        return [(int(vp[i]), float(harvest_weight)) for i in take]
+
+    if mode != "stratify":
+        take = rng.choice(n, size=min(k, n), replace=False)
+        return [(int(vp[i]), 1.0) for i in take]
+
+    k_eff = min(k, n)
+    wet_idx, dry_idx = np.where(wet)[0], np.where(~wet)[0]
+    # Stochastic rounding so the EXPECTED wet fraction = target_wet even when target*k isn't integer
+    # (k=4, target=0.30 → 1 or 2 wet picks, mean 1.2). Enriches ALL rain proportionally
+    # (light/moderate/heavy) — NOT storm-only; a storm is force-included only when there are ≥2 wet
+    # slots so light/moderate aren't crowded out. Extra storms come from the earlier-year harvest.
+    base = target_wet * k_eff
+    n_wet_pick = int(base) + int(rng.random() < (base - int(base)))
+    n_wet_pick = min(max(n_wet_pick, 1 if wet_idx.size else 0), wet_idx.size)
+    n_dry_pick = k_eff - n_wet_pick
+    if n_dry_pick > dry_idx.size:                  # not enough dry → shift to wet
+        n_dry_pick, n_wet_pick = dry_idx.size, k_eff - dry_idx.size
+
+    picks: list[int] = []
+    if n_wet_pick > 0:
+        chosen_w: list[int] = []
+        heavy_in_wet = [int(i) for i in wet_idx if heavy[i]]
+        if n_wet_pick >= 2 and heavy_in_wet:       # ≥1 storm only when there's room for it
+            chosen_w.append(int(rng.choice(heavy_in_wet)))
+        pool = np.array([i for i in wet_idx if i not in chosen_w], dtype=int)
+        rem = n_wet_pick - len(chosen_w)
+        if rem > 0 and pool.size:                  # rest sampled uniformly across all wet rates
+            chosen_w += [int(i) for i in rng.choice(pool, size=min(rem, pool.size), replace=False)]
+        picks += chosen_w
+    if n_dry_pick > 0:
+        picks += [int(i) for i in rng.choice(dry_idx, size=n_dry_pick, replace=False)]
+
+    true_wet = float(wet.mean())
+    samp_wet, samp_dry = n_wet_pick / k_eff, n_dry_pick / k_eff
+    w_wet = (true_wet / samp_wet) if samp_wet > 0 else 0.0
+    w_dry = ((1.0 - true_wet) / samp_dry) if samp_dry > 0 else 0.0
+    return [(int(vp[i]), float(w_wet if wet[i] else w_dry)) for i in picks]
+
+
 def build_ensemble_dataset(
     cells: pd.DataFrame,
     gpm_times: pd.DatetimeIndex,
@@ -85,6 +162,10 @@ def build_ensemble_dataset(
     params: MotionSimParams,
     seed: int = 0,
     flush_dir: Path | None = None,
+    stratify: bool = False,
+    target_wet: float = 0.30,
+    harvest_years: set[int] | None = None,
+    harvest_weight: float = 1.0,
 ) -> tuple[pd.DataFrame | None, pd.DataFrame | None, pd.DataFrame | None]:
     """Build the 07 dataset: one feature row per endpoint, amount labels for every hour 0-24.
 
@@ -119,12 +200,25 @@ def build_ensemble_dataset(
             if valid_pos.size == 0:
                 continue
 
+            # Forward GPM index per candidate endpoint (shared across cells this month).
+            gps = np.array([gpm_pos.get(wtimes[t0], -1) for t0 in valid_pos])
+            okp = gps >= 0
+            vp_month, gps = valid_pos[okp], gps[okp]
+            if vp_month.size == 0:
+                continue
+            H = len(ENSEMBLE_HORIZONS)
+            fwd_idx = np.minimum(gps[:, None] + np.arange(H), precip.shape[0] - 1)  # (n_cand, H)
+            mode = ("harvest" if (harvest_years and year in harvest_years)
+                    else "stratify" if stratify else "uniform")
+
             for c in range(len(cells)):
                 i0, j0 = int(ci[c]), int(cj[c])
                 if not land[i0, j0]:
                     continue
-                chosen = rng.choice(valid_pos, size=min(k_per_cell_month, valid_pos.size), replace=False)
-                for t0 in chosen:
+                fr = np.nanmax(precip[:, c][fwd_idx], axis=1)       # forward max rain per candidate
+                picks = _stratified_pick(vp_month, fr, k_per_cell_month, mode,
+                                         target_wet, harvest_weight, rng)
+                for t0, wt in picks:
                     ts = wtimes[t0]
                     gp = gpm_pos.get(ts)
                     if gp is None:
@@ -159,6 +253,7 @@ def build_ensemble_dataset(
                         "cell": cells["name"].iloc[c], "lat": lats[c], "lon": lons[c],
                         "elevation": elev_c, "zone": xrow["zone"],
                         "time": ts, "year": year, "month": month, "motion": mclass,
+                        "weight": float(wt),
                     })
             ds.close()
         print(f"  year {year}: {len(rows_X)} rows", flush=True)
@@ -172,18 +267,25 @@ def build_ensemble_dataset(
 
 
 def build_cache(years: list[int], k_per_cell_month: int = 4, all_cells: bool = False,
-                n_cells: int | None = None, seed: int = 0, cache_dir: Path = CACHE_DIR) -> dict:
+                n_cells: int | None = None, seed: int = 0, cache_dir: Path = CACHE_DIR,
+                stratify: bool = False, target_wet: float = 0.30,
+                harvest_years: set[int] | None = None, harvest_weight: float = 1.0) -> dict:
     """Build the 07 dataset once and write to parquet (the expensive step).
 
     Separate from the phase-06 cache (outputs/motion/dataset). Produces amount_h0..amount_h24
     (instantaneous rate at T+h) with the v3 feature vector. Everything downstream reads from this cache.
+
+    stratify/target_wet/harvest_*: v2 rain enrichment (docs/10 §1c). When stratify=True the sampler
+    oversamples wet endpoints to ~target_wet and carries importance weights restoring the true base
+    rate; harvest_years (heavy-only, fixed harvest_weight) add tail events from earlier TRMM-era years.
     """
     from podml.train_motion import all_land_cells
     cells = all_land_cells() if all_cells else pd.read_csv(SAMPLED_CSV)
     if n_cells is not None:
         cells = cells.iloc[:n_cells].reset_index(drop=True)
+    hv = f", harvest={sorted(harvest_years)} w={harvest_weight}" if harvest_years else ""
     print(f"build_cache (ensemble): {len(cells)} cells, years {min(years)}-{max(years)}, "
-          f"k={k_per_cell_month}", flush=True)
+          f"k={k_per_cell_month}, stratify={stratify} target_wet={target_wet}{hv}", flush=True)
     gpm_times, precip = load_gpm_cells_hourly(
         cells["lat"].to_numpy(), cells["lon"].to_numpy(), min(years), max(years)
     )
@@ -192,7 +294,9 @@ def build_cache(years: list[int], k_per_cell_month: int = 4, all_cells: bool = F
     cache_dir.mkdir(parents=True, exist_ok=True)
     cells.to_parquet(cache_dir / "cells.parquet")
     build_ensemble_dataset(cells, gpm_times, precip, k_per_cell_month, years,
-                           MotionSimParams(), seed=seed, flush_dir=cache_dir)
+                           MotionSimParams(), seed=seed, flush_dir=cache_dir,
+                           stratify=stratify, target_wet=target_wet,
+                           harvest_years=harvest_years, harvest_weight=harvest_weight)
     parts = sorted(cache_dir.glob("X_*.parquet"))
     n = sum(len(pd.read_parquet(p, columns=["sp_hPa"])) for p in parts)
     print(f"build_cache DONE: {n} rows across {len(parts)} year-parts → {cache_dir}", flush=True)
@@ -292,21 +396,92 @@ def coverage(y_true: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> float:
 def pit_histogram(y_true: np.ndarray, preds: dict[str, np.ndarray]) -> pd.DataFrame:
     """PIT histogram: which quantile band does each observation fall into?
 
-    Uniform → well-calibrated. U-shape → bands too narrow. Central hump → too wide.
+    Generic over QUANTILE_LEVELS. Each band's expected mass is the gap between adjacent
+    quantile levels (e.g. q50/q75/q90 → <q50:0.50, q50-q75:0.25, q75-q90:0.15, >q90:0.10).
+    Matching observed→expected = calibrated.
     """
-    q10, q25, q75, q90 = preds["q10"], preds["q25"], preds["q75"], preds["q90"]
-    obs = np.array([
-        (y_true < q10).mean(),
-        ((y_true >= q10) & (y_true < q25)).mean(),
-        ((y_true >= q25) & (y_true < q75)).mean(),
-        ((y_true >= q75) & (y_true < q90)).mean(),
-        (y_true >= q90).mean(),
-    ])
-    return pd.DataFrame({
-        "band": ["<q10", "q10-q25", "q25-q75", "q75-q90", ">q90"],
-        "observed": obs,
-        "expected": [0.10, 0.15, 0.50, 0.15, 0.10],
-    })
+    names = MODEL_NAMES[1:]                      # quantile heads, ascending
+    bands, observed, expected = [], [], []
+    prev_edge, prev_name, prev_level = None, None, 0.0
+    for lvl, name in zip(QUANTILE_LEVELS, names):
+        edge = preds[name]
+        if prev_edge is None:
+            observed.append(float((y_true < edge).mean()))
+            bands.append(f"<{name}")
+        else:
+            observed.append(float(((y_true >= prev_edge) & (y_true < edge)).mean()))
+            bands.append(f"{prev_name}-{name}")
+        expected.append(lvl - prev_level)
+        prev_edge, prev_name, prev_level = edge, name, lvl
+    observed.append(float((y_true >= prev_edge).mean()))
+    bands.append(f">{prev_name}")
+    expected.append(1.0 - prev_level)
+    return pd.DataFrame({"band": bands, "observed": observed, "expected": expected})
+
+
+# ─────────────────────────────────────────────── confusion matrix ───────────────────────────────
+
+PRECIP_THRESHOLDS = [0.5, 2.5, 7.6]   # mm/hr — light / heavy / very-heavy occurrence boundaries
+LEADTIME_BANDS = {"0-3h": (0, 3), "3-6h": (3, 6), "6-12h": (6, 12), "12-24h": (12, 25),
+                  "all": (0, 25)}
+
+
+def prob_exceed(thr: float, levels: list[float], qmat: np.ndarray) -> np.ndarray:
+    """P(Y ≥ thr) per row from a quantile function, no binary head.
+
+    qmat: (n_rows, K) ascending quantile VALUES at probability `levels` (ascending, e.g.
+    [0.50,0.75,0.90]). We anchor Q(0)=0 (rain is zero-floored), linearly interpolate the
+    probability level p where Q(p)=thr, and return 1−p. Below q-min → p from the (0,0)→(level0,q0)
+    segment; above q-max → linear extrapolation of the top segment, clipped to [level_max, 1].
+    Vectorised over rows (loops only the K small segments).
+    """
+    qmat = np.asarray(qmat, dtype=float)
+    n, K = qmat.shape
+    P = np.concatenate([[0.0], np.asarray(levels, dtype=float)])      # (K+1,)
+    Q = np.concatenate([np.zeros((n, 1)), qmat], axis=1)             # (n, K+1)
+    p_at = np.full(n, np.nan)
+    p_at[thr <= Q[:, 0]] = 0.0                                       # thr ≤ 0 → exceed prob 1
+    for j in range(K):
+        lo, hi = Q[:, j], Q[:, j + 1]
+        seg = (thr > lo) & (thr <= hi) & np.isnan(p_at)
+        denom = np.where(hi > lo, hi - lo, 1.0)
+        p_at[seg] = P[j] + (thr - lo[seg]) / denom[seg] * (P[j + 1] - P[j])
+    above = thr > Q[:, K]
+    if above.any():
+        lo, hi = Q[:, K - 1], Q[:, K]
+        slope = (P[K] - P[K - 1]) / np.where(hi > lo, hi - lo, 1.0)
+        p_at[above] = np.clip(P[K] + (thr - hi[above]) * slope[above], P[K], 1.0)
+    return 1.0 - p_at
+
+
+def confusion_sweep(y_true: np.ndarray, p_exc: np.ndarray, thr: float, band: str,
+                    far_target: float = 0.10, n_sweep: int = 41) -> tuple[pd.DataFrame, dict]:
+    """Sweep the decision cutoff on P(Y≥thr); full TP/FP/FN/TN + precision/POD/FAR/F1/CSI.
+
+    Returns (sweep_df, fixed_row) where fixed_row is the cutoff whose FAR is closest to far_target
+    (the 10%-FAR operating point). FAR = FP/(FP+TN); POD/recall = TP/(TP+FN); precision = TP/(TP+FP);
+    CSI = TP/(TP+FP+FN).
+    """
+    pos = y_true >= thr
+    rows = []
+    for c in np.linspace(0.0, 1.0, n_sweep):
+        pred = p_exc >= c
+        tp = int(np.sum(pred & pos))
+        fp = int(np.sum(pred & ~pos))
+        fn = int(np.sum(~pred & pos))
+        tn = int(np.sum(~pred & ~pos))
+        far  = fp / (fp + tn) if (fp + tn) else 0.0
+        pod  = tp / (tp + fn) if (tp + fn) else 0.0
+        prec = tp / (tp + fp) if (tp + fp) else 0.0
+        f1   = 2 * prec * pod / (prec + pod) if (prec + pod) else 0.0
+        csi  = tp / (tp + fp + fn) if (tp + fp + fn) else 0.0
+        rows.append({"threshold_mm": thr, "band": band, "cutoff": float(c),
+                     "tp": tp, "fp": fp, "fn": fn, "tn": tn,
+                     "precision": prec, "pod": pod, "far": far, "f1": f1, "csi": csi})
+    df = pd.DataFrame(rows)
+    fixed = df.iloc[int((df["far"] - far_target).abs().argmin())].to_dict()
+    fixed["far_target"] = far_target
+    return df, fixed
 
 
 # ─────────────────────────────────────────────── training ───────────────────────────────────────
@@ -332,6 +507,9 @@ def fit_ensemble(
     seed: int = 42,
     wet_quantiles: bool = False,
     horizon_tau: float | None = None,
+    iw_tr: np.ndarray | None = None,
+    iw_vl: np.ndarray | None = None,
+    bagging_fraction: float = 0.0,
 ) -> dict[str, LGBMRegressor]:
     """Train the five-model ensemble on rain amount (mm/hr) with early stopping on the val set.
 
@@ -350,50 +528,83 @@ def fit_ensemble(
       on rainy hours; the cost is that on dry hours the quantile predictions are inflated (the pod
       gates display on the Tweedie mean, so this is acceptable in practice).
     """
-    lgb_common = dict(
-        n_estimators=1500, learning_rate=0.05, num_leaves=127,
-        min_child_samples=50, reg_lambda=0.5,
-        verbose=-1, random_state=seed,
+    params_common = dict(
+        num_leaves=127, min_child_samples=50, reg_lambda=0.5,
+        learning_rate=0.05, max_bin=127, verbose=-1, seed=seed,
     )
+    if bagging_fraction and bagging_fraction > 0:
+        # Stochastic GB: each tree on a random fraction of rows. Cuts the quantile head's
+        # single-threaded per-tree percentile-sort cost ∝ fraction, all rows still used across
+        # trees, and mildly regularises. See docs/10 §1c + the LightGBM quantile-speed research.
+        params_common["bagging_fraction"] = bagging_fraction
+        params_common["bagging_freq"] = 1
     callbacks = [lgb.early_stopping(100, verbose=False), lgb.log_evaluation(500)]
     Xtr_f = X_tr if list(X_tr.columns) == list(feats) else X_tr[feats]
     Xval_f = X_val if list(X_val.columns) == list(feats) else X_val[feats]
 
     w_tr = horizon_weights(X_tr["horizon_h"].to_numpy(), horizon_tau)
     w_vl = horizon_weights(X_val["horizon_h"].to_numpy(), horizon_tau)
-    ew_vl = [w_vl] if w_vl is not None else None  # eval_sample_weight expects a list
+    # Importance weights (base-rate correction for stratified rain oversampling) multiply the
+    # horizon weights — both are per-row multipliers on the loss. See docs/10 §1c.
+    if iw_tr is not None:
+        w_tr = iw_tr if w_tr is None else w_tr * iw_tr
+    if iw_vl is not None:
+        w_vl = iw_vl if w_vl is None else w_vl * iw_vl
+    if w_tr is not None:
+        w_tr = w_tr.astype("float32")
+    if w_vl is not None:
+        w_vl = w_vl.astype("float32")
 
-    models: dict[str, LGBMRegressor] = {}
+    models: dict = {}
+
+    if not wet_quantiles:
+        # MEMORY: bin the full 45M-row matrix ONCE into a shared lgb.Dataset (free_raw_data drops
+        # the raw float frame after binning) and reuse it for the mean + every quantile head. The
+        # sklearn LGBMRegressor re-bins the whole matrix on each .fit(), and that double-copy is what
+        # pushed v2 into swap and stalled the q90 fit. See docs/10 §1c.
+        dtrain = lgb.Dataset(Xtr_f, label=y_tr, weight=w_tr, free_raw_data=True)
+        dval = lgb.Dataset(Xval_f, label=y_val, weight=w_vl, reference=dtrain, free_raw_data=True)
+        print("  fitting mean (Tweedie)…", flush=True)
+        models["mean"] = lgb.train(
+            {**params_common, "objective": "tweedie", "tweedie_variance_power": 1.5},
+            dtrain, num_boost_round=1500, valid_sets=[dval], callbacks=callbacks)
+        print(f"    mean: {models['mean'].best_iteration} trees", flush=True)
+        for alpha, name in zip(QUANTILE_LEVELS, MODEL_NAMES[1:]):
+            print(f"  fitting {name} (α={alpha}, ≤{QUANTILE_ROUNDS} rounds)…", flush=True)
+            # SPEED: cap quantile rounds. LightGBM's quantile objective does a single-threaded
+            # per-tree percentile-sort over all rows (the "renew leaf" step) that doesn't parallelise,
+            # so each tree is ~10× the Tweedie mean's cost on this 4-core VM. The heads plateau well
+            # before 1500 anyway (q50/q75 stop at 1-14 trees). See docs/10 §1c.
+            models[name] = lgb.train(
+                {**params_common, "objective": "quantile", "alpha": alpha},
+                dtrain, num_boost_round=QUANTILE_ROUNDS, valid_sets=[dval], callbacks=callbacks)
+            print(f"    {name}: {models[name].best_iteration} trees", flush=True)
+        return models
+
+    # wet_quantiles path: mean on the full distribution, quantiles on wet-only rows (a smaller
+    # subset, so memory isn't the constraint here) — sklearn wrapper retained.
+    lgb_common = dict(n_estimators=1500, learning_rate=0.05, num_leaves=127,
+                      min_child_samples=50, reg_lambda=0.5, max_bin=127,
+                      verbose=-1, random_state=seed)
+    ew_vl = [w_vl] if w_vl is not None else None
     print("  fitting mean (Tweedie)…", flush=True)
-    models["mean"] = LGBMRegressor(
-        objective="tweedie", tweedie_variance_power=1.5, **lgb_common
-    ).fit(Xtr_f, y_tr, sample_weight=w_tr,
-          eval_set=[(Xval_f, y_val)], eval_sample_weight=ew_vl, callbacks=callbacks)
+    models["mean"] = LGBMRegressor(objective="tweedie", tweedie_variance_power=1.5, **lgb_common
+        ).fit(Xtr_f, y_tr, sample_weight=w_tr, eval_set=[(Xval_f, y_val)],
+              eval_sample_weight=ew_vl, callbacks=callbacks)
     print(f"    mean: {models['mean'].best_iteration_} trees", flush=True)
-
-    if wet_quantiles:
-        # Filter to wet rows only for the quantile heads.
-        wet_tr = y_tr > 0
-        wet_vl = y_val > 0
-        Xtr_q, ytr_q = Xtr_f[wet_tr], y_tr[wet_tr]
-        Xvl_q, yvl_q = Xval_f[wet_vl], y_val[wet_vl]
-        w_tr_q = w_tr[wet_tr] if w_tr is not None else None
-        w_vl_q = w_vl[wet_vl] if w_vl is not None else None
-        ew_vl_q = [w_vl_q] if w_vl_q is not None else None
-        wet_pct = 100.0 * wet_tr.mean()
-        print(f"  wet_quantiles: training on {wet_tr.sum():,} wet rows ({wet_pct:.1f}% of train)",
-              flush=True)
-    else:
-        Xtr_q, ytr_q = Xtr_f, y_tr
-        Xvl_q, yvl_q = Xval_f, y_val
-        w_tr_q, ew_vl_q = w_tr, ew_vl
-
+    wet_tr, wet_vl = y_tr > 0, y_val > 0
+    Xtr_q, ytr_q = Xtr_f[wet_tr], y_tr[wet_tr]
+    Xvl_q, yvl_q = Xval_f[wet_vl], y_val[wet_vl]
+    w_tr_q = w_tr[wet_tr] if w_tr is not None else None
+    w_vl_q = w_vl[wet_vl] if w_vl is not None else None
+    ew_vl_q = [w_vl_q] if w_vl_q is not None else None
+    print(f"  wet_quantiles: training on {int(wet_tr.sum()):,} wet rows ({100*wet_tr.mean():.1f}%)",
+          flush=True)
     for alpha, name in zip(QUANTILE_LEVELS, MODEL_NAMES[1:]):
         print(f"  fitting {name} (α={alpha})…", flush=True)
-        models[name] = LGBMRegressor(
-            objective="quantile", alpha=alpha, **lgb_common
-        ).fit(Xtr_q, ytr_q, sample_weight=w_tr_q,
-              eval_set=[(Xvl_q, yvl_q)], eval_sample_weight=ew_vl_q, callbacks=callbacks)
+        models[name] = LGBMRegressor(objective="quantile", alpha=alpha, **lgb_common
+            ).fit(Xtr_q, ytr_q, sample_weight=w_tr_q, eval_set=[(Xvl_q, yvl_q)],
+                  eval_sample_weight=ew_vl_q, callbacks=callbacks)
         print(f"    {name}: {models[name].best_iteration_} trees", flush=True)
     return models
 
@@ -442,7 +653,7 @@ def predict(
     return preds
 
 
-QUANTILE_ALPHA = {"q10": 0.10, "q25": 0.25, "q75": 0.75, "q90": 0.90}
+QUANTILE_ALPHA = {f"q{int(a*100):02d}": a for a in QUANTILE_LEVELS}  # {"q50":0.50,"q75":0.75,"q90":0.90}
 WET_THRESHOLD_MM = 0.5  # mm/hr — consistent with wet coverage metrics throughout
 
 
@@ -686,7 +897,8 @@ def save_ensemble_state(
     d = out_dir / "models"
     d.mkdir(parents=True, exist_ok=True)
     for name, m in models.items():
-        m.booster_.save_model(str(d / f"{name}.txt"))
+        bst = m.booster_ if hasattr(m, "booster_") else m   # Booster (lgb.train) or LGBMRegressor
+        bst.save_model(str(d / f"{name}.txt"))
     ct_serial = {f"{k[0]}\x1f{k[1]}": v for k, v in clim_table.items()}
     with open(d / "clim_table.json", "w") as f:
         json.dump(ct_serial, f)
@@ -730,6 +942,9 @@ def train_ensemble(
     binary: bool = False,
     horizon_tau: float | None = None,
     save_models: bool = True,
+    no_harvest: bool = False,
+    train_frac: float = 1.0,
+    bagging_fraction: float = 0.0,
 ) -> dict:
     """Train the phase-07 distributional ensemble and evaluate on the 2024 test set.
 
@@ -751,6 +966,20 @@ def train_ensemble(
         X, y, meta = (X[mask].reset_index(drop=True), y[mask].reset_index(drop=True),
                       meta[mask].reset_index(drop=True))
 
+    # MEMORY: subsample TRAIN endpoints (year < VAL_YEAR) to fit a fixed-RAM VM. Val/test stay full
+    # so the metrics are untouched. 30.9M long rows fit in 11 GB on the §1b baseline; the v2 span
+    # (2002–2022 + harvest) is 45M, which swap-thrashes a 13 GB VM — train_frac≈0.7 brings it back.
+    # Importance weights preserve calibration; LightGBM is robust to ~30% fewer rows. See docs/10 §1c.
+    if train_frac < 1.0:
+        is_tr = meta["year"].to_numpy() < VAL_YEAR
+        rng1 = np.random.default_rng(seed + 1)
+        drop = is_tr & (rng1.random(len(meta)) >= train_frac)
+        keep = ~drop
+        X, y, meta = (X[keep].reset_index(drop=True), y[keep].reset_index(drop=True),
+                      meta[keep].reset_index(drop=True))
+        print(f"  train-frac={train_frac}: kept {int(keep.sum()):,}/{len(keep):,} endpoints "
+              f"({int((is_tr & keep).sum()):,} train)", flush=True)
+
     print(f"train_ensemble: X={X.shape}, cells={meta['cell'].nunique()}", flush=True)
 
     # Features present in this cache (v3 features absent from old caches). horizon_h is appended by
@@ -762,15 +991,28 @@ def train_ensemble(
               flush=True)
 
     # Expand to long (one row per endpoint × horizon, horizon_h as a feature), then split by year.
-    # Carry only the model-feature columns (so the fit's X[feats] is a no-op, not a 3.5 GB copy of
-    # the 38M-row matrix) and only the meta columns read downstream. "time" is included so that
-    # --save-plumes can reconstruct per-endpoint plumes from the long-format test set.
-    meta_cols = ["cell", "month", "year"] + (["time"] if "time" in meta.columns else [])
+    # Carry only the model-feature columns and only the meta columns read downstream — every meta
+    # column is replicated 45M× in the long frame, so MEMORY: downcast month/year→int16,
+    # weight→float32, and carry "time" ONLY when --save-plumes needs it. Heavy int64/float64/datetime
+    # meta replicated 45M× was ~3-4 GB and tipped the long-format split into the OOM. See docs/10 §1c.
+    meta_cols = ["cell", "month", "year"] + (["weight"] if "weight" in meta.columns else [])
+    if save_plumes and "time" in meta.columns:
+        meta_cols.append("time")
+    meta_slim = meta[meta_cols].copy()
+    for c in ("month", "year"):
+        if c in meta_slim.columns:
+            meta_slim[c] = meta_slim[c].astype("int16")
+    if "weight" in meta_slim.columns:
+        meta_slim["weight"] = meta_slim["weight"].astype("float32")
     X_long, y_long, meta_long = to_long_format(
-        X[[f for f in avail_feats if f != "horizon_h"]], y, meta[meta_cols])
+        X[[f for f in avail_feats if f != "horizon_h"]], y, meta_slim)
+    del meta_slim
     del X, y, meta
     years = meta_long["year"].to_numpy()
-    tr, vl, te = np.isin(years, list(TRAIN_YEARS)), years == VAL_YEAR, years == TEST_YEAR
+    # Train = everything before the val year, so the pre-2014 storm-harvest rows (years 2002-2013)
+    # land in training rather than being dropped by an exact TRAIN_YEARS membership test.
+    # Backward-compatible: the §1b cache has no pre-2014 rows, so years<VAL_YEAR == TRAIN_YEARS there.
+    tr, vl, te = years < VAL_YEAR, years == VAL_YEAR, years == TEST_YEAR
 
     X_tr, y_tr, meta_tr = X_long[tr].reset_index(drop=True), y_long[tr].to_numpy(), meta_long[tr].reset_index(drop=True)
     X_vl, y_vl, meta_vl = X_long[vl].reset_index(drop=True), y_long[vl].to_numpy(), meta_long[vl].reset_index(drop=True)
@@ -785,10 +1027,23 @@ def train_ensemble(
     # 1. Train (val set used for early stopping only — not for weight fitting)
     tau_label = f"τ={horizon_tau}h" if horizon_tau is not None else "flat"
     print(f"  horizon weighting: {tau_label}", flush=True)
+    iw_tr = meta_tr["weight"].to_numpy(dtype="float64") if "weight" in meta_tr.columns else None
+    iw_vl = meta_vl["weight"].to_numpy(dtype="float64") if "weight" in meta_vl.columns else None
+    if no_harvest and iw_tr is not None:
+        harvest_mask = meta_tr["year"].to_numpy() < min(TRAIN_YEARS)
+        iw_tr = iw_tr.copy()
+        iw_tr[harvest_mask] = 0.0
+        print(f"  --no-harvest: zeroed {int(harvest_mask.sum())} harvest rows (<{min(TRAIN_YEARS)})",
+              flush=True)
+    if iw_tr is not None:
+        print(f"  importance weights: train mean={iw_tr.mean():.3f} "
+              f"[{iw_tr.min():.2f},{iw_tr.max():.2f}]", flush=True)
     models = fit_ensemble(X_tr, y_tr, X_vl, y_vl, avail_feats, seed=seed,
-                          wet_quantiles=wet_quantiles, horizon_tau=horizon_tau)
+                          wet_quantiles=wet_quantiles, horizon_tau=horizon_tau,
+                          iw_tr=iw_tr, iw_vl=iw_vl, bagging_fraction=bagging_fraction)
     binary_model = fit_binary_head(X_tr, y_tr, X_vl, y_vl, avail_feats, seed=seed) \
         if binary else None
+    del X_tr, y_tr, meta_tr   # not used after fitting — free the 45M-row train frame for the eval phase
 
     # 2. Per-cell trust weights (fitted on validation only)
     weights = fit_cell_weights(models, X_vl, y_vl,
@@ -833,33 +1088,28 @@ def train_ensemble(
         cs = crpss(cr_h, y_h, clim_mean_h)
         cs_raw = crpss(crps_te_raw[h_mask], y_h, clim_mean_h)   # raw-model skill
 
-        cov_10_90 = coverage(y_h, pb["q10"], pb["q90"])
-        cov_25_75 = coverage(y_h, pb["q25"], pb["q75"])
-        cov_raw_10_90 = coverage(y_h, pr["q10"], pr["q90"])
-        cov_raw_25_75 = coverage(y_h, pr["q25"], pr["q75"])
+        # Upper-fan calibration = one-sided exceedance coverage per quantile: P(y ≤ q_a) should = a.
+        # (Two-sided 10-90/25-75 bands are meaningless for an all-upper q50/q75/q90 fan.)
+        qn = MODEL_NAMES[1:]
+        cov_b   = {f"cov_le_{n}":     float((y_h <= pb[n]).mean()) for n in qn}
+        cov_raw = {f"cov_raw_le_{n}": float((y_h <= pr[n]).mean()) for n in qn}
 
         # Wet-conditional coverage: filter to hours with y > 0.5 mm/hr (light rain threshold).
         # Strips dry-hour zero-inflation from the denominator — shows calibration when it matters.
         wet = y_h > WET_THRESHOLD_MM
         n_wet = int(wet.sum())
         if n_wet >= 20:
-            cov_wet_10_90     = coverage(y_h[wet], pb["q10"][wet], pb["q90"][wet])
-            cov_wet_25_75     = coverage(y_h[wet], pb["q25"][wet], pb["q75"][wet])
-            cov_wet_raw_10_90 = coverage(y_h[wet], pr["q10"][wet], pr["q90"][wet])
-            cov_wet_raw_25_75 = coverage(y_h[wet], pr["q25"][wet], pr["q75"][wet])
+            cov_wet = {f"cov_wet_le_{n}": float((y_h[wet] <= pb[n][wet]).mean()) for n in qn}
         else:
-            cov_wet_10_90 = cov_wet_25_75 = cov_wet_raw_10_90 = cov_wet_raw_25_75 = float("nan")
+            cov_wet = {f"cov_wet_le_{n}": float("nan") for n in qn}
 
         conf_row: dict = {}
         if preds_conf:
             pc = {n: preds_conf[n][h_mask] for n in MODEL_NAMES}
             if n_wet >= 20:
-                conf_row = {
-                    "cov_conf_10_90": coverage(y_h[wet], pc["q10"][wet], pc["q90"][wet]),
-                    "cov_conf_25_75": coverage(y_h[wet], pc["q25"][wet], pc["q75"][wet]),
-                }
+                conf_row = {f"cov_conf_le_{n}": float((y_h[wet] <= pc[n][wet]).mean()) for n in qn}
             else:
-                conf_row = {"cov_conf_10_90": float("nan"), "cov_conf_25_75": float("nan")}
+                conf_row = {f"cov_conf_le_{n}": float("nan") for n in qn}
 
         bin_row: dict = {}
         if p_rain_te is not None:
@@ -876,10 +1126,7 @@ def train_ensemble(
         overall.append({
             "horizon_h": h, "crpss": cs, "crpss_raw": cs_raw,
             "mean_crps": float(np.mean(cr_h)),
-            "cov_10_90": cov_10_90, "cov_25_75": cov_25_75,
-            "cov_raw_10_90": cov_raw_10_90, "cov_raw_25_75": cov_raw_25_75,
-            "cov_wet_10_90": cov_wet_10_90, "cov_wet_25_75": cov_wet_25_75,
-            "cov_wet_raw_10_90": cov_wet_raw_10_90, "cov_wet_raw_25_75": cov_wet_raw_25_75,
+            **cov_b, **cov_raw, **cov_wet,
             "n_test": int(h_mask.sum()), "n_wet": n_wet,
             **conf_row, **bin_row,
         })
@@ -888,15 +1135,16 @@ def train_ensemble(
         pit_rows.append(pit)
 
         cov_rows.append({
-            "horizon_h": h,
-            "cov_10_90": cov_10_90, "cov_25_75": cov_25_75,
-            "target_10_90": 0.80, "target_25_75": 0.50,
+            "horizon_h": h, **cov_b,
+            **{f"target_le_{n}": a for a, n in zip(QUANTILE_LEVELS, qn)},
         })
         print(f"  h={h:2d}h: CRPSS blend={cs:.3f} raw={cs_raw:.3f} | "
-              f"cov25-75 blend={cov_25_75:.2f} raw={cov_raw_25_75:.2f} (target 0.50)", flush=True)
+              f"cov≤q90 blend={cov_b['cov_le_q90']:.2f} (target 0.90)", flush=True)
 
     for name, model in models.items():
-        for feat, gain in zip(avail_feats, model.feature_importances_):
+        imp = (model.feature_importances_ if hasattr(model, "feature_importances_")
+               else model.feature_importance())   # Booster vs LGBMRegressor
+        for feat, gain in zip(avail_feats, imp):
             imp_rows.append({"model": name, "feature": feat, "gain": float(gain)})
 
     OUT.mkdir(parents=True, exist_ok=True)
@@ -918,6 +1166,32 @@ def train_ensemble(
     pd.concat(pit_rows, ignore_index=True).to_csv(OUT / "pit_histogram.csv", index=False)
     pd.DataFrame(cov_rows).to_csv(OUT / "coverage.csv", index=False)
     pd.DataFrame(imp_rows).to_csv(OUT / "importance.csv", index=False)
+
+    # Detailed confusion matrix on the 2024 test: P(y≥thr) from the blended quantile CDF (no binary
+    # head), swept over decision cutoffs + called out at 10% FAR, per threshold × lead-time band.
+    qmat_te = np.column_stack([blended_te[n] for n in MODEL_NAMES[1:]])
+    h_te = meta_te["horizon_h"].to_numpy()
+    conf_sweep, conf_fixed = [], []
+    for thr in PRECIP_THRESHOLDS:
+        p_exc = prob_exceed(thr, QUANTILE_LEVELS, qmat_te)
+        for band, (lo, hi) in LEADTIME_BANDS.items():
+            m = np.ones(len(h_te), bool) if band == "all" else (h_te >= lo) & (h_te < hi)
+            if int(m.sum()) < 50 or int((y_te[m] >= thr).sum()) < 10:
+                continue
+            sw, fx = confusion_sweep(y_te[m], p_exc[m], thr, band)
+            conf_sweep.append(sw)
+            conf_fixed.append(fx)
+    if conf_sweep:
+        pd.concat(conf_sweep, ignore_index=True).to_csv(OUT / "confusion_sweep.csv", index=False)
+        cf = pd.DataFrame(conf_fixed)
+        cf.to_csv(OUT / "confusion_fixed.csv", index=False)
+        allp = cf[cf["band"] == "all"].set_index("threshold_mm")
+        for thr in PRECIP_THRESHOLDS:
+            if thr in allp.index:
+                r = allp.loc[thr]
+                print(f"  confusion ≥{thr}mm @FAR={r['far']:.2f}: "
+                      f"POD={r['pod']:.2f} precision={r['precision']:.2f} CSI={r['csi']:.2f}",
+                      flush=True)
     with open(OUT / "cell_weights.json", "w") as f:
         json.dump({str(k): v for k, v in weights.items()}, f, indent=2)
 
@@ -1312,6 +1586,16 @@ if __name__ == "__main__":
                     help="use every land cell (full build, not just sampled_points.csv)")
     ap.add_argument("--k", type=int, default=4, help="endpoints per cell per month")
     ap.add_argument("--n-cells", type=int, default=None, help="limit cells (smoke test)")
+    ap.add_argument("--cache-dir", type=str, default=None,
+                    help="dataset cache dir (default outputs/ensemble/dataset; use a v2 dir to keep §1b)")
+    ap.add_argument("--stratify", action="store_true",
+                    help="v2: oversample rain endpoints to --target-wet + carry importance weights")
+    ap.add_argument("--target-wet", type=float, default=0.30,
+                    help="target wet fraction among stratified picks (default 0.30)")
+    ap.add_argument("--harvest-years", type=str, default=None,
+                    help="heavy-only tail-harvest years for the stratified build, e.g. '2002-2013'")
+    ap.add_argument("--harvest-weight", type=float, default=0.5,
+                    help="fixed importance weight for harvest-year heavy endpoints (TRMM down-weight)")
     ap.add_argument("--years", type=str, default=None,
                     help="year range '2014-2024' or list '2016,2024'")
     ap.add_argument("--seed", type=int, default=42)
@@ -1332,6 +1616,12 @@ if __name__ == "__main__":
                     help="sweep tau in [6, 12, 24, flat] and compare horizon-weighted CRPSS")
     ap.add_argument("--no-save-models", action="store_true",
                     help="skip saving LightGBM models to outputs/ensemble/models/ (saved by default)")
+    ap.add_argument("--no-harvest", action="store_true",
+                    help="zero the earlier-year harvest rows' weights (harvest-sensitivity ablation)")
+    ap.add_argument("--train-frac", type=float, default=1.0,
+                    help="subsample this fraction of TRAIN endpoints (val/test full) to fit fixed RAM")
+    ap.add_argument("--bagging", type=float, default=0.0,
+                    help="bagging_fraction (stochastic GB): per-tree row subsample to speed quantile heads")
     args = ap.parse_args()
 
     if args.years and "-" in args.years and "," not in args.years:
@@ -1342,15 +1632,27 @@ if __name__ == "__main__":
     else:
         yrs = list(TRAIN_YEARS) + [VAL_YEAR, TEST_YEAR]
 
+    cache_dir = Path(args.cache_dir) if args.cache_dir else CACHE_DIR
+    harvest = None
+    if args.harvest_years and "-" in args.harvest_years:
+        ha, hb = args.harvest_years.split("-")
+        harvest = set(range(int(ha), int(hb) + 1))
+
     if args.build_cache:
-        print(build_cache(yrs, k_per_cell_month=args.k,
-                          all_cells=args.all_cells, n_cells=args.n_cells, seed=args.seed))
+        build_years = sorted(set(yrs) | (harvest or set()))
+        print(build_cache(build_years, k_per_cell_month=args.k,
+                          all_cells=args.all_cells, n_cells=args.n_cells, seed=args.seed,
+                          cache_dir=cache_dir, stratify=args.stratify, target_wet=args.target_wet,
+                          harvest_years=harvest, harvest_weight=args.harvest_weight))
     elif args.from_cache:
         tau = None if (args.horizon_tau == 0) else args.horizon_tau
-        print(train_ensemble(n_cells=args.n_cells, seed=args.seed, save_plumes=args.save_plumes,
+        print(train_ensemble(cache_dir=cache_dir, n_cells=args.n_cells, seed=args.seed,
+                             save_plumes=args.save_plumes,
                              wet_quantiles=args.wet_quantiles, plumes_file=args.plumes_file,
                              conformal=args.conformal, binary=args.binary,
-                             horizon_tau=tau, save_models=not args.no_save_models))
+                             horizon_tau=tau, save_models=not args.no_save_models,
+                             no_harvest=args.no_harvest, train_frac=args.train_frac,
+                             bagging_fraction=args.bagging))
     elif args.ablation:
         print(ensemble_feature_ablation(n_cells=args.n_cells, seed=args.seed, n_boot=args.n_boot))
     elif args.tau_ablation:

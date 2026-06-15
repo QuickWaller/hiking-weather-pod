@@ -5,8 +5,8 @@ import pandas as pd
 import pytest
 
 from podml.train_ensemble import (
-    ENSEMBLE_HORIZONS, MODEL_NAMES,
-    _clim_preds, build_clim_distribution,
+    ENSEMBLE_HORIZONS, MODEL_NAMES, QUANTILE_LEVELS,
+    _clim_preds, _stratified_pick, build_clim_distribution,
     coverage, crps_from_quantiles, crpss, pit_histogram, to_long_format,
 )
 
@@ -127,13 +127,10 @@ def test_climatology_runs_through_long_format():
 def _toy_preds(n: int = 100, spread: float = 1.0) -> tuple[np.ndarray, dict]:
     rng = np.random.default_rng(1)
     y = rng.exponential(2.0, n)
-    preds = {
-        "mean": y + rng.normal(0, 0.3, n),
-        "q10": y - 2 * spread,
-        "q25": y - spread,
-        "q75": y + spread,
-        "q90": y + 2 * spread,
-    }
+    preds = {"mean": y + rng.normal(0, 0.3, n)}
+    # Quantile heads straddle y and ascend with alpha (generic over QUANTILE_LEVELS).
+    for a, name in zip(QUANTILE_LEVELS, MODEL_NAMES[1:]):
+        preds[name] = y + (a - 0.5) * 4.0 * spread
     return y, preds
 
 
@@ -220,7 +217,7 @@ def test_pit_histogram_columns():
     y, preds = _toy_preds()
     pit = pit_histogram(y, preds)
     assert list(pit.columns) == ["band", "observed", "expected"]
-    assert len(pit) == 5
+    assert len(pit) == len(QUANTILE_LEVELS) + 1
 
 
 def test_pit_histogram_expected_sums_to_one():
@@ -234,13 +231,81 @@ def test_pit_histogram_well_calibrated_is_roughly_uniform():
     rng = np.random.default_rng(99)
     n = 5000
     y = rng.exponential(2.0, n)
-    preds = {
-        "mean": y,
-        "q10": np.quantile(y, 0.10) * np.ones(n),
-        "q25": np.quantile(y, 0.25) * np.ones(n),
-        "q75": np.quantile(y, 0.75) * np.ones(n),
-        "q90": np.quantile(y, 0.90) * np.ones(n),
-    }
+    preds = {"mean": y}
+    for a, name in zip(QUANTILE_LEVELS, MODEL_NAMES[1:]):
+        preds[name] = np.quantile(y, a) * np.ones(n)
     pit = pit_histogram(y, preds)
     # Observed should be within 5 percentage points of expected for each band
     assert np.allclose(pit["observed"], pit["expected"], atol=0.05)
+
+
+# ─────────────────────────────────────────────── stratified sampler ─────────────────────────────
+
+def test_stratified_pick_uniform_weight_one():
+    rng = np.random.default_rng(0)
+    vp = np.arange(100)
+    fr = np.zeros(100)
+    fr[:10] = 3.0
+    picks = _stratified_pick(vp, fr, k=4, mode="uniform",
+                             target_wet=0.3, harvest_weight=0.5, rng=rng)
+    assert len(picks) == 4
+    assert all(w == 1.0 for _, w in picks)
+
+
+def test_stratified_pick_oversamples_wet_and_reweights_to_true_rate():
+    """Stratify oversamples wet above the natural rate, but importance weights restore it."""
+    rng = np.random.default_rng(0)
+    vp = np.arange(100)
+    fr = np.zeros(100)
+    fr[:10] = 1.0           # 10% wet
+    n_wet_picks = n_total = 0
+    wsum_wet = wsum_dry = 0.0
+    for _ in range(500):
+        for t0, w in _stratified_pick(vp, fr, k=4, mode="stratify",
+                                      target_wet=0.5, harvest_weight=0.5, rng=rng):
+            n_total += 1
+            if fr[t0] >= 0.5:
+                n_wet_picks += 1
+                wsum_wet += w
+            else:
+                wsum_dry += w
+    assert n_wet_picks / n_total > 0.3                         # oversampled above natural 0.10
+    assert abs(wsum_wet / (wsum_wet + wsum_dry) - 0.10) < 0.03  # weighted mass back at true rate
+
+
+def test_stratified_pick_harvest_is_very_heavy_only_capped_fixed_weight():
+    from podml.train_ensemble import HARVEST_MIN_MM, HARVEST_CAP
+    rng = np.random.default_rng(0)
+    vp = np.arange(100)
+    fr = np.zeros(100)
+    fr[:5] = 9.0
+    fr[5:15] = 4.0   # 5 very-heavy (≥7.6), 10 moderate
+    picks = _stratified_pick(vp, fr, k=4, mode="harvest",
+                             target_wet=0.3, harvest_weight=0.5, rng=rng)
+    assert len(picks) == HARVEST_CAP                    # capped, not all 5
+    assert all(fr[t0] >= HARVEST_MIN_MM for t0, _ in picks)   # only the very-heavy storms
+    assert all(w == 0.5 for _, w in picks)
+
+
+# ─────────────────────────────────────────────── confusion matrix ───────────────────────────────
+
+def test_prob_exceed_monotone_and_bounds():
+    from podml.train_ensemble import prob_exceed
+    levels = [0.50, 0.75, 0.90]
+    qmat = np.array([[0.0, 0.0, 0.0],      # dry row
+                     [1.0, 3.0, 8.0]])     # wet row
+    p_lo = prob_exceed(0.5, levels, qmat)
+    p_hi = prob_exceed(7.6, levels, qmat)
+    assert np.all((p_lo >= 0) & (p_lo <= 1)) and np.all((p_hi >= 0) & (p_hi <= 1))
+    assert np.all(p_lo >= p_hi)                       # P(y≥0.5) ≥ P(y≥7.6) for every row
+    assert p_lo[1] > p_lo[0]                          # wet row more likely to exceed than dry row
+
+
+def test_confusion_sweep_perfect_separation():
+    from podml.train_ensemble import confusion_sweep
+    y = np.array([0.0] * 80 + [5.0] * 20)
+    p = np.array([0.0] * 80 + [1.0] * 20)            # perfect score
+    sweep, fixed = confusion_sweep(y, p, thr=2.5, band="all")
+    # at some cutoff we get POD=1 and FAR=0 (perfect)
+    assert ((sweep["pod"] == 1.0) & (sweep["far"] == 0.0)).any()
+    assert set(["precision", "pod", "far", "f1", "csi"]).issubset(sweep.columns)
