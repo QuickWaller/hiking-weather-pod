@@ -1,6 +1,13 @@
 Component List — Hiking Pod PCB
 ================================
 
+⚠️ STALE (2026-06-12): this design predates two decisions —
+  • Compass (LIS3MDL) and accel/gyro (LSM6DS3) are DROPPED from the design.
+  • microSD breakout ADDED (model + topo tiles + sync logs); pod has NO UART,
+    so the GX16-5 / cyberdeck connector is also dropped.
+Treat the list below as the OLD plan. It will be revised after the pod parts
+walkthrough; canonical hardware truth will live in pod/docs/hardware.md.
+
 | Component     | What                                      |
 |---------------|-------------------------------------------|
 | MCU           | RP2350-Zero (castellated, no headers)     |

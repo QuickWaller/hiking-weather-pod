@@ -1,5 +1,14 @@
 # Cyberdeck — Context
 
+> ## ⏸️ TABLED (2026-06-12)
+> The cyberdeck is **shelved** and currently considered unlikely to happen — but the option is
+> kept open. As a consequence **the pod has no UART**: the GX16-5 connector, UART1, `UartSync`,
+> and the `PIN_CYBERDECK_*` / `PIN_GX16_DETECT` pins are dropped from the pod design. Pod logs
+> reach the VM by **SD-card sneakernet**, not over a serial link to a deck.
+>
+> Everything below describes the *original* cyberdeck plan and is **not maintained**. To revive:
+> re-add the pod UART link, then resume from this spec.
+
 ## Language & Environment
 Python 3.8+, running on CM5.
 
