@@ -1,6 +1,13 @@
 ## Session Start
 Read `/WORKING.md` before your first response. Summarise what's listed and confirm with the user which items are still active.
 
+## Rules
+- **`git pull --rebase`** before committing — Nepter can push to main independently via `agent-dashboard.sh`.
+- **Expand acronyms** on first use (e.g. "ERA5 (ECMWF Re-Analysis 5 — a reconstruction of past weather)"). The user is learning the domain.
+- **Don't pop windows** — never run the display sim (`program.exe`) or upload firmware (`--target upload`) unprompted. Native tests and plain compiles are fine anytime.
+- **Shell hygiene** — no background shell accumulation. Use blocking foreground commands with `| head -N`. Kill `pio.exe` before opening a new serial monitor.
+- **Test after code works** — after any code is confirmed working, add unit tests (native) and integration tests (embedded), then run them before moving on.
+
 # Hiking Pod System — Project Context
 
 ## What This Is
