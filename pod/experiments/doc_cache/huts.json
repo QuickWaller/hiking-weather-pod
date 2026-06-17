@@ -1,0 +1,7658 @@
+[
+  {
+    "assetId": 100062554,
+    "name": "Woolshed Creek Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5171064,
+    "x": 1464880
+  },
+  {
+    "assetId": 100081275,
+    "name": "Angelus Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5362601,
+    "x": 1579151
+  },
+  {
+    "assetId": 100097388,
+    "name": "Stern Valley Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5387259,
+    "x": 1533303
+  },
+  {
+    "assetId": 100075781,
+    "name": "Trust/Poulter Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5254671,
+    "x": 1505460
+  },
+  {
+    "assetId": 100043825,
+    "name": "Lower Wairaki Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4918012,
+    "x": 1206669
+  },
+  {
+    "assetId": 100035123,
+    "name": "Old Basins Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5226976,
+    "x": 1476326
+  },
+  {
+    "assetId": 100063990,
+    "name": "Lake Chalice Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5398178,
+    "x": 1626651
+  },
+  {
+    "assetId": 100055427,
+    "name": "Hinerua Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5582775,
+    "x": 1871127
+  },
+  {
+    "assetId": 100058783,
+    "name": "Thomas River Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5132889,
+    "x": 1294392
+  },
+  {
+    "assetId": 100043688,
+    "name": "Rerekapa Hut",
+    "status": "OPEN",
+    "region": "Taranaki",
+    "y": 5689106,
+    "x": 1749170
+  },
+  {
+    "assetId": 100065713,
+    "name": "Omaru Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5650066,
+    "x": 1753320
+  },
+  {
+    "assetId": 100074713,
+    "name": "Hope Arm Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4937005,
+    "x": 1174232
+  },
+  {
+    "assetId": 100063446,
+    "name": "Sefton Bivouac",
+    "status": "CLSD",
+    "region": "Canterbury",
+    "y": 5158637,
+    "x": 1364328
+  },
+  {
+    "assetId": 100065466,
+    "name": "Mangakirikiri Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5782381,
+    "x": 2010763
+  },
+  {
+    "assetId": 100075556,
+    "name": "Caves Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5371700,
+    "x": 1615786
+  },
+  {
+    "assetId": 100061393,
+    "name": "Mid Waiohine Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5472482,
+    "x": 1800695
+  },
+  {
+    "assetId": 100030357,
+    "name": "Staircase Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4981854.5734,
+    "x": 1418095.0634
+  },
+  {
+    "assetId": 100086639,
+    "name": "Haurangi Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5422862,
+    "x": 1767141
+  },
+  {
+    "assetId": 100098292,
+    "name": "Kopuatai Duck Hut 12",
+    "status": "OPEN",
+    "region": null,
+    "y": 5853326,
+    "x": 1822975
+  },
+  {
+    "assetId": 100043138,
+    "name": "Bullendale Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5031541,
+    "x": 1257747
+  },
+  {
+    "assetId": 100034980,
+    "name": "Bob's Camp Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5223148,
+    "x": 1542385
+  },
+  {
+    "assetId": 100033953,
+    "name": "Skips Hut (Whangatawhia)",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5707370,
+    "x": 1930410
+  },
+  {
+    "assetId": 100058644,
+    "name": "Lake Hankinson Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4997534,
+    "x": 1172020
+  },
+  {
+    "assetId": 100063395,
+    "name": "Cattle Ridge Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5488208,
+    "x": 1811411
+  },
+  {
+    "assetId": 100064964,
+    "name": "North Borland Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4926049,
+    "x": 1170653
+  },
+  {
+    "assetId": 100081526,
+    "name": "Homestead Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4790512,
+    "x": 1203888
+  },
+  {
+    "assetId": 100061789,
+    "name": "Haycocks Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5336454,
+    "x": 1657865
+  },
+  {
+    "assetId": 100064371,
+    "name": "Awapoto Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5476471.89,
+    "x": 1594842.9473
+  },
+  {
+    "assetId": 100081516,
+    "name": "Bluff Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5232296,
+    "x": 1447445
+  },
+  {
+    "assetId": 100040740,
+    "name": "Sylvester Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5449391.6379,
+    "x": 1570133.61
+  },
+  {
+    "assetId": 100038519,
+    "name": "Boar Inn",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5421003,
+    "x": 1764767
+  },
+  {
+    "assetId": 100058615,
+    "name": "Port Craig School Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4865748,
+    "x": 1165180
+  },
+  {
+    "assetId": 100043353,
+    "name": "Pinnacles Hut",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5897025.324,
+    "x": 1841252.9681
+  },
+  {
+    "assetId": 100073013,
+    "name": "Parks Peak Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5602983,
+    "x": 1878795
+  },
+  {
+    "assetId": 100061503,
+    "name": "Cupola Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5353310.7462,
+    "x": 1577866.8484
+  },
+  {
+    "assetId": 100043119,
+    "name": "French Ridge Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5071490,
+    "x": 1257248
+  },
+  {
+    "assetId": 100082084,
+    "name": "Atiwhakatu Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5472972,
+    "x": 1806817
+  },
+  {
+    "assetId": 100037933,
+    "name": "Pfeifer Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5260158,
+    "x": 1490861
+  },
+  {
+    "assetId": 100085248,
+    "name": "Hut Creek Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5031971,
+    "x": 1384965
+  },
+  {
+    "assetId": 100062738,
+    "name": "Carrington Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5242473,
+    "x": 1473428
+  },
+  {
+    "assetId": 100061350,
+    "name": "Renata Hut ",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5462486,
+    "x": 1782813
+  },
+  {
+    "assetId": 100072925,
+    "name": "Hurunui Hut",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5810392,
+    "x": 1857769
+  },
+  {
+    "assetId": 100039174,
+    "name": "Boulder Forks Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5373506,
+    "x": 1621130
+  },
+  {
+    "assetId": 100072310,
+    "name": "Top Maropea Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5592504.5146,
+    "x": 1870488.5062
+  },
+  {
+    "assetId": 100075537,
+    "name": "Nichols Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5479592,
+    "x": 1800399
+  },
+  {
+    "assetId": 100055181,
+    "name": "Studholme Saddle Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5644414.7859,
+    "x": 1890115.6813
+  },
+  {
+    "assetId": 100065710,
+    "name": "Waitewaewae Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5477450,
+    "x": 1794459
+  },
+  {
+    "assetId": 100030126,
+    "name": "A Frame Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5195378,
+    "x": 1467998
+  },
+  {
+    "assetId": 100080906,
+    "name": "Liverpool Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5071088,
+    "x": 1254988
+  },
+  {
+    "assetId": 100075879,
+    "name": "Adelaide Tarn Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5467514,
+    "x": 1561562
+  },
+  {
+    "assetId": 100034580,
+    "name": "Townsend Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5263535,
+    "x": 1499993
+  },
+  {
+    "assetId": 100054928,
+    "name": "Wakelings Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5594793,
+    "x": 1868130
+  },
+  {
+    "assetId": 100034874,
+    "name": "Taipo Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5416839,
+    "x": 1542630
+  },
+  {
+    "assetId": 100059757,
+    "name": "Burn Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5500310,
+    "x": 1813883
+  },
+  {
+    "assetId": 100000803,
+    "name": "Dillon Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5261827,
+    "x": 1476239
+  },
+  {
+    "assetId": 100064269,
+    "name": "Bottom Misery Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5360000,
+    "x": 1604100
+  },
+  {
+    "assetId": 100075605,
+    "name": "Mangahao Flats Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5492603,
+    "x": 1805833
+  },
+  {
+    "assetId": 100000537,
+    "name": "Mangatepopo Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5663967,
+    "x": 1824413
+  },
+  {
+    "assetId": 100055189,
+    "name": "Iris Burn Hut  ",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4958037.4282,
+    "x": 1170288.1626
+  },
+  {
+    "assetId": 100072002,
+    "name": "Poutaki Hut",
+    "status": "CLSD",
+    "region": "Hawke’s Bay",
+    "y": 5597140,
+    "x": 1884086
+  },
+  {
+    "assetId": 100072735,
+    "name": "Kotepato Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5748264,
+    "x": 1978295
+  },
+  {
+    "assetId": 100062000,
+    "name": "Te Oneroa A-frame Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4872757,
+    "x": 1111145
+  },
+  {
+    "assetId": 100034620,
+    "name": "Hunts Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5255778.7704,
+    "x": 1477554.6466
+  },
+  {
+    "assetId": 100075611,
+    "name": "Sayer Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5464482,
+    "x": 1801583
+  },
+  {
+    "assetId": 100128523,
+    "name": "Little Hellfire Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4797013,
+    "x": 1200508
+  },
+  {
+    "assetId": 100133716,
+    "name": "Casey Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5250131,
+    "x": 1507832
+  },
+  {
+    "assetId": 100057270,
+    "name": "Leitch's Hut",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5744823,
+    "x": 1755148
+  },
+  {
+    "assetId": 100075829,
+    "name": "Mt Arthur Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5439263,
+    "x": 1576164
+  },
+  {
+    "assetId": 100058315,
+    "name": "West Arm Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4942649,
+    "x": 1152017
+  },
+  {
+    "assetId": 100074783,
+    "name": "Butler Junction Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5190581,
+    "x": 1390627
+  },
+  {
+    "assetId": 100065461,
+    "name": "Mangatoatoa Hut",
+    "status": "CLSD",
+    "region": null,
+    "y": 5727382,
+    "x": 1963306
+  },
+  {
+    "assetId": 100058861,
+    "name": "Wairaurahiri Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4861474,
+    "x": 1154318
+  },
+  {
+    "assetId": 100058625,
+    "name": "George Sound Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5003805,
+    "x": 1161703
+  },
+  {
+    "assetId": 100043225,
+    "name": "Hornby Bivvy ",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5342486,
+    "x": 1661833
+  },
+  {
+    "assetId": 100059655,
+    "name": "Welcome Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5164626,
+    "x": 1353666
+  },
+  {
+    "assetId": 100033707,
+    "name": "Mackintosh Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5641206,
+    "x": 1893030
+  },
+  {
+    "assetId": 100034518,
+    "name": "Basins Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5226792,
+    "x": 1476202
+  },
+  {
+    "assetId": 100034978,
+    "name": "Pinchgut Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5224595,
+    "x": 1546106
+  },
+  {
+    "assetId": 100075782,
+    "name": "Minchin Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5261316,
+    "x": 1502674
+  },
+  {
+    "assetId": 100072024,
+    "name": "Mansion Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4951311,
+    "x": 1242537
+  },
+  {
+    "assetId": 100055524,
+    "name": "Moturau Hut ",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4949394.6645,
+    "x": 1178825.5882
+  },
+  {
+    "assetId": 100060988,
+    "name": "Lost Stream Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5365153,
+    "x": 1602049
+  },
+  {
+    "assetId": 100055378,
+    "name": "Tussock Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5659880,
+    "x": 1877768
+  },
+  {
+    "assetId": 100061482,
+    "name": "Pinnacles Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5170189,
+    "x": 1469466
+  },
+  {
+    "assetId": 100098286,
+    "name": "Kopuatai Duck Hut 5",
+    "status": "OPEN",
+    "region": null,
+    "y": 5855583,
+    "x": 1823689
+  },
+  {
+    "assetId": 100058130,
+    "name": "Peach Cove Hut",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6030747,
+    "x": 1741419
+  },
+  {
+    "assetId": 100094109,
+    "name": "Jollie Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5140648,
+    "x": 1374860
+  },
+  {
+    "assetId": 100065092,
+    "name": "Browning Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5415277,
+    "x": 1623136
+  },
+  {
+    "assetId": 100128444,
+    "name": "Moonlight Tops Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5322175,
+    "x": 1468445
+  },
+  {
+    "assetId": 100057899,
+    "name": "Supper Cove Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4921177,
+    "x": 1128588
+  },
+  {
+    "assetId": 100064369,
+    "name": "Gouland Downs Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5473186,
+    "x": 1545523
+  },
+  {
+    "assetId": 100055798,
+    "name": "Central Waiau Hut",
+    "status": "CLSD",
+    "region": null,
+    "y": 5701926,
+    "x": 1934264
+  },
+  {
+    "assetId": 100072025,
+    "name": "Upper Cromel Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4956899,
+    "x": 1234599
+  },
+  {
+    "assetId": 100039154,
+    "name": "Otamatapaio Hut ",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5048950,
+    "x": 1361383
+  },
+  {
+    "assetId": 100085625,
+    "name": "Moonlight and Roses Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5066967,
+    "x": 1313782
+  },
+  {
+    "assetId": 100033870,
+    "name": "Campbell Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5249173,
+    "x": 1465630
+  },
+  {
+    "assetId": 100075296,
+    "name": "Kelman Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5178217,
+    "x": 1386679
+  },
+  {
+    "assetId": 100035152,
+    "name": "McKerrow Island Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5058653,
+    "x": 1207612
+  },
+  {
+    "assetId": 100075307,
+    "name": "Monument Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5120520,
+    "x": 1344491
+  },
+  {
+    "assetId": 100072672,
+    "name": "Bungaree Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4804068,
+    "x": 1221111
+  },
+  {
+    "assetId": 100030976,
+    "name": "Kellys Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4775473,
+    "x": 1233449
+  },
+  {
+    "assetId": 100061388,
+    "name": "Jumbo Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5474583,
+    "x": 1805685
+  },
+  {
+    "assetId": 100055415,
+    "name": "Rocks Ahead Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5647476,
+    "x": 1884381
+  },
+  {
+    "assetId": 100059027,
+    "name": "Big Hopwood Burn Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5087928,
+    "x": 1306799
+  },
+  {
+    "assetId": 100061135,
+    "name": "Whariwharangi Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5484662.7082,
+    "x": 1597835.6818
+  },
+  {
+    "assetId": 100040290,
+    "name": "McIntosh Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5025699,
+    "x": 1240845
+  },
+  {
+    "assetId": 100063244,
+    "name": "Tauanui Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5415634,
+    "x": 1792723
+  },
+  {
+    "assetId": 100055429,
+    "name": "Upper Makaroro Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5602741,
+    "x": 1876797
+  },
+  {
+    "assetId": 100098288,
+    "name": "Kopuatai Duck Hut 7",
+    "status": "OPEN",
+    "region": null,
+    "y": 5854706,
+    "x": 1822507
+  },
+  {
+    "assetId": 100059029,
+    "name": "Forbes Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5117145,
+    "x": 1329209
+  },
+  {
+    "assetId": 100072447,
+    "name": "Redcliff Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4924025,
+    "x": 1197349
+  },
+  {
+    "assetId": 100075586,
+    "name": "Doubtful Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5290996,
+    "x": 1541138
+  },
+  {
+    "assetId": 100059349,
+    "name": "Dillons Homestead Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5262070,
+    "x": 1476130
+  },
+  {
+    "assetId": 100072191,
+    "name": "Pakihi Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5765907,
+    "x": 1991388
+  },
+  {
+    "assetId": 100056231,
+    "name": "Kahunui Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5732292,
+    "x": 1973111
+  },
+  {
+    "assetId": 100000062,
+    "name": "Lake Poteriteri Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4877002,
+    "x": 1148174
+  },
+  {
+    "assetId": 100074918,
+    "name": "Smyth Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5213680,
+    "x": 1425230
+  },
+  {
+    "assetId": 100082661,
+    "name": "Slaughterburn Hut ",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4867459,
+    "x": 1142124
+  },
+  {
+    "assetId": 100055694,
+    "name": "Rakeahua Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4784084,
+    "x": 1210730
+  },
+  {
+    "assetId": 100098293,
+    "name": "Kopuatai Duck Hut 16",
+    "status": "OPEN",
+    "region": null,
+    "y": 5852360,
+    "x": 1823244
+  },
+  {
+    "assetId": 100033502,
+    "name": "Marauiti Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5701418,
+    "x": 1947204
+  },
+  {
+    "assetId": 100060751,
+    "name": "Mōkihinui Forks Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5400061,
+    "x": 1531499
+  },
+  {
+    "assetId": 100062207,
+    "name": "Cedar Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5241628.7592,
+    "x": 1448645.7954
+  },
+  {
+    "assetId": 100062861,
+    "name": "Hope Halfway Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5281629,
+    "x": 1542433
+  },
+  {
+    "assetId": 100083032,
+    "name": "Growler Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5179976,
+    "x": 1417227
+  },
+  {
+    "assetId": 100062970,
+    "name": "McGregor Bivvy",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5477084,
+    "x": 1803285
+  },
+  {
+    "assetId": 100063992,
+    "name": "Richmond Saddle Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5408568,
+    "x": 1631988
+  },
+  {
+    "assetId": 100054583,
+    "name": "Manson Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5645282,
+    "x": 1881143
+  },
+  {
+    "assetId": 100083243,
+    "name": "Crooked Spur Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5167526,
+    "x": 1421685
+  },
+  {
+    "assetId": 100043530,
+    "name": "Waiharuru Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5703943,
+    "x": 1950575
+  },
+  {
+    "assetId": 100064697,
+    "name": "Stoney Creek Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5024356,
+    "x": 1251340
+  },
+  {
+    "assetId": 100033580,
+    "name": "Whymper Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5186600,
+    "x": 1387300
+  },
+  {
+    "assetId": 100034581,
+    "name": "Worsley Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5254983,
+    "x": 1500575
+  },
+  {
+    "assetId": 100055712,
+    "name": "McKinnon Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5591896,
+    "x": 1865030
+  },
+  {
+    "assetId": 100056200,
+    "name": "Boyd Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5661200,
+    "x": 1873800
+  },
+  {
+    "assetId": 100063368,
+    "name": "Te Matawai Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5487610,
+    "x": 1802538
+  },
+  {
+    "assetId": 100063295,
+    "name": "Harper Pass Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5269130,
+    "x": 1509672
+  },
+  {
+    "assetId": 100088433,
+    "name": "Mt Brown Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5252141,
+    "x": 1453002
+  },
+  {
+    "assetId": 100061255,
+    "name": "Rocks Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5420419,
+    "x": 1629683
+  },
+  {
+    "assetId": 100040562,
+    "name": "North Pegasus Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4759438,
+    "x": 1196140
+  },
+  {
+    "assetId": 100034583,
+    "name": "Ant Stream Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5253508,
+    "x": 1526171
+  },
+  {
+    "assetId": 100059128,
+    "name": "Shelter Rock Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5056257,
+    "x": 1243324
+  },
+  {
+    "assetId": 100035121,
+    "name": "Lagoon Saddle A Frame",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5232114,
+    "x": 1486127
+  },
+  {
+    "assetId": 100061833,
+    "name": "Roaring Billy Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5133200,
+    "x": 1304600
+  },
+  {
+    "assetId": 100063734,
+    "name": "Dubious Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5325988,
+    "x": 1646434
+  },
+  {
+    "assetId": 100061488,
+    "name": "West Harper Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5227164,
+    "x": 1486645
+  },
+  {
+    "assetId": 100055416,
+    "name": "Venison Tops Hut (Tira Lodge)",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5650579,
+    "x": 1886581
+  },
+  {
+    "assetId": 100058875,
+    "name": "Lake Mackenzie Hut ",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5031519.9978,
+    "x": 1218063.7301
+  },
+  {
+    "assetId": 100063550,
+    "name": "Trains Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5628576,
+    "x": 1748806
+  },
+  {
+    "assetId": 100062597,
+    "name": "Hurunui Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5271691,
+    "x": 1525995
+  },
+  {
+    "assetId": 100135652,
+    "name": "Aranga Hut",
+    "status": "CLSD",
+    "region": "Manawatu/Whanganui",
+    "y": 5607764,
+    "x": 1879224
+  },
+  {
+    "assetId": 100075555,
+    "name": "Barbers Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5365319,
+    "x": 1614002
+  },
+  {
+    "assetId": 100081242,
+    "name": "Waihohonu Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5656557,
+    "x": 1831375
+  },
+  {
+    "assetId": 100061447,
+    "name": "Back Basins Hide",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5228343,
+    "x": 1472494
+  },
+  {
+    "assetId": 100060197,
+    "name": "Johnson Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5409100,
+    "x": 1539600
+  },
+  {
+    "assetId": 100058782,
+    "name": "Spoon / Morgans Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5100680.0868,
+    "x": 1220862.1199
+  },
+  {
+    "assetId": 100062737,
+    "name": "Bealey Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5234096,
+    "x": 1489359
+  },
+  {
+    "assetId": 100133953,
+    "name": "Mintaro Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5024917.451,
+    "x": 1186440.616
+  },
+  {
+    "assetId": 100065477,
+    "name": "Eade Memorial Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5178442,
+    "x": 1396515
+  },
+  {
+    "assetId": 100075587,
+    "name": "Doubtless Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5291972,
+    "x": 1536447
+  },
+  {
+    "assetId": 100040528,
+    "name": "Kirtle Burn Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5024205,
+    "x": 1296723
+  },
+  {
+    "assetId": 100054509,
+    "name": "Frisco Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5233932,
+    "x": 1446099
+  },
+  {
+    "assetId": 100039015,
+    "name": "Palmer Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5317969,
+    "x": 1621420
+  },
+  {
+    "assetId": 100055258,
+    "name": "Aparima - Tony's Hut",
+    "status": "OPEN",
+    "region": null,
+    "y": 4926251,
+    "x": 1210849
+  },
+  {
+    "assetId": 100063294,
+    "name": "Camerons Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5270754,
+    "x": 1514188
+  },
+  {
+    "assetId": 100041021,
+    "name": "History of Manson Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5645176,
+    "x": 1881404
+  },
+  {
+    "assetId": 100082266,
+    "name": "Wire Yards Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5029532,
+    "x": 1372157
+  },
+  {
+    "assetId": 100072289,
+    "name": "Kākāpō Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5424111,
+    "x": 1541747
+  },
+  {
+    "assetId": 100054670,
+    "name": "Ivory Lake Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5222028.8908,
+    "x": 1430281.1695
+  },
+  {
+    "assetId": 100061302,
+    "name": "Upper D'Urville Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5338134,
+    "x": 1567414
+  },
+  {
+    "assetId": 100034582,
+    "name": "Esk Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5250466,
+    "x": 1536513
+  },
+  {
+    "assetId": 100056871,
+    "name": "Rogers Hut (Te Wairoa)",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5703835,
+    "x": 1929319
+  },
+  {
+    "assetId": 100060145,
+    "name": "Coldwater Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5364602,
+    "x": 1584817
+  },
+  {
+    "assetId": 100098285,
+    "name": "Kopuatai Duck Hut 3",
+    "status": "OPEN",
+    "region": null,
+    "y": 5855805,
+    "x": 1824017
+  },
+  {
+    "assetId": 100072286,
+    "name": "Crystal Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5237934.5704,
+    "x": 1449433.2371
+  },
+  {
+    "assetId": 100064391,
+    "name": "Washpool Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5405735,
+    "x": 1791401
+  },
+  {
+    "assetId": 100063470,
+    "name": "Goat Pass Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5249199,
+    "x": 1487732
+  },
+  {
+    "assetId": 100030531,
+    "name": "Granity Pass Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5403085.7304,
+    "x": 1563383.7778
+  },
+  {
+    "assetId": 100054106,
+    "name": "Lake Morgan Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5275760,
+    "x": 1494227
+  },
+  {
+    "assetId": 100043686,
+    "name": "Beebys Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5381391,
+    "x": 1594270
+  },
+  {
+    "assetId": 100075610,
+    "name": "Tarn Ridge Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5481628,
+    "x": 1805522
+  },
+  {
+    "assetId": 100035068,
+    "name": "Porters Creek Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5388686,
+    "x": 1599772
+  },
+  {
+    "assetId": 100060433,
+    "name": "Middle Head Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5141600,
+    "x": 1314955
+  },
+  {
+    "assetId": 100055906,
+    "name": "Cascade Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5672183,
+    "x": 1869253
+  },
+  {
+    "assetId": 100058830,
+    "name": "Daleys Flat Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5056827,
+    "x": 1232579
+  },
+  {
+    "assetId": 100054965,
+    "name": "Te Waiti Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5766406,
+    "x": 1985781
+  },
+  {
+    "assetId": 100044685,
+    "name": "Lincoln Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4962299,
+    "x": 1224198
+  },
+  {
+    "assetId": 100098296,
+    "name": "Whangamarino Duck Hut C",
+    "status": "OPEN",
+    "region": null,
+    "y": 5865888,
+    "x": 1787768
+  },
+  {
+    "assetId": 100059964,
+    "name": "Omaka Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5381907,
+    "x": 1662489
+  },
+  {
+    "assetId": 100033867,
+    "name": "Lower Olderog Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5255773,
+    "x": 1461532
+  },
+  {
+    "assetId": 100043899,
+    "name": "Tangihua Hut",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6032072,
+    "x": 1700273
+  },
+  {
+    "assetId": 100064317,
+    "name": "Wainui Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5470738,
+    "x": 1593295
+  },
+  {
+    "assetId": 100075785,
+    "name": "Koropuku Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5259267,
+    "x": 1496525
+  },
+  {
+    "assetId": 100035146,
+    "name": "Junction Burn Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4985530,
+    "x": 1167475
+  },
+  {
+    "assetId": 100038242,
+    "name": "Arete Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5486289,
+    "x": 1805751
+  },
+  {
+    "assetId": 100072311,
+    "name": "Leon Kinvig Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5566916.231,
+    "x": 1862065.43
+  },
+  {
+    "assetId": 100033736,
+    "name": "Rocks Ahead Bivouac",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5647475,
+    "x": 1884281
+  },
+  {
+    "assetId": 100065614,
+    "name": "Sedgemere Sleepout",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5335170,
+    "x": 1591734
+  },
+  {
+    "assetId": 100063738,
+    "name": "Kowhai Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5316921,
+    "x": 1649033
+  },
+  {
+    "assetId": 100061052,
+    "name": "John Coull Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5655577.7199,
+    "x": 1765151.4313
+  },
+  {
+    "assetId": 100043834,
+    "name": "Whare Creek Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4929788,
+    "x": 1197003
+  },
+  {
+    "assetId": 100072192,
+    "name": "Tawa Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5737443,
+    "x": 1972106
+  },
+  {
+    "assetId": 100072832,
+    "name": "Pourangaki Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5583390,
+    "x": 1863538
+  },
+  {
+    "assetId": 100055421,
+    "name": "Sunrise Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5591016,
+    "x": 1871269
+  },
+  {
+    "assetId": 100061979,
+    "name": "Architect Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5166575,
+    "x": 1348617
+  },
+  {
+    "assetId": 100073082,
+    "name": "Sandy Bay Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5708077,
+    "x": 1964313
+  },
+  {
+    "assetId": 100031575,
+    "name": "Archie's Hut - Copper Creek",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5030439,
+    "x": 1254925
+  },
+  {
+    "assetId": 100137531,
+    "name": "Belltown Manunui Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5422424,
+    "x": 1535331
+  },
+  {
+    "assetId": 100041099,
+    "name": "Upper Travers Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5347941,
+    "x": 1579290
+  },
+  {
+    "assetId": 100061610,
+    "name": "Mid Silverstream Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5369600,
+    "x": 1603900
+  },
+  {
+    "assetId": 100065076,
+    "name": "Clinton Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5014897.0245,
+    "x": 1198035.2817
+  },
+  {
+    "assetId": 100030268,
+    "name": "Sudden Valley Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5243986,
+    "x": 1494334
+  },
+  {
+    "assetId": 100056797,
+    "name": "Oamaru Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5669777,
+    "x": 1882437
+  },
+  {
+    "assetId": 100034523,
+    "name": "Lochinvar Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5245999,
+    "x": 1519009
+  },
+  {
+    "assetId": 100059868,
+    "name": "Crow Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5244400,
+    "x": 1479012
+  },
+  {
+    "assetId": 100054137,
+    "name": "Sir Robert Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5231024,
+    "x": 1449774
+  },
+  {
+    "assetId": 100043689,
+    "name": "Island Gully Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5333961,
+    "x": 1585630
+  },
+  {
+    "assetId": 100071769,
+    "name": "Awatere Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5570756,
+    "x": 1868078
+  },
+  {
+    "assetId": 100040563,
+    "name": "South Pegasus Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4758847,
+    "x": 1193915
+  },
+  {
+    "assetId": 100035203,
+    "name": "Boo Boo Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5245575.9377,
+    "x": 1452985.3909
+  },
+  {
+    "assetId": 100081884,
+    "name": "Crow Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5428627,
+    "x": 1555509
+  },
+  {
+    "assetId": 100062499,
+    "name": "Harman Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5246749.6823,
+    "x": 1463020.3385
+  },
+  {
+    "assetId": 100072277,
+    "name": "Port Adventure Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4778031,
+    "x": 1233669
+  },
+  {
+    "assetId": 100063066,
+    "name": "Christopher Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5318100,
+    "x": 1564140
+  },
+  {
+    "assetId": 100041250,
+    "name": "Whangaehu Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5648681.461,
+    "x": 1823276.7362
+  },
+  {
+    "assetId": 100060987,
+    "name": "Mt Fell Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5410207,
+    "x": 1634715
+  },
+  {
+    "assetId": 100034521,
+    "name": "Puketeraki Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5226232,
+    "x": 1516461
+  },
+  {
+    "assetId": 100074675,
+    "name": "Freeman Burn Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4952725,
+    "x": 1160519
+  },
+  {
+    "assetId": 100073976,
+    "name": "Kaiaraara Hut",
+    "status": "OPEN",
+    "region": "Auckland",
+    "y": 5993096.9245,
+    "x": 1813820.7436
+  },
+  {
+    "assetId": 100055595,
+    "name": "Lupton Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5643259,
+    "x": 1817391
+  },
+  {
+    "assetId": 100082399,
+    "name": "Venus Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5425942.8787,
+    "x": 1553072.0552
+  },
+  {
+    "assetId": 100058994,
+    "name": "Gorge River Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5096469,
+    "x": 1215864
+  },
+  {
+    "assetId": 100075617,
+    "name": "Te Rangaakapua Hut",
+    "status": "CLSD",
+    "region": null,
+    "y": 5727964,
+    "x": 1966559
+  },
+  {
+    "assetId": 100062315,
+    "name": "Top Robinson Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5296803,
+    "x": 1532552
+  },
+  {
+    "assetId": 100062868,
+    "name": "Lake Guyon Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5318288,
+    "x": 1571028
+  },
+  {
+    "assetId": 100056127,
+    "name": "Mangakahika Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5697920,
+    "x": 1927630
+  },
+  {
+    "assetId": 100040085,
+    "name": "Waiopehu Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5488950,
+    "x": 1799060
+  },
+  {
+    "assetId": 100043221,
+    "name": "Turkeys Nest Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5378200,
+    "x": 1626700
+  },
+  {
+    "assetId": 100053970,
+    "name": "East Ruggedy Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4812145,
+    "x": 1198552
+  },
+  {
+    "assetId": 100091439,
+    "name": "Philip J Cox Memorial Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4934953,
+    "x": 1405203
+  },
+  {
+    "assetId": 100034515,
+    "name": "Ant Stream Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5250224,
+    "x": 1525622
+  },
+  {
+    "assetId": 100075590,
+    "name": "Upper South Branch Hurunui Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5264800,
+    "x": 1517000
+  },
+  {
+    "assetId": 100063461,
+    "name": "Hamilton Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5223911,
+    "x": 1488550
+  },
+  {
+    "assetId": 100053869,
+    "name": "Scottys Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5259371,
+    "x": 1470230
+  },
+  {
+    "assetId": 100063172,
+    "name": "Mangatoetoe Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5395469,
+    "x": 1789402
+  },
+  {
+    "assetId": 100035141,
+    "name": "Coppermine Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5140693,
+    "x": 1291833
+  },
+  {
+    "assetId": 100075831,
+    "name": "Ellis Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5434802.8322,
+    "x": 1573667.3676
+  },
+  {
+    "assetId": 100054075,
+    "name": "Mason Bay Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4789763,
+    "x": 1202665
+  },
+  {
+    "assetId": 100059908,
+    "name": "D'Urville Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5360626,
+    "x": 1570616
+  },
+  {
+    "assetId": 100059476,
+    "name": "Bush Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5076629,
+    "x": 1318290
+  },
+  {
+    "assetId": 100075589,
+    "name": "Mackenzie Bivvy (East branch) ",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5277900,
+    "x": 1523400
+  },
+  {
+    "assetId": 100056619,
+    "name": "Upper Te Hoe Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5694428,
+    "x": 1922898
+  },
+  {
+    "assetId": 100035406,
+    "name": "Upper Windley Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4957356,
+    "x": 1228165
+  },
+  {
+    "assetId": 100043375,
+    "name": "Candlesticks Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5257709,
+    "x": 1520200
+  },
+  {
+    "assetId": 100055186,
+    "name": "Gold Creek Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5593787,
+    "x": 1873882
+  },
+  {
+    "assetId": 100062864,
+    "name": "Jolliebrook Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5270067,
+    "x": 1545480
+  },
+  {
+    "assetId": 100039734,
+    "name": "Speargrass Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5366600,
+    "x": 1579400
+  },
+  {
+    "assetId": 100058195,
+    "name": "Kintail Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4931912,
+    "x": 1141241
+  },
+  {
+    "assetId": 100038217,
+    "name": "Boundary Creek Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5042369,
+    "x": 1350947
+  },
+  {
+    "assetId": 100094975,
+    "name": "Heaphy Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5462350,
+    "x": 1525193
+  },
+  {
+    "assetId": 100043893,
+    "name": "Boundary Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4973162,
+    "x": 1297921
+  },
+  {
+    "assetId": 100034329,
+    "name": "Wheel Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5342003,
+    "x": 1528174
+  },
+  {
+    "assetId": 100073818,
+    "name": "Cape Brett Hut",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6106995,
+    "x": 1721205
+  },
+  {
+    "assetId": 100129571,
+    "name": "Mataketake Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5141230,
+    "x": 1301412
+  },
+  {
+    "assetId": 100064755,
+    "name": "Park Morpeth Memorial Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5240986,
+    "x": 1464789
+  },
+  {
+    "assetId": 100064495,
+    "name": "Triplex Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5590232,
+    "x": 1873799
+  },
+  {
+    "assetId": 100034522,
+    "name": "Otehake Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5254200,
+    "x": 1494675
+  },
+  {
+    "assetId": 100059864,
+    "name": "Carlyle Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5288994,
+    "x": 1558607
+  },
+  {
+    "assetId": 100061617,
+    "name": "Jam Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5339375,
+    "x": 1659133
+  },
+  {
+    "assetId": 100044686,
+    "name": "Kaipo Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5061354,
+    "x": 1197896
+  },
+  {
+    "assetId": 100062710,
+    "name": "Kirwans Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5338304,
+    "x": 1518134
+  },
+  {
+    "assetId": 100059888,
+    "name": "Roebuck Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5415463,
+    "x": 1629877
+  },
+  {
+    "assetId": 100059803,
+    "name": "Youngman Stream Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5236045,
+    "x": 1533437
+  },
+  {
+    "assetId": 100060560,
+    "name": "Cullers Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5131918,
+    "x": 1346033
+  },
+  {
+    "assetId": 100060986,
+    "name": "Tarn Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5399968,
+    "x": 1614013
+  },
+  {
+    "assetId": 100043242,
+    "name": "Onslow Hut (Steffan Memorial Hut)",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5167900,
+    "x": 1382600
+  },
+  {
+    "assetId": 100059692,
+    "name": "Lauder Basin Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5028789,
+    "x": 1336060
+  },
+  {
+    "assetId": 100059548,
+    "name": "Turnbull Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5243483,
+    "x": 1510987
+  },
+  {
+    "assetId": 100061869,
+    "name": "Back Valley Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4936051,
+    "x": 1177430
+  },
+  {
+    "assetId": 100055449,
+    "name": "Top Olderog Bivvy ",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5257672,
+    "x": 1464331
+  },
+  {
+    "assetId": 100062930,
+    "name": "Waiorongomai Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5430628,
+    "x": 1776485
+  },
+  {
+    "assetId": 100062301,
+    "name": "Top Toaroha Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5236043,
+    "x": 1449561
+  },
+  {
+    "assetId": 100033710,
+    "name": "Otutu Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5647873,
+    "x": 1878877
+  },
+  {
+    "assetId": 100084247,
+    "name": "Tribulation Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5187450,
+    "x": 1475348
+  },
+  {
+    "assetId": 100059905,
+    "name": "Downies Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5335328,
+    "x": 1560721
+  },
+  {
+    "assetId": 100042282,
+    "name": "Makakoere Hut",
+    "status": "CLSD",
+    "region": null,
+    "y": 5732571,
+    "x": 1970674
+  },
+  {
+    "assetId": 100035208,
+    "name": "Panekire Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5696237,
+    "x": 1951846
+  },
+  {
+    "assetId": 100097401,
+    "name": "Lyell Saddle Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5380493,
+    "x": 1525081
+  },
+  {
+    "assetId": 100000034,
+    "name": "Bull Creek Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5250537,
+    "x": 1515762
+  },
+  {
+    "assetId": 100031571,
+    "name": "Kay Creek Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5028360,
+    "x": 1224033
+  },
+  {
+    "assetId": 100056529,
+    "name": "Ruahine Corner Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5608360,
+    "x": 1872222
+  },
+  {
+    "assetId": 100058417,
+    "name": "Rodger Inlet Hut (historic)",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4906780,
+    "x": 1168605
+  },
+  {
+    "assetId": 100054136,
+    "name": "Frew Saddle Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5228753,
+    "x": 1444682
+  },
+  {
+    "assetId": 100038361,
+    "name": "Wallers Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5023520,
+    "x": 1243129
+  },
+  {
+    "assetId": 100072446,
+    "name": "Upper Princhester Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4935452,
+    "x": 1203526
+  },
+  {
+    "assetId": 100034876,
+    "name": "Helicopter Flat Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5414861.7019,
+    "x": 1546623.9876
+  },
+  {
+    "assetId": 100065465,
+    "name": "Te Pua Hut",
+    "status": "CLSD",
+    "region": null,
+    "y": 5734187,
+    "x": 1960815
+  },
+  {
+    "assetId": 100033374,
+    "name": "Luxmore Hut  ",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4960153,
+    "x": 1178767
+  },
+  {
+    "assetId": 100030127,
+    "name": "Manuka Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5178225,
+    "x": 1458967
+  },
+  {
+    "assetId": 100065472,
+    "name": "Murphy's Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5184616,
+    "x": 1412138
+  },
+  {
+    "assetId": 10000019,
+    "name": "Kahikatea Lodge Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4984218.0578,
+    "x": 1416256.2395
+  },
+  {
+    "assetId": 100057086,
+    "name": "Mangamuka Hut",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5813745,
+    "x": 1854989
+  },
+  {
+    "assetId": 100097391,
+    "name": "Ghost Lake Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5383192,
+    "x": 1530030
+  },
+  {
+    "assetId": 100061168,
+    "name": "Roaring Lion Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5439122,
+    "x": 1552509
+  },
+  {
+    "assetId": 100034807,
+    "name": "Kawakawa Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5399778,
+    "x": 1791337
+  },
+  {
+    "assetId": 100060940,
+    "name": "Ces Clark Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5316347,
+    "x": 1467436
+  },
+  {
+    "assetId": 100058799,
+    "name": "Maclennan Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4851504,
+    "x": 1320483
+  },
+  {
+    "assetId": 100040743,
+    "name": "Motukawanui Hut",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6125778,
+    "x": 1685520
+  },
+  {
+    "assetId": 100098289,
+    "name": "Kopuatai Duck Hut 8",
+    "status": "OPEN",
+    "region": null,
+    "y": 5853811,
+    "x": 1823027
+  },
+  {
+    "assetId": 100055336,
+    "name": "Waiopaoa Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5696844,
+    "x": 1946830
+  },
+  {
+    "assetId": 100059955,
+    "name": "Waimakariri Falls Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5247193,
+    "x": 1476572
+  },
+  {
+    "assetId": 100062414,
+    "name": "Evans Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5208462,
+    "x": 1440176
+  },
+  {
+    "assetId": 100034563,
+    "name": "Dodger Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5134938,
+    "x": 1349340
+  },
+  {
+    "assetId": 100063308,
+    "name": "Maungahuka Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5468359,
+    "x": 1796558
+  },
+  {
+    "assetId": 100072833,
+    "name": "Toka Bivvy",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5569586,
+    "x": 1862346
+  },
+  {
+    "assetId": 100033536,
+    "name": "Cromel Branch Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4954010,
+    "x": 1237338
+  },
+  {
+    "assetId": 100063490,
+    "name": "Upper Nina Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5297837,
+    "x": 1540176
+  },
+  {
+    "assetId": 100131709,
+    "name": "Kōhanga Atawhai – Manson Nicholls Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5316121,
+    "x": 1541439
+  },
+  {
+    "assetId": 100044463,
+    "name": "Snowy Gorge Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5091387,
+    "x": 1336505
+  },
+  {
+    "assetId": 100060142,
+    "name": "Burn Creek Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5332700,
+    "x": 1554500
+  },
+  {
+    "assetId": 100064302,
+    "name": "Anatoki Forks Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5467918.9419,
+    "x": 1567022.9968
+  },
+  {
+    "assetId": 100059248,
+    "name": "Cameron Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5099414,
+    "x": 1305615
+  },
+  {
+    "assetId": 100098284,
+    "name": "Kopuatai Duck Hut 2",
+    "status": "OPEN",
+    "region": null,
+    "y": 5857858,
+    "x": 1824248
+  },
+  {
+    "assetId": 100065479,
+    "name": "Erceg Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5140565,
+    "x": 1352119
+  },
+  {
+    "assetId": 100085933,
+    "name": "Waimak Gorge - Walker Hut",
+    "status": "OPEN",
+    "region": null,
+    "y": 5217093,
+    "x": 1514811
+  },
+  {
+    "assetId": 100058859,
+    "name": "Waitutu Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4862472,
+    "x": 1142313
+  },
+  {
+    "assetId": 100064753,
+    "name": "Avoca Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5232076,
+    "x": 1472160
+  },
+  {
+    "assetId": 100034881,
+    "name": "Cecil Kings Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5409262.8736,
+    "x": 1556524.7919
+  },
+  {
+    "assetId": 100059406,
+    "name": "Ada Pass Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5316286,
+    "x": 1555272
+  },
+  {
+    "assetId": 100058632,
+    "name": "Lake Thomson Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4999714,
+    "x": 1169644
+  },
+  {
+    "assetId": 100034793,
+    "name": "Jans Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5421370,
+    "x": 1765769
+  },
+  {
+    "assetId": 100059028,
+    "name": "Ferguson Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5109050,
+    "x": 1323996
+  },
+  {
+    "assetId": 100071867,
+    "name": "Doughboy Bay Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4777744,
+    "x": 1197800
+  },
+  {
+    "assetId": 100034564,
+    "name": "Huxley Forks Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5122123,
+    "x": 1338921
+  },
+  {
+    "assetId": 100064347,
+    "name": "Mole Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5354396,
+    "x": 1564508
+  },
+  {
+    "assetId": 100038299,
+    "name": "South Ohau Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5489816,
+    "x": 1801854
+  },
+  {
+    "assetId": 100065936,
+    "name": "Forks Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4992836,
+    "x": 1216730
+  },
+  {
+    "assetId": 100064171,
+    "name": "Connors Creek Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5349623,
+    "x": 1590497
+  },
+  {
+    "assetId": 100059144,
+    "name": "Kerin Forks Hut ",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5093901,
+    "x": 1283469
+  },
+  {
+    "assetId": 100058756,
+    "name": "Mt Bee Bunkrooms",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4948280,
+    "x": 1238605
+  },
+  {
+    "assetId": 100061740,
+    "name": "Starveall Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5410303,
+    "x": 1620105
+  },
+  {
+    "assetId": 100056332,
+    "name": "Islands Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4954212,
+    "x": 1231849
+  },
+  {
+    "assetId": 100060357,
+    "name": "Castle Rocks Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5184900,
+    "x": 1370700
+  },
+  {
+    "assetId": 100098966,
+    "name": "Murray Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4806940,
+    "x": 1218230
+  },
+  {
+    "assetId": 100043139,
+    "name": "Crystal Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5026741,
+    "x": 1257496
+  },
+  {
+    "assetId": 100063296,
+    "name": "Three Mile Stream Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5276659,
+    "x": 1530518
+  },
+  {
+    "assetId": 100059056,
+    "name": "Routeburn Flats Hut ",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5036385.881,
+    "x": 1221096.4118
+  },
+  {
+    "assetId": 100085582,
+    "name": "Stodys Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5061491,
+    "x": 1316853
+  },
+  {
+    "assetId": 100043236,
+    "name": "Carney's Bivvy No. 1",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5181425,
+    "x": 1410998
+  },
+  {
+    "assetId": 100054669,
+    "name": "Scamper Torrent Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5219627,
+    "x": 1416038
+  },
+  {
+    "assetId": 100030327,
+    "name": "Upper Oreti Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4964212,
+    "x": 1225567
+  },
+  {
+    "assetId": 100072291,
+    "name": "Kaweka Flats Bivvy",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5648565.0231,
+    "x": 1894796.3569
+  },
+  {
+    "assetId": 100039155,
+    "name": "Middle Gorge Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5151098,
+    "x": 1395723
+  },
+  {
+    "assetId": 100061497,
+    "name": "Mingha Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5246866,
+    "x": 1488202
+  },
+  {
+    "assetId": 100038202,
+    "name": "Westies Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4863215,
+    "x": 1133165
+  },
+  {
+    "assetId": 100071787,
+    "name": "Sentry Box Hut (historic)",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5603865,
+    "x": 1881460
+  },
+  {
+    "assetId": 100075584,
+    "name": "Jervois Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5304007,
+    "x": 1565291
+  },
+  {
+    "assetId": 100061116,
+    "name": "Trilobite Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5446715,
+    "x": 1567165
+  },
+  {
+    "assetId": 100059906,
+    "name": "McConchies Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5395828.1657,
+    "x": 1547013.2513
+  },
+  {
+    "assetId": 100063065,
+    "name": "Christopher (Ada) Cullers Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5318690,
+    "x": 1563538
+  },
+  {
+    "assetId": 100033709,
+    "name": "Ngaawapurua Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5652176,
+    "x": 1880375
+  },
+  {
+    "assetId": 100081528,
+    "name": "Martins Creek Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4788265,
+    "x": 1201281
+  },
+  {
+    "assetId": 100083011,
+    "name": "Crosbies Hut",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5896862,
+    "x": 1831398
+  },
+  {
+    "assetId": 100033715,
+    "name": "Back Ridge Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5647158,
+    "x": 1889569
+  },
+  {
+    "assetId": 100062051,
+    "name": "Mudflats Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5251773,
+    "x": 1466730
+  },
+  {
+    "assetId": 100054491,
+    "name": "Army Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4976319,
+    "x": 1209930
+  },
+  {
+    "assetId": 100059971,
+    "name": "Siberia Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5363520,
+    "x": 1606204
+  },
+  {
+    "assetId": 100041205,
+    "name": "Stan's Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5196439.2142,
+    "x": 1389517.9659
+  },
+  {
+    "assetId": 100060645,
+    "name": "Camp Stream Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5148336,
+    "x": 1410874
+  },
+  {
+    "assetId": 100060564,
+    "name": "Hagens Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5105375,
+    "x": 1331277
+  },
+  {
+    "assetId": 100122736,
+    "name": "Veil Biv",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5193502,
+    "x": 1412422
+  },
+  {
+    "assetId": 100059346,
+    "name": "Top Trent Hut/Lagoon Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5271869,
+    "x": 1504414
+  },
+  {
+    "assetId": 100059474,
+    "name": "Top Dingle Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5091234,
+    "x": 1325318
+  },
+  {
+    "assetId": 100034558,
+    "name": "Pahautea Hut (Old)",
+    "status": "OPEN",
+    "region": null,
+    "y": 5792844,
+    "x": 1783690
+  },
+  {
+    "assetId": 100033868,
+    "name": "Crawford Junction Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5242075,
+    "x": 1455931
+  },
+  {
+    "assetId": 100055180,
+    "name": "Black Birch Bivouac",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5644096,
+    "x": 1896486
+  },
+  {
+    "assetId": 100061113,
+    "name": "Riordans Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5456164,
+    "x": 1578379
+  },
+  {
+    "assetId": 100033506,
+    "name": "Te Totara Hut",
+    "status": "CLSD",
+    "region": "East Coast",
+    "y": 5705923,
+    "x": 1936761
+  },
+  {
+    "assetId": 100064754,
+    "name": "Barker Memorial Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5239163,
+    "x": 1469367
+  },
+  {
+    "assetId": 100060797,
+    "name": "Glenrae Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5265191,
+    "x": 1553678
+  },
+  {
+    "assetId": 10000077,
+    "name": "Komata Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5624854.0555,
+    "x": 1885609.2356
+  },
+  {
+    "assetId": 100030935,
+    "name": "Big Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4964476,
+    "x": 1371245
+  },
+  {
+    "assetId": 100098287,
+    "name": "Kopuatai Duck Hut 6",
+    "status": "OPEN",
+    "region": null,
+    "y": 5855630,
+    "x": 1823291
+  },
+  {
+    "assetId": 100030360,
+    "name": "Frew Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5231821,
+    "x": 1440660
+  },
+  {
+    "assetId": 100059970,
+    "name": "Mid Goulter Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5396769,
+    "x": 1619631
+  },
+  {
+    "assetId": 100038504,
+    "name": "Hokuri Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5069458,
+    "x": 1206434
+  },
+  {
+    "assetId": 100073073,
+    "name": "Makahu Saddle Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5645844,
+    "x": 1893932
+  },
+  {
+    "assetId": 100060563,
+    "name": "Shamrock Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5099595,
+    "x": 1330190
+  },
+  {
+    "assetId": 100072710,
+    "name": "Blyth Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5643362,
+    "x": 1817626
+  },
+  {
+    "assetId": 100031265,
+    "name": "Manganuku Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5754720,
+    "x": 1988053
+  },
+  {
+    "assetId": 100094539,
+    "name": "Kime Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5465098,
+    "x": 1791222
+  },
+  {
+    "assetId": 100063735,
+    "name": "Mt Fyffe Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5314079,
+    "x": 1648894
+  },
+  {
+    "assetId": 100000822,
+    "name": "Lake Alabaster Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5056010.3819,
+    "x": 1214263.2172
+  },
+  {
+    "assetId": 100034579,
+    "name": "Kiwi Hut – West Coast",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5265416,
+    "x": 1497159
+  },
+  {
+    "assetId": 100086125,
+    "name": "Mt Heale Hut",
+    "status": "OPEN",
+    "region": "Auckland",
+    "y": 5991910.5244,
+    "x": 1816961.2222
+  },
+  {
+    "assetId": 100072001,
+    "name": "Iron Bark Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5602993,
+    "x": 1865232
+  },
+  {
+    "assetId": 100074858,
+    "name": "Dart Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5060574,
+    "x": 1246716
+  },
+  {
+    "assetId": 100063387,
+    "name": "Arete Forks Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5484409,
+    "x": 1807257
+  },
+  {
+    "assetId": 100054932,
+    "name": "Otukota Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5600580,
+    "x": 1864595
+  },
+  {
+    "assetId": 100034927,
+    "name": "Fosters Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5413200,
+    "x": 1653500
+  },
+  {
+    "assetId": 100059506,
+    "name": "Wilkinson Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5219779,
+    "x": 1436530
+  },
+  {
+    "assetId": 100055433,
+    "name": "Dianes Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5617953,
+    "x": 1882194
+  },
+  {
+    "assetId": 100062277,
+    "name": "Price Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5224979,
+    "x": 1437831
+  },
+  {
+    "assetId": 100043687,
+    "name": "Bull Paddock Creek Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5368819,
+    "x": 1599707
+  },
+  {
+    "assetId": 100038137,
+    "name": "Hawdon Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5248282,
+    "x": 1496552
+  },
+  {
+    "assetId": 100072394,
+    "name": "Top Tuke Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5227064,
+    "x": 1428202
+  },
+  {
+    "assetId": 100058073,
+    "name": "Shepherd Creek Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4961990,
+    "x": 1242498
+  },
+  {
+    "assetId": 100065715,
+    "name": "Pouri Hut",
+    "status": "CLSD",
+    "region": "Manawatu/Whanganui",
+    "y": 5644145,
+    "x": 1759545
+  },
+  {
+    "assetId": 100064750,
+    "name": "Home Hill Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5015513,
+    "x": 1227376
+  },
+  {
+    "assetId": 100099984,
+    "name": "Wānaka Faces Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5061622,
+    "x": 1293682
+  },
+  {
+    "assetId": 100030328,
+    "name": "Cowshed Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4965781,
+    "x": 1245428
+  },
+  {
+    "assetId": 100072395,
+    "name": "Price Basin Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5222629,
+    "x": 1434362
+  },
+  {
+    "assetId": 100122608,
+    "name": "Christmas Village Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4810276,
+    "x": 1216721
+  },
+  {
+    "assetId": 100062415,
+    "name": "Reischek Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5206101,
+    "x": 1434818
+  },
+  {
+    "assetId": 100060763,
+    "name": "North Mangahao Bivvy",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5508771,
+    "x": 1820790
+  },
+  {
+    "assetId": 100075864,
+    "name": "Chaffey Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5450637,
+    "x": 1563964
+  },
+  {
+    "assetId": 100060545,
+    "name": "Goat Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5393672,
+    "x": 1533245
+  },
+  {
+    "assetId": 100063125,
+    "name": "Tutuwai Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5457511.887,
+    "x": 1795519.6503
+  },
+  {
+    "assetId": 100072824,
+    "name": "Forks Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5555459,
+    "x": 1850561
+  },
+  {
+    "assetId": 100056292,
+    "name": "Whakapapaiti Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5653837,
+    "x": 1817310
+  },
+  {
+    "assetId": 100054672,
+    "name": "Top Waitaha Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5222406,
+    "x": 1427278
+  },
+  {
+    "assetId": 100060051,
+    "name": "Pararaki Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5402871.4461,
+    "x": 1792268.781
+  },
+  {
+    "assetId": 100054635,
+    "name": "Manson Bivvy",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5645092,
+    "x": 1883598
+  },
+  {
+    "assetId": 100071996,
+    "name": "Kylie Bivvy",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5602891,
+    "x": 1874414
+  },
+  {
+    "assetId": 100031573,
+    "name": "Earnslaw Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5048944,
+    "x": 1238883
+  },
+  {
+    "assetId": 100073465,
+    "name": "Long Harry Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4815688,
+    "x": 1203034
+  },
+  {
+    "assetId": 100065478,
+    "name": "Red Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5123401,
+    "x": 1346122
+  },
+  {
+    "assetId": 100075583,
+    "name": "Stony Stream Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5298700,
+    "x": 1569400
+  },
+  {
+    "assetId": 100063366,
+    "name": "Parawai Lodge",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5472900,
+    "x": 1788085
+  },
+  {
+    "assetId": 100062898,
+    "name": "Big River Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5322468,
+    "x": 1508655
+  },
+  {
+    "assetId": 100098294,
+    "name": "Kopuatai Duck Hut 17",
+    "status": "OPEN",
+    "region": null,
+    "y": 5852360,
+    "x": 1823244
+  },
+  {
+    "assetId": 100034872,
+    "name": "Lonely Lake Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5463077,
+    "x": 1562819
+  },
+  {
+    "assetId": 100086628,
+    "name": "Top Crawford Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5244950,
+    "x": 1459530
+  },
+  {
+    "assetId": 100039299,
+    "name": "Warden Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5319194.1172,
+    "x": 1636156.4836
+  },
+  {
+    "assetId": 100030125,
+    "name": "Comyns Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5190276,
+    "x": 1467824
+  },
+  {
+    "assetId": 100061149,
+    "name": "Slaty Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5407313.5121,
+    "x": 1623246.0677
+  },
+  {
+    "assetId": 100058703,
+    "name": "North Arm Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4795781.3608,
+    "x": 1220479.0321
+  },
+  {
+    "assetId": 100054630,
+    "name": "Mangaturutu Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5653604,
+    "x": 1887473
+  },
+  {
+    "assetId": 100074849,
+    "name": "Colin Todd Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5077778,
+    "x": 1256971
+  },
+  {
+    "assetId": 100055182,
+    "name": "Kiwi Saddle Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5641008,
+    "x": 1886256
+  },
+  {
+    "assetId": 100056527,
+    "name": "Smiths Stream Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5584173.3692,
+    "x": 1871241.135
+  },
+  {
+    "assetId": 100034865,
+    "name": "Myttons Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5446114.8135,
+    "x": 1568227.6282
+  },
+  {
+    "assetId": 100055448,
+    "name": "Healey Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5231505,
+    "x": 1429870
+  },
+  {
+    "assetId": 100034566,
+    "name": "Top Hut ",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5109170,
+    "x": 1333166
+  },
+  {
+    "assetId": 100064007,
+    "name": "Greigs Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5368318,
+    "x": 1608704
+  },
+  {
+    "assetId": 100043141,
+    "name": "Racemans Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4999165,
+    "x": 1275464
+  },
+  {
+    "assetId": 100075445,
+    "name": "Liebig Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5165800,
+    "x": 1383000
+  },
+  {
+    "assetId": 100059544,
+    "name": "Unknown Stream Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5230424,
+    "x": 1459423
+  },
+  {
+    "assetId": 100064281,
+    "name": "Salisbury Lodge",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5440547,
+    "x": 1570548
+  },
+  {
+    "assetId": 100101442,
+    "name": "Smoky Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4814695,
+    "x": 1204925
+  },
+  {
+    "assetId": 100034519,
+    "name": "Moa Stream Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5223376,
+    "x": 1458529
+  },
+  {
+    "assetId": 100034171,
+    "name": "Eel Creek Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4903552,
+    "x": 1162483
+  },
+  {
+    "assetId": 100039340,
+    "name": "Snowgrass Hut ",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5344215,
+    "x": 1661157
+  },
+  {
+    "assetId": 100059409,
+    "name": "Lake Stream Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5322349,
+    "x": 1528403
+  },
+  {
+    "assetId": 100034326,
+    "name": "Pell Stream Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5313942,
+    "x": 1545436
+  },
+  {
+    "assetId": 100057328,
+    "name": "Chew Tobacco Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4781812,
+    "x": 1236048
+  },
+  {
+    "assetId": 100074917,
+    "name": "Chancellor Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5178400,
+    "x": 1366200
+  },
+  {
+    "assetId": 100058801,
+    "name": "Tautuku Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4837864,
+    "x": 1318300
+  },
+  {
+    "assetId": 100056525,
+    "name": "Piripiri Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5563537,
+    "x": 1857405
+  },
+  {
+    "assetId": 100064214,
+    "name": "Top Leatham Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5353196,
+    "x": 1606794
+  },
+  {
+    "assetId": 100057084,
+    "name": "Kauritatahi Hut",
+    "status": "CLSD",
+    "region": "Bay of Plenty",
+    "y": 5827491,
+    "x": 1852370
+  },
+  {
+    "assetId": 100065316,
+    "name": "Routeburn Falls Hut ",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5036282,
+    "x": 1219830
+  },
+  {
+    "assetId": 100102907,
+    "name": "Rod Donald Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5159171,
+    "x": 1583697
+  },
+  {
+    "assetId": 100055463,
+    "name": "Jacko Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5270710,
+    "x": 1487865
+  },
+  {
+    "assetId": 100040707,
+    "name": "Tutaekuri Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5281504,
+    "x": 1515689
+  },
+  {
+    "assetId": 100034621,
+    "name": "Yeats Ridge Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5239259.156,
+    "x": 1449077.4881
+  },
+  {
+    "assetId": 100061375,
+    "name": "Aokaparangi Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5470564,
+    "x": 1798839
+  },
+  {
+    "assetId": 100037806,
+    "name": "Severn Hut ",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5343349,
+    "x": 1603040
+  },
+  {
+    "assetId": 100056522,
+    "name": "Rangiwahia Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5580014,
+    "x": 1858074
+  },
+  {
+    "assetId": 100043332,
+    "name": "Syme Hut",
+    "status": "OPEN",
+    "region": "Taranaki",
+    "y": 5648451,
+    "x": 1691934
+  },
+  {
+    "assetId": 100054620,
+    "name": "Griffin Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5260371,
+    "x": 1467731
+  },
+  {
+    "assetId": 100088813,
+    "name": "Ball Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5165970,
+    "x": 1373359
+  },
+  {
+    "assetId": 100044544,
+    "name": "Ten Man Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5678525,
+    "x": 1811907
+  },
+  {
+    "assetId": 100040564,
+    "name": "North Big Glory Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4787790,
+    "x": 1229082
+  },
+  {
+    "assetId": 100064243,
+    "name": "Limestone Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5322901,
+    "x": 1642465
+  },
+  {
+    "assetId": 100057665,
+    "name": "Upper Spey Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4935995,
+    "x": 1144654
+  },
+  {
+    "assetId": 100042865,
+    "name": "Awaroa Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5476200,
+    "x": 1601483
+  },
+  {
+    "assetId": 100132644,
+    "name": "Iron Gate Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5575875,
+    "x": 1861254
+  },
+  {
+    "assetId": 100060746,
+    "name": "Mathias Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5216752,
+    "x": 1448126
+  },
+  {
+    "assetId": 100042338,
+    "name": "Telford Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4920545,
+    "x": 1199197
+  },
+  {
+    "assetId": 100062416,
+    "name": "Lawrence Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5190233,
+    "x": 1428799
+  },
+  {
+    "assetId": 100063241,
+    "name": "Blue Range Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5481135,
+    "x": 1812491
+  },
+  {
+    "assetId": 100074377,
+    "name": "Puketī Forest Hut",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6103244,
+    "x": 1672259
+  },
+  {
+    "assetId": 100041790,
+    "name": "Pearson Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5057974,
+    "x": 1395987
+  },
+  {
+    "assetId": 100038838,
+    "name": "Brewster Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5112111.5342,
+    "x": 1312774.9392
+  },
+  {
+    "assetId": 100034330,
+    "name": "Top Waitahu Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5327143,
+    "x": 1526372
+  },
+  {
+    "assetId": 100073680,
+    "name": "Upper Whirinaki Hut",
+    "status": "CLSD",
+    "region": "East Coast",
+    "y": 5697624,
+    "x": 1918935
+  },
+  {
+    "assetId": 100101767,
+    "name": "Cookies Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5184104,
+    "x": 1474069
+  },
+  {
+    "assetId": 100038369,
+    "name": "Roses Hut  ",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5030437,
+    "x": 1272805
+  },
+  {
+    "assetId": 100033763,
+    "name": "Newton Range Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5251174,
+    "x": 1458531
+  },
+  {
+    "assetId": 100035091,
+    "name": "Paske Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5337807,
+    "x": 1579702
+  },
+  {
+    "assetId": 100102808,
+    "name": "Soper Shelter",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5460459,
+    "x": 1566093
+  },
+  {
+    "assetId": 100060081,
+    "name": "Saxon Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5473642,
+    "x": 1541719
+  },
+  {
+    "assetId": 100034797,
+    "name": "Field Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5469022,
+    "x": 1790022
+  },
+  {
+    "assetId": 100038948,
+    "name": "Roaring Stag Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5488077,
+    "x": 1813192
+  },
+  {
+    "assetId": 100056174,
+    "name": "Daly's Clearing Hut",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5847783,
+    "x": 1844296
+  },
+  {
+    "assetId": 100061993,
+    "name": "Kiwi Burn Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4965859,
+    "x": 1215485
+  },
+  {
+    "assetId": 100031576,
+    "name": "Ballarat Hut - Flood Burn",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5035532,
+    "x": 1256220
+  },
+  {
+    "assetId": 100035199,
+    "name": "Tarn Bivvy",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5580430,
+    "x": 1868863
+  },
+  {
+    "assetId": 100057624,
+    "name": "Red Stag Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5176177,
+    "x": 1398226
+  },
+  {
+    "assetId": 100055177,
+    "name": "Makino Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5656637,
+    "x": 1894320
+  },
+  {
+    "assetId": 100033869,
+    "name": "Polluck Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5229841.6872,
+    "x": 1422640.4457
+  },
+  {
+    "assetId": 100081587,
+    "name": "Stafford Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5118901,
+    "x": 1242801
+  },
+  {
+    "assetId": 100060765,
+    "name": "Raukawa Lodge",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5421260,
+    "x": 1765313
+  },
+  {
+    "assetId": 100034811,
+    "name": "Anderson Memorial Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5475614,
+    "x": 1798612
+  },
+  {
+    "assetId": 100034516,
+    "name": "Anderson's Hut",
+    "status": "CLSD",
+    "region": "Canterbury",
+    "y": 5249776,
+    "x": 1531147
+  },
+  {
+    "assetId": 100064126,
+    "name": "Mount Misery Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5357484,
+    "x": 1572686
+  },
+  {
+    "assetId": 100075442,
+    "name": "Empress Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5169106,
+    "x": 1367669
+  },
+  {
+    "assetId": 100097446,
+    "name": "Maropea Forks Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5597518.006,
+    "x": 1868981.5017
+  },
+  {
+    "assetId": 100098295,
+    "name": "Whangamarino Duck Hut B",
+    "status": "OPEN",
+    "region": null,
+    "y": 5863530,
+    "x": 1793412
+  },
+  {
+    "assetId": 100061936,
+    "name": "Carroll Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5261369,
+    "x": 1481628
+  },
+  {
+    "assetId": 100075317,
+    "name": "Montgomerie Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5333135,
+    "x": 1517169
+  },
+  {
+    "assetId": 100085931,
+    "name": "Pool Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5306206,
+    "x": 1568363
+  },
+  {
+    "assetId": 100072022,
+    "name": "Martin's Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4864030,
+    "x": 1203899
+  },
+  {
+    "assetId": 100059475,
+    "name": "Cotters Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5081986,
+    "x": 1322474
+  },
+  {
+    "assetId": 100060060,
+    "name": "Kahurangi Keepers house",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5485893.7079,
+    "x": 1534850.8818
+  },
+  {
+    "assetId": 100097715,
+    "name": "Pāhautea Hut",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5792855,
+    "x": 1783688
+  },
+  {
+    "assetId": 100060104,
+    "name": "John Reid Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5416493.2661,
+    "x": 1562345
+  },
+  {
+    "assetId": 100059331,
+    "name": "Albert Burn Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5082498,
+    "x": 1283943
+  },
+  {
+    "assetId": 100065464,
+    "name": "Otapukawa Hut",
+    "status": "CLSD",
+    "region": null,
+    "y": 5742484,
+    "x": 1962379
+  },
+  {
+    "assetId": 100054666,
+    "name": "Rocky Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5261669,
+    "x": 1469905
+  },
+  {
+    "assetId": 100060140,
+    "name": "Larrikin Creek Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5398873,
+    "x": 1542961
+  },
+  {
+    "assetId": 100071870,
+    "name": "Worsley Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5010419,
+    "x": 1192427
+  },
+  {
+    "assetId": 100042165,
+    "name": "Sawyer Burn Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5075128,
+    "x": 1302021
+  },
+  {
+    "assetId": 100055422,
+    "name": "Stanfield Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5558011,
+    "x": 1859799
+  },
+  {
+    "assetId": 100060707,
+    "name": "Meg Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5018801,
+    "x": 1288726
+  },
+  {
+    "assetId": 100060749,
+    "name": "Cameron Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5196509,
+    "x": 1439419
+  },
+  {
+    "assetId": 100072834,
+    "name": "Ngamoko Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5563850,
+    "x": 1860484
+  },
+  {
+    "assetId": 100042893,
+    "name": "Old Woman Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4986413,
+    "x": 1291415
+  },
+  {
+    "assetId": 100061399,
+    "name": "Wharfedale Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5216782,
+    "x": 1522189
+  },
+  {
+    "assetId": 100075784,
+    "name": "Locke Stream Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5267415,
+    "x": 1504246
+  },
+  {
+    "assetId": 100074854,
+    "name": "Greenstone Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5008244,
+    "x": 1226491
+  },
+  {
+    "assetId": 100040089,
+    "name": "Karamea Bend Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5435279,
+    "x": 1559019
+  },
+  {
+    "assetId": 100059348,
+    "name": "Mid Taipo Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5254660,
+    "x": 1472807
+  },
+  {
+    "assetId": 100059546,
+    "name": "Broken River Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5217451,
+    "x": 1505424
+  },
+  {
+    "assetId": 100061543,
+    "name": "Lake McRae Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5329353,
+    "x": 1625874
+  },
+  {
+    "assetId": 100064358,
+    "name": "Bushline Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5368336,
+    "x": 1585312
+  },
+  {
+    "assetId": 100082270,
+    "name": "Tailings Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5029195,
+    "x": 1381982
+  },
+  {
+    "assetId": 10000143,
+    "name": "South Huxley Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5117796.5034,
+    "x": 1338955.0055
+  },
+  {
+    "assetId": 100074443,
+    "name": "Green Lake Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4914513,
+    "x": 1164728
+  },
+  {
+    "assetId": 100000538,
+    "name": "Scone Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5194481,
+    "x": 1403028
+  },
+  {
+    "assetId": 100055431,
+    "name": "Ruahine Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5616151,
+    "x": 1885665
+  },
+  {
+    "assetId": 100075557,
+    "name": "Mt Sunday Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5415586,
+    "x": 1656765
+  },
+  {
+    "assetId": 100060122,
+    "name": "Balloon Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5442404,
+    "x": 1568318
+  },
+  {
+    "assetId": 100063246,
+    "name": "Boyle Flat Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5298300,
+    "x": 1555600
+  },
+  {
+    "assetId": 100055715,
+    "name": "Top Gorge Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5571261,
+    "x": 1865149
+  },
+  {
+    "assetId": 100080909,
+    "name": "Fern Burn Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5038111,
+    "x": 1282099
+  },
+  {
+    "assetId": 100062367,
+    "name": "Blowfly Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5144677,
+    "x": 1306016
+  },
+  {
+    "assetId": 100062596,
+    "name": "Hurunui No. 3 Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5271909,
+    "x": 1517110
+  },
+  {
+    "assetId": 100063240,
+    "name": "Dorset Ridge Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5479786,
+    "x": 1804334
+  },
+  {
+    "assetId": 100059146,
+    "name": "Top Forks Old Hut",
+    "status": "OPEN",
+    "region": null,
+    "y": 5089425,
+    "x": 1272082
+  },
+  {
+    "assetId": 100061494,
+    "name": "Edwards Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5244671,
+    "x": 1489625
+  },
+  {
+    "assetId": 100073234,
+    "name": "Middle Hill Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5652386,
+    "x": 1895686
+  },
+  {
+    "assetId": 100060112,
+    "name": "Castle Rock Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5465484,
+    "x": 1596102
+  },
+  {
+    "assetId": 100065467,
+    "name": "Oronui Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5795430.1946,
+    "x": 2039331.208
+  },
+  {
+    "assetId": 100059887,
+    "name": "Middy Creek Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5418527,
+    "x": 1632834
+  },
+  {
+    "assetId": 100075868,
+    "name": "Asbestos Cottage",
+    "status": "CLSD",
+    "region": "Nelson/Tasman",
+    "y": 5446811,
+    "x": 1574164
+  },
+  {
+    "assetId": 100072306,
+    "name": "Kiritaki Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5547205,
+    "x": 1848496
+  },
+  {
+    "assetId": 100043828,
+    "name": "Freds Camp Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4790521,
+    "x": 1217700
+  },
+  {
+    "assetId": 100083563,
+    "name": "Scotties Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5302449,
+    "x": 1570383
+  },
+  {
+    "assetId": 100031570,
+    "name": "Steele Creek Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5014107,
+    "x": 1222335
+  },
+  {
+    "assetId": 100062043,
+    "name": "Jim's Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5301202,
+    "x": 1495584
+  },
+  {
+    "assetId": 100034882,
+    "name": "Kings Creek Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5409427.4267,
+    "x": 1556676.8193
+  },
+  {
+    "assetId": 100055526,
+    "name": "Port William Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4801353.9749,
+    "x": 1225379.4483
+  },
+  {
+    "assetId": 100098290,
+    "name": "Kopuatai Duck Hut 9",
+    "status": "OPEN",
+    "region": null,
+    "y": 5853554,
+    "x": 1822877
+  },
+  {
+    "assetId": 100064215,
+    "name": "Bottom Gordon Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5358366,
+    "x": 1611592
+  },
+  {
+    "assetId": 100091403,
+    "name": "Siberia Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5097831.1091,
+    "x": 1285328.2776
+  },
+  {
+    "assetId": 100055450,
+    "name": "Newton Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5255572,
+    "x": 1467430
+  },
+  {
+    "assetId": 100044063,
+    "name": "Puketotara Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5642563,
+    "x": 1770315
+  },
+  {
+    "assetId": 100043902,
+    "name": "Dracophyllum Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5484067,
+    "x": 1801660
+  },
+  {
+    "assetId": 100038360,
+    "name": "Heather Jock Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5023195,
+    "x": 1240933
+  },
+  {
+    "assetId": 100030272,
+    "name": "Zekes Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5619622,
+    "x": 1836066
+  },
+  {
+    "assetId": 100061762,
+    "name": "Tiraumea Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5360357,
+    "x": 1565332
+  },
+  {
+    "assetId": 100039503,
+    "name": "Crow Hut",
+    "status": "OPEN",
+    "region": null,
+    "y": 5796737,
+    "x": 1860619
+  },
+  {
+    "assetId": 100000552,
+    "name": "Browning Range Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5248149,
+    "x": 1459125
+  },
+  {
+    "assetId": 100055713,
+    "name": "Howletts Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5578178,
+    "x": 1867260
+  },
+  {
+    "assetId": 100034619,
+    "name": "Adventure Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5240687.7733,
+    "x": 1450401.8547
+  },
+  {
+    "assetId": 100062380,
+    "name": "Tunnel Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5142463,
+    "x": 1321506
+  },
+  {
+    "assetId": 100072934,
+    "name": "Mangaturuturu Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5647243,
+    "x": 1815759
+  },
+  {
+    "assetId": 100065846,
+    "name": "Pioneer Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5176378,
+    "x": 1372223
+  },
+  {
+    "assetId": 100074848,
+    "name": "Aspiring Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5065965,
+    "x": 1254847
+  },
+  {
+    "assetId": 100035408,
+    "name": "Aparima Forks Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4929954,
+    "x": 1205088
+  },
+  {
+    "assetId": 100040768,
+    "name": "Buckland Peak Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5363254,
+    "x": 1486234
+  },
+  {
+    "assetId": 100072737,
+    "name": "Te Pourewa Hut",
+    "status": "CLSD",
+    "region": null,
+    "y": 5739512,
+    "x": 1958702
+  },
+  {
+    "assetId": 100064309,
+    "name": "Branch Creek Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5402973.841,
+    "x": 1559216.8699
+  },
+  {
+    "assetId": 100043237,
+    "name": "Carney's Bivvy No. 2",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5181421,
+    "x": 1410986
+  },
+  {
+    "assetId": 100056329,
+    "name": "Aparima Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4926289,
+    "x": 1210762
+  },
+  {
+    "assetId": 100062969,
+    "name": "Mitre Flats Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5477084,
+    "x": 1808985
+  },
+  {
+    "assetId": 100030937,
+    "name": "Little Glory Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4786289,
+    "x": 1231432
+  },
+  {
+    "assetId": 100072448,
+    "name": "Oreti Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4951981,
+    "x": 1219150
+  },
+  {
+    "assetId": 100059545,
+    "name": "Weka Burnet Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5231971,
+    "x": 1464658
+  },
+  {
+    "assetId": 100065473,
+    "name": "McCoy Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5194766,
+    "x": 1419810
+  },
+  {
+    "assetId": 100054155,
+    "name": "Shallow Bay Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4948118,
+    "x": 1179063
+  },
+  {
+    "assetId": 100074877,
+    "name": "Clark Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4914178,
+    "x": 1158384
+  },
+  {
+    "assetId": 100057250,
+    "name": "Central Whirinaki Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5702317,
+    "x": 1917384
+  },
+  {
+    "assetId": 100063534,
+    "name": "Maketawa Hut",
+    "status": "OPEN",
+    "region": "Taranaki",
+    "y": 5651393,
+    "x": 1694790
+  },
+  {
+    "assetId": 100033575,
+    "name": "Dickie Spur Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5230443,
+    "x": 1426510
+  },
+  {
+    "assetId": 100089121,
+    "name": "Tūrere Lodge",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5422118,
+    "x": 1766037
+  },
+  {
+    "assetId": 100035133,
+    "name": "Mid Trent Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5273063,
+    "x": 1509415
+  },
+  {
+    "assetId": 100098291,
+    "name": "Kopuatai Duck Hut 10",
+    "status": "OPEN",
+    "region": null,
+    "y": 5854184,
+    "x": 1822880
+  },
+  {
+    "assetId": 100098297,
+    "name": "Whangamarino Duck Hut E",
+    "status": "OPEN",
+    "region": null,
+    "y": 5865530,
+    "x": 1789244
+  },
+  {
+    "assetId": 100038197,
+    "name": "Alice Nash Memorial Heritage Lodge",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5572918,
+    "x": 1857795
+  },
+  {
+    "assetId": 100094217,
+    "name": "South Opuha Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5137649,
+    "x": 1417462
+  },
+  {
+    "assetId": 100040559,
+    "name": "Sabine Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5361125,
+    "x": 1573516
+  },
+  {
+    "assetId": 100061613,
+    "name": "Zoo Hut",
+    "status": "CLSD",
+    "region": "Marlborough",
+    "y": 5358312,
+    "x": 1676781
+  },
+  {
+    "assetId": 100033576,
+    "name": "Mikonui Spur Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5233867,
+    "x": 1431895
+  },
+  {
+    "assetId": 100055584,
+    "name": "Nolans Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5197300,
+    "x": 1395900
+  },
+  {
+    "assetId": 100060785,
+    "name": "Cone Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5459973,
+    "x": 1797244
+  },
+  {
+    "assetId": 100062081,
+    "name": "Monowai Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4908816,
+    "x": 1161179
+  },
+  {
+    "assetId": 100056297,
+    "name": "Turnbull's (Big Dam) Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4860661,
+    "x": 1203492
+  },
+  {
+    "assetId": 100102372,
+    "name": "Creswicke Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5131353,
+    "x": 1334171
+  },
+  {
+    "assetId": 100081794,
+    "name": "East Hawdon Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5249568,
+    "x": 1500041
+  },
+  {
+    "assetId": 100034944,
+    "name": "Blue Lake Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5343732,
+    "x": 1571514
+  },
+  {
+    "assetId": 100075164,
+    "name": "Toaroha Saddle Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5234866,
+    "x": 1450613
+  },
+  {
+    "assetId": 100061741,
+    "name": "Top Wairoa Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5393410,
+    "x": 1606208
+  },
+  {
+    "assetId": 100059969,
+    "name": "Lower Goulter Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5393219.1122,
+    "x": 1614665.4295
+  },
+  {
+    "assetId": 100038673,
+    "name": "Officers Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5122115,
+    "x": 1338908
+  },
+  {
+    "assetId": 100043518,
+    "name": "Esquilant Bivvy Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5049512,
+    "x": 1235585
+  },
+  {
+    "assetId": 100031288,
+    "name": "Tutu Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5289036,
+    "x": 1567694
+  },
+  {
+    "assetId": 100075837,
+    "name": "Holly Hut",
+    "status": "OPEN",
+    "region": "Taranaki",
+    "y": 5653249,
+    "x": 1690231
+  },
+  {
+    "assetId": 100059145,
+    "name": "Top Forks Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5089433,
+    "x": 1272087
+  },
+  {
+    "assetId": 100040275,
+    "name": "Potts Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5182660,
+    "x": 1435924
+  },
+  {
+    "assetId": 100061505,
+    "name": "Hopeless Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5357924,
+    "x": 1579811
+  },
+  {
+    "assetId": 100054490,
+    "name": "Big Bay Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5083290,
+    "x": 1210308
+  },
+  {
+    "assetId": 100041044,
+    "name": "Hauhungaroa Hut",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5708026,
+    "x": 1818820
+  },
+  {
+    "assetId": 100064078,
+    "name": "Stone Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5414377.0239,
+    "x": 1553145.3656
+  },
+  {
+    "assetId": 100075434,
+    "name": "Slaty Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5289303,
+    "x": 1524841
+  },
+  {
+    "assetId": 100058399,
+    "name": "Careys Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4984741,
+    "x": 1220153
+  },
+  {
+    "assetId": 100062383,
+    "name": "Douglas Rock Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5162385,
+    "x": 1359601
+  },
+  {
+    "assetId": 100063183,
+    "name": "Mid Robinson Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5294366,
+    "x": 1524747
+  },
+  {
+    "assetId": 100062598,
+    "name": "Hope Kiwi Lodge",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5278654,
+    "x": 1537482
+  },
+  {
+    "assetId": 100039578,
+    "name": "Young Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5101293,
+    "x": 1287426
+  },
+  {
+    "assetId": 100063445,
+    "name": "Hooker Hut",
+    "status": "CLSD",
+    "region": "Canterbury",
+    "y": 5157433,
+    "x": 1365730
+  },
+  {
+    "assetId": 100034979,
+    "name": "Black Hill Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5218796,
+    "x": 1519231
+  },
+  {
+    "assetId": 100055692,
+    "name": "Freshwater Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4796934,
+    "x": 1212859
+  },
+  {
+    "assetId": 100062449,
+    "name": "Maori Saddle Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5142013,
+    "x": 1300347
+  },
+  {
+    "assetId": 100065459,
+    "name": "Duckville Hut",
+    "status": "CLSD",
+    "region": null,
+    "y": 5746829,
+    "x": 1938928
+  },
+  {
+    "assetId": 100039054,
+    "name": "Waitawheta Hut",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5843046,
+    "x": 1847987
+  },
+  {
+    "assetId": 100040566,
+    "name": "Centennial Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5178700,
+    "x": 1376400
+  },
+  {
+    "assetId": 100044065,
+    "name": "Nardoo Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5339300,
+    "x": 1552800
+  },
+  {
+    "assetId": 100061023,
+    "name": "Waingongoro Hut",
+    "status": "OPEN",
+    "region": "Taranaki",
+    "y": 5647265,
+    "x": 1695719
+  },
+  {
+    "assetId": 100075825,
+    "name": "Upper Gridiron Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5442274,
+    "x": 1574528
+  },
+  {
+    "assetId": 100065471,
+    "name": "Forbes Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5184879,
+    "x": 1409763
+  },
+  {
+    "assetId": 100064237,
+    "name": "Penk Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5373652,
+    "x": 1656681
+  },
+  {
+    "assetId": 100043653,
+    "name": "Martins Bay Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5078755,
+    "x": 1201636
+  },
+  {
+    "assetId": 100039195,
+    "name": "Grassy Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5249774,
+    "x": 1460531
+  },
+  {
+    "assetId": 100062767,
+    "name": "Kapakapanui Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5468231,
+    "x": 1781513
+  },
+  {
+    "assetId": 100055428,
+    "name": "Waikamaka Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5588456.8164,
+    "x": 1868255.9809
+  },
+  {
+    "assetId": 100096404,
+    "name": "Mid Caples Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5018182,
+    "x": 1226751
+  },
+  {
+    "assetId": 100034815,
+    "name": "Dundas Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5489785,
+    "x": 1808293
+  },
+  {
+    "assetId": 100040830,
+    "name": "Waihāhā Hut",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5713854,
+    "x": 1826196
+  },
+  {
+    "assetId": 100054107,
+    "name": "Top Crooked Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5271185,
+    "x": 1492797
+  },
+  {
+    "assetId": 100060745,
+    "name": "West Mathias Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5218924,
+    "x": 1444706
+  },
+  {
+    "assetId": 100075848,
+    "name": "Brown Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5477704.2792,
+    "x": 1553400.2894
+  },
+  {
+    "assetId": 100098283,
+    "name": "Kopuatai Duck Hut 1",
+    "status": "OPEN",
+    "region": null,
+    "y": 5858686,
+    "x": 1823263
+  },
+  {
+    "assetId": 100033712,
+    "name": "Cameron Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5637868,
+    "x": 1883586
+  },
+  {
+    "assetId": 100062208,
+    "name": "Rapid Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5235997,
+    "x": 1437922
+  },
+  {
+    "assetId": 100064268,
+    "name": "Branch Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5354100,
+    "x": 1602900
+  },
+  {
+    "assetId": 100034569,
+    "name": "South Temple Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5108200,
+    "x": 1340099
+  },
+  {
+    "assetId": 100034565,
+    "name": "Ahuriri Base Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5092287,
+    "x": 1328593
+  },
+  {
+    "assetId": 100058116,
+    "name": "Lane Cove Hut",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6125356,
+    "x": 1666690
+  },
+  {
+    "assetId": 100054927,
+    "name": "Hapi Daze Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5567833.0479,
+    "x": 1868192.5135
+  },
+  {
+    "assetId": 100064479,
+    "name": "Waterfall Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5586582,
+    "x": 1866501
+  },
+  {
+    "assetId": 100061861,
+    "name": "Cheviot Downs Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4933584,
+    "x": 1193591
+  },
+  {
+    "assetId": 100128448,
+    "name": "Pororari Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5330060,
+    "x": 1469897
+  },
+  {
+    "assetId": 100031292,
+    "name": "Lower Windley Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4949494,
+    "x": 1224712
+  },
+  {
+    "assetId": 100059095,
+    "name": "Borland Bivvy",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4919457,
+    "x": 1162299
+  },
+  {
+    "assetId": 100132129,
+    "name": "Te Whare Okioki",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5814882,
+    "x": 1856789
+  },
+  {
+    "assetId": 100072305,
+    "name": "Daphne Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5577144,
+    "x": 1868760
+  },
+  {
+    "assetId": 100034584,
+    "name": "Ranger Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5254545,
+    "x": 1509816
+  },
+  {
+    "assetId": 100040276,
+    "name": "Boundary Creek Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5178580,
+    "x": 1444162
+  },
+  {
+    "assetId": 100075435,
+    "name": "Cone Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5273673,
+    "x": 1496216
+  },
+  {
+    "assetId": 100031572,
+    "name": "Dynamo Red Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5029702,
+    "x": 1256219
+  },
+  {
+    "assetId": 100090949,
+    "name": "Upper Lords Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4774600,
+    "x": 1224227
+  },
+  {
+    "assetId": 100095579,
+    "name": "Mt Curtis Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5360981,
+    "x": 1520866
+  },
+  {
+    "assetId": 100059788,
+    "name": "Wharepapa Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5423076,
+    "x": 1773735
+  },
+  {
+    "assetId": 100061607,
+    "name": "Top Gordon Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5357775,
+    "x": 1616195
+  },
+  {
+    "assetId": 100075444,
+    "name": "Tasman Saddle Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5178692,
+    "x": 1385158
+  },
+  {
+    "assetId": 100075440,
+    "name": "Barron Saddle Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5150402,
+    "x": 1358519
+  },
+  {
+    "assetId": 100054641,
+    "name": "Longview Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5572975,
+    "x": 1866736
+  },
+  {
+    "assetId": 100039845,
+    "name": "Abrahams Bay Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4788583,
+    "x": 1221316
+  },
+  {
+    "assetId": 100038295,
+    "name": "Devils Den Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5295820,
+    "x": 1541985
+  },
+  {
+    "assetId": 100072396,
+    "name": "Dunns Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5256345,
+    "x": 1471584
+  },
+  {
+    "assetId": 100057908,
+    "name": "Loch Maree Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4923812,
+    "x": 1137909
+  },
+  {
+    "assetId": 100072451,
+    "name": "Yankee River Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4816054,
+    "x": 1209196
+  },
+  {
+    "assetId": 100059963,
+    "name": "Lake Alexander Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5377822,
+    "x": 1655026
+  },
+  {
+    "assetId": 100060647,
+    "name": "Baikie Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5111920,
+    "x": 1365081
+  },
+  {
+    "assetId": 100061893,
+    "name": "Mid Styx Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5249274,
+    "x": 1456731
+  },
+  {
+    "assetId": 100056872,
+    "name": "Moerangi Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5704619,
+    "x": 1923632
+  },
+  {
+    "assetId": 100059099,
+    "name": "Hauroko Burn Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4908077,
+    "x": 1145313
+  },
+  {
+    "assetId": 100063991,
+    "name": "Old Man Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5402900,
+    "x": 1622600
+  },
+  {
+    "assetId": 100083035,
+    "name": "Stone Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5160525,
+    "x": 1420362
+  },
+  {
+    "assetId": 100033740,
+    "name": "Mākāretu Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5567258,
+    "x": 1866023
+  },
+  {
+    "assetId": 100033737,
+    "name": "Back Ridge Bivouac",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5645876,
+    "x": 1887284
+  },
+  {
+    "assetId": 100130661,
+    "name": "Ōtamahua Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5169327.5227,
+    "x": 1575568.7234
+  },
+  {
+    "assetId": 100081518,
+    "name": "Lower Arahura Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5253773,
+    "x": 1461131
+  },
+  {
+    "assetId": 100031291,
+    "name": "Upper Wairaki Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4922677,
+    "x": 1202396
+  },
+  {
+    "assetId": 100061742,
+    "name": "Mid Wairoa Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5397881,
+    "x": 1610133
+  },
+  {
+    "assetId": 100033708,
+    "name": "Barlow Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5599001,
+    "x": 1875356
+  },
+  {
+    "assetId": 100062481,
+    "name": "Historic Price Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5225424,
+    "x": 1437756
+  },
+  {
+    "assetId": 100075588,
+    "name": "St Jacob's Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5282771,
+    "x": 1537359
+  },
+  {
+    "assetId": 100061260,
+    "name": "Puteore Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5640709,
+    "x": 1754174
+  },
+  {
+    "assetId": 100043894,
+    "name": "Nicholsons Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4970761,
+    "x": 1301260
+  },
+  {
+    "assetId": 100054572,
+    "name": "County Stream Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5219380,
+    "x": 1425231
+  },
+  {
+    "assetId": 100062578,
+    "name": "Bealey Spur Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5234390,
+    "x": 1483529
+  },
+  {
+    "assetId": 100072825,
+    "name": "Traverse (A-Frame) Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5555992.3724,
+    "x": 1856896.2373
+  },
+  {
+    "assetId": 100059504,
+    "name": "Julia Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5249372,
+    "x": 1471329
+  },
+  {
+    "assetId": 100060063,
+    "name": "Cobb Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5454923,
+    "x": 1560090
+  },
+  {
+    "assetId": 100064308,
+    "name": "Lees Creek Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5356524,
+    "x": 1597906
+  },
+  {
+    "assetId": 100097382,
+    "name": "Specimen Point Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5400426,
+    "x": 1529290
+  },
+  {
+    "assetId": 100090254,
+    "name": "Garston Ski Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4957821,
+    "x": 1267531
+  },
+  {
+    "assetId": 100082269,
+    "name": "Chimney Creek Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5033708,
+    "x": 1377746
+  },
+  {
+    "assetId": 100054573,
+    "name": "Serpentine Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5235877,
+    "x": 1443531
+  },
+  {
+    "assetId": 100056298,
+    "name": "Waipakihi Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5665308,
+    "x": 1855737
+  },
+  {
+    "assetId": 100058149,
+    "name": "Lower Princhester Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4938728,
+    "x": 1206246
+  },
+  {
+    "assetId": 100090113,
+    "name": "Anne Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5311131,
+    "x": 1561202
+  },
+  {
+    "assetId": 100042895,
+    "name": "Junction Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4953221,
+    "x": 1301952
+  },
+  {
+    "assetId": 100040519,
+    "name": "Mangaotane Hut (McMillans)",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5772411,
+    "x": 2018740
+  },
+  {
+    "assetId": 100055374,
+    "name": "Omarukokere Bivvy",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5650377,
+    "x": 1884079
+  },
+  {
+    "assetId": 100074496,
+    "name": "Taipo Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 5000278,
+    "x": 1223775
+  },
+  {
+    "assetId": 100059540,
+    "name": "Elcho Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5130866,
+    "x": 1345564
+  },
+  {
+    "assetId": 100054890,
+    "name": "Big Hellfire Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4802026,
+    "x": 1198598
+  },
+  {
+    "assetId": 100040748,
+    "name": "Frampton's Hut",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6070069,
+    "x": 1642880
+  },
+  {
+    "assetId": 100060127,
+    "name": "Flora Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5440951,
+    "x": 1577370
+  },
+  {
+    "assetId": 100073399,
+    "name": "Central Te Hoe Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5691255,
+    "x": 1926810
+  },
+  {
+    "assetId": 100081276,
+    "name": "Red Hills Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5380072.1281,
+    "x": 1599298.5164
+  },
+  {
+    "assetId": 100072560,
+    "name": "Greys Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5434543,
+    "x": 1539304
+  },
+  {
+    "assetId": 100041832,
+    "name": "Tahupo Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5633664,
+    "x": 1752712
+  },
+  {
+    "assetId": 100094828,
+    "name": "Anchorage Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5466023.4452,
+    "x": 1604855.3668
+  },
+  {
+    "assetId": 100063698,
+    "name": "Waiaua Gorge Hut",
+    "status": "OPEN",
+    "region": "Taranaki",
+    "y": 5646656,
+    "x": 1686514
+  },
+  {
+    "assetId": 100059096,
+    "name": "Lake Roe Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4922186,
+    "x": 1144130
+  },
+  {
+    "assetId": 100060561,
+    "name": "Brodrick Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5125698.0511,
+    "x": 1337622.4432
+  },
+  {
+    "assetId": 100064155,
+    "name": "West Sabine Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5349310,
+    "x": 1573829
+  },
+  {
+    "assetId": 100037975,
+    "name": "Deas Cove Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4977839,
+    "x": 1126615
+  },
+  {
+    "assetId": 100062671,
+    "name": "Copland Shelter",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5162374,
+    "x": 1366022
+  },
+  {
+    "assetId": 100072706,
+    "name": "Rangipo Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5646639,
+    "x": 1826248
+  },
+  {
+    "assetId": 100031574,
+    "name": "Murchison Hut",
+    "status": "CLSD",
+    "region": null,
+    "y": 5178200,
+    "x": 1389400
+  },
+  {
+    "assetId": 100075437,
+    "name": "Elizabeth Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5273077,
+    "x": 1500359
+  },
+  {
+    "assetId": 100033776,
+    "name": "Moonbeam Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5221266.441,
+    "x": 1421726.6685
+  },
+  {
+    "assetId": 100060064,
+    "name": "Tent Camp",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5453789,
+    "x": 1561052
+  },
+  {
+    "assetId": 100063328,
+    "name": "Tīeke Marae/Kāinga",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5643888,
+    "x": 1771772
+  },
+  {
+    "assetId": 100064345,
+    "name": "East Matakitaki Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5328538,
+    "x": 1563414
+  },
+  {
+    "assetId": 100064236,
+    "name": "Hidden Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5379070,
+    "x": 1624601
+  },
+  {
+    "assetId": 100055565,
+    "name": "Mullins Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5237844.9476,
+    "x": 1447032.8007
+  },
+  {
+    "assetId": 100062543,
+    "name": "Spurs Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5145177,
+    "x": 1428886
+  },
+  {
+    "assetId": 100061031,
+    "name": "Downes Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5600434,
+    "x": 1782684
+  },
+  {
+    "assetId": 100130805,
+    "name": "Powell Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5471197.5287,
+    "x": 1804243.0483
+  },
+  {
+    "assetId": 100081613,
+    "name": "Lame Duck Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5155920,
+    "x": 1347570
+  },
+  {
+    "assetId": 100062278,
+    "name": "Poet Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5233571,
+    "x": 1449475
+  },
+  {
+    "assetId": 100037700,
+    "name": "Magdalen Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5294869,
+    "x": 1556845
+  },
+  {
+    "assetId": 10000116,
+    "name": "Mae West Biv",
+    "status": "OPEN",
+    "region": null,
+    "y": 5071663.2883,
+    "x": 1318889.8182
+  },
+  {
+    "assetId": 100075680,
+    "name": "Bark Bay Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5470553,
+    "x": 1604093
+  },
+  {
+    "assetId": 100034567,
+    "name": "Reardon Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5145637,
+    "x": 1358617
+  },
+  {
+    "assetId": 100059208,
+    "name": "Slip Flat Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5011033,
+    "x": 1227263
+  },
+  {
+    "assetId": 100058155,
+    "name": "The Gut Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4966409,
+    "x": 1126117
+  },
+  {
+    "assetId": 100082273,
+    "name": "Brown Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5025788,
+    "x": 1383994
+  },
+  {
+    "assetId": 100064238,
+    "name": "Saxton Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5344074,
+    "x": 1612548
+  },
+  {
+    "assetId": 100060066,
+    "name": "Waingaro Forks Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5456140,
+    "x": 1572620
+  },
+  {
+    "assetId": 100054631,
+    "name": "Harkness Hut ",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5656579,
+    "x": 1879672
+  },
+  {
+    "assetId": 100039234,
+    "name": "North Ohau Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5492098,
+    "x": 1802994
+  },
+  {
+    "assetId": 100060268,
+    "name": "Wills Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5117670,
+    "x": 1316255
+  },
+  {
+    "assetId": 100060566,
+    "name": "Grough Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5130987,
+    "x": 1354922
+  },
+  {
+    "assetId": 100042461,
+    "name": "Upper Matakuhia Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5688819.7478,
+    "x": 1911847.4154
+  },
+  {
+    "assetId": 100131850,
+    "name": "Waiotauru Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5465707,
+    "x": 1783955
+  },
+  {
+    "assetId": 100061612,
+    "name": "Isolation Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5360928,
+    "x": 1681683
+  },
+  {
+    "assetId": 100043243,
+    "name": "Godley Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5182823,
+    "x": 1398678
+  },
+  {
+    "assetId": 100038182,
+    "name": "Kiwi Hut",
+    "status": "OPEN",
+    "region": null,
+    "y": 5478914.8742,
+    "x": 1764019.9136
+  },
+  {
+    "assetId": 100054219,
+    "name": "Explorer Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5236779,
+    "x": 1431633
+  },
+  {
+    "assetId": 100063006,
+    "name": "Anti Crow Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5238148,
+    "x": 1478664
+  },
+  {
+    "assetId": 100061174,
+    "name": "Trevor Carter Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5416874.4363,
+    "x": 1549036
+  },
+  {
+    "assetId": 100055373,
+    "name": "Dominie Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5646580,
+    "x": 1892788
+  },
+  {
+    "assetId": 100038435,
+    "name": "Top Kokatahi Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5239476,
+    "x": 1452343
+  },
+  {
+    "assetId": 100062866,
+    "name": "Cold Stream Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5267438,
+    "x": 1549414
+  },
+  {
+    "assetId": 100071868,
+    "name": "Caswell Sound Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4995938,
+    "x": 1151842
+  },
+  {
+    "assetId": 100072296,
+    "name": "Iron Whare",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5649184,
+    "x": 1896089
+  },
+  {
+    "assetId": 100064257,
+    "name": "Kahui Hut",
+    "status": "OPEN",
+    "region": "Taranaki",
+    "y": 5650079,
+    "x": 1687490
+  },
+  {
+    "assetId": 100082268,
+    "name": "Ida Railway Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5029831,
+    "x": 1375398
+  },
+  {
+    "assetId": 100056331,
+    "name": "Irthing Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4958130,
+    "x": 1238432
+  },
+  {
+    "assetId": 100085583,
+    "name": "Pakituhi Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5057059,
+    "x": 1310725
+  },
+  {
+    "assetId": 100060522,
+    "name": "Lawrence Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5198396,
+    "x": 1431565
+  },
+  {
+    "assetId": 100064355,
+    "name": "Morgan Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5352094,
+    "x": 1569355
+  },
+  {
+    "assetId": 100060920,
+    "name": "Maitland Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5098911,
+    "x": 1339814
+  },
+  {
+    "assetId": 100063028,
+    "name": "Mid King Bivvy",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5477511,
+    "x": 1806460
+  },
+  {
+    "assetId": 100054748,
+    "name": "Gerhardt Spur Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5240427,
+    "x": 1444766
+  },
+  {
+    "assetId": 100073711,
+    "name": "Southwest Arm Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4789767,
+    "x": 1218249
+  },
+  {
+    "assetId": 100059503,
+    "name": "Julia Hut (old)",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5249372,
+    "x": 1471429
+  },
+  {
+    "assetId": 100072011,
+    "name": "Christmas Village Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4811041,
+    "x": 1216517
+  },
+  {
+    "assetId": 100094105,
+    "name": "Green Point Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5147723,
+    "x": 1377913
+  },
+  {
+    "assetId": 100061940,
+    "name": "Almer Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5182697.7429,
+    "x": 1374221.8427
+  },
+  {
+    "assetId": 100090255,
+    "name": "McKellar Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5019820,
+    "x": 1216530
+  },
+  {
+    "assetId": 100072003,
+    "name": "Sparrowhawk Bivvy",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5596484,
+    "x": 1872443
+  },
+  {
+    "assetId": 100073360,
+    "name": "Te Panaa Hut",
+    "status": "CLSD",
+    "region": null,
+    "y": 5735224,
+    "x": 1957781
+  },
+  {
+    "assetId": 100055432,
+    "name": "Rockslide Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5609965,
+    "x": 1876903
+  },
+  {
+    "assetId": 100064756,
+    "name": "Benmore Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5197464,
+    "x": 1499256
+  },
+  {
+    "assetId": 100060889,
+    "name": "Cass Saddle Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5227573,
+    "x": 1493517
+  },
+  {
+    "assetId": 100056979,
+    "name": "Motutapere Hut",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5832325,
+    "x": 1850712
+  },
+  {
+    "assetId": 100081146,
+    "name": "Ngapurua Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5640333,
+    "x": 1764392
+  },
+  {
+    "assetId": 100074844,
+    "name": "Bull Flat Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5104749,
+    "x": 1323170
+  },
+  {
+    "assetId": 100061176,
+    "name": "Hunters Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5394683,
+    "x": 1600244
+  },
+  {
+    "assetId": 100064245,
+    "name": "Alfred Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5314070,
+    "x": 1628742
+  },
+  {
+    "assetId": 100062870,
+    "name": "Lucretia Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5302601,
+    "x": 1546411
+  },
+  {
+    "assetId": 100060141,
+    "name": "Begley Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5346429,
+    "x": 1583410
+  },
+  {
+    "assetId": 100056333,
+    "name": "Beech Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4968385,
+    "x": 1242421
+  },
+  {
+    "assetId": 100062366,
+    "name": "Horseshoe Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5143041,
+    "x": 1311576
+  },
+  {
+    "assetId": 100063409,
+    "name": "Mungo Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5234717,
+    "x": 1453040
+  },
+  {
+    "assetId": 100039016,
+    "name": "Forbes Hut (previously Seymour Hut)",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5325492.2242,
+    "x": 1632887.8966
+  },
+  {
+    "assetId": 100072023,
+    "name": "Becketts Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4932089,
+    "x": 1210648
+  },
+  {
+    "assetId": 100039936,
+    "name": "Hapuatuna Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4788096,
+    "x": 1225039
+  },
+  {
+    "assetId": 100058225,
+    "name": "Demon Trail Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5061440,
+    "x": 1208280
+  },
+  {
+    "assetId": 100059343,
+    "name": "Waikiti Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5281360,
+    "x": 1506005
+  },
+  {
+    "assetId": 100063733,
+    "name": "Fidgit Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5330410,
+    "x": 1652019
+  },
+  {
+    "assetId": 100086641,
+    "name": "Papatahi Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5423326.3697,
+    "x": 1769039.157
+  },
+  {
+    "assetId": 100060768,
+    "name": "Sutherlands Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5410080,
+    "x": 1794773
+  },
+  {
+    "assetId": 100061254,
+    "name": "Captains Creek Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5419606,
+    "x": 1636398
+  },
+  {
+    "assetId": 100034926,
+    "name": "Devils Creek Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5414916,
+    "x": 1648227
+  },
+  {
+    "assetId": 100063293,
+    "name": "Mackenzie Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5277770,
+    "x": 1519541
+  },
+  {
+    "assetId": 100060610,
+    "name": "Historic Cedar Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5241634.1394,
+    "x": 1448664.1061
+  },
+  {
+    "assetId": 100064304,
+    "name": "Boulder Lake Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5472247,
+    "x": 1564518
+  },
+  {
+    "assetId": 100030269,
+    "name": "Poulter Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5258962,
+    "x": 1499494
+  },
+  {
+    "assetId": 100059856,
+    "name": "Poulter Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5255217,
+    "x": 1502766
+  },
+  {
+    "assetId": 100034669,
+    "name": "Lake Christabel Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5301420,
+    "x": 1538742
+  },
+  {
+    "assetId": 100092426,
+    "name": "Perry Saddle Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5472079,
+    "x": 1549697
+  },
+  {
+    "assetId": 100063298,
+    "name": "North Esk Hut (dilapidated)",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5260900,
+    "x": 1523900
+  },
+  {
+    "assetId": 100034981,
+    "name": "Packhorse Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5161176,
+    "x": 1575218
+  },
+  {
+    "assetId": 100074899,
+    "name": "Teal Bay Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4882714,
+    "x": 1158783
+  },
+  {
+    "assetId": 100062871,
+    "name": "Lake Man Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5288957,
+    "x": 1536249
+  },
+  {
+    "assetId": 100064348,
+    "name": "Hurricane Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5404800.5166,
+    "x": 1548474.0178
+  },
+  {
+    "assetId": 100041350,
+    "name": "North Tikotatahi Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4774000,
+    "x": 1232065
+  },
+  {
+    "assetId": 100065474,
+    "name": "Lauper Biv",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5207346,
+    "x": 1434882
+  },
+  {
+    "assetId": 100043681,
+    "name": "Hidden Falls Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5047211.7649,
+    "x": 1212411.8927
+  },
+  {
+    "assetId": 100033711,
+    "name": "Kiwi Mouth Hut ",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5642079,
+    "x": 1882649
+  },
+  {
+    "assetId": 100035065,
+    "name": "Flanagans Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5431010,
+    "x": 1565757
+  },
+  {
+    "assetId": 100060150,
+    "name": "John Tait Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5353001,
+    "x": 1580835
+  },
+  {
+    "assetId": 100082272,
+    "name": "Buster Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5022074,
+    "x": 1384038
+  },
+  {
+    "assetId": 100039037,
+    "name": "Plateau Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5170505,
+    "x": 1372664
+  },
+  {
+    "assetId": 100083033,
+    "name": "Royal Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5156077,
+    "x": 1417505
+  },
+  {
+    "assetId": 100072831,
+    "name": "Colenso Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5603939,
+    "x": 1869392
+  },
+  {
+    "assetId": 100122465,
+    "name": "Waiau Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5330161,
+    "x": 1572022
+  },
+  {
+    "assetId": 100040277,
+    "name": "Top Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5190571,
+    "x": 1440438
+  },
+  {
+    "assetId": 100043142,
+    "name": "Two Mile Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4989093,
+    "x": 1270196
+  },
+  {
+    "assetId": 100054931,
+    "name": "Ikawetea Forks Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5612847,
+    "x": 1874592
+  },
+  {
+    "assetId": 100059907,
+    "name": "Lake Matiri Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5388198,
+    "x": 1544238
+  },
+  {
+    "assetId": 100054668,
+    "name": "Kiwi Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5221681,
+    "x": 1416731
+  },
+  {
+    "assetId": 100134889,
+    "name": "Lyell Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5203843,
+    "x": 1430446
+  },
+  {
+    "assetId": 100058413,
+    "name": "Caroline Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4896561,
+    "x": 1156898
+  },
+  {
+    "assetId": 100072269,
+    "name": "Kelly Knight Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5584420,
+    "x": 1861205
+  },
+  {
+    "assetId": 100090233,
+    "name": "Poor Pete's Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5392866,
+    "x": 1543526
+  },
+  {
+    "assetId": 100034550,
+    "name": "Lagoon Saddle Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5232144,
+    "x": 1486080
+  },
+  {
+    "assetId": 100098722,
+    "name": "James Mackay Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5473596.0147,
+    "x": 1534025.8471
+  },
+  {
+    "assetId": 100071768,
+    "name": "Herricks Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5612564,
+    "x": 1886391
+  },
+  {
+    "assetId": 100061609,
+    "name": "Silverstream Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5373179,
+    "x": 1603515
+  },
+  {
+    "assetId": 100031289,
+    "name": "Steyning Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5298004,
+    "x": 1563652
+  },
+  {
+    "assetId": 100072309,
+    "name": "Mid Pohangina Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5561769,
+    "x": 1859013
+  },
+  {
+    "assetId": 100064270,
+    "name": "Top Misery Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5363050,
+    "x": 1599530
+  },
+  {
+    "assetId": 100064165,
+    "name": "George Lyon Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5344932,
+    "x": 1567315
+  },
+  {
+    "assetId": 100074785,
+    "name": "Top Butler Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5189281,
+    "x": 1392727
+  },
+  {
+    "assetId": 100062022,
+    "name": "Mikonui Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5234390,
+    "x": 1426847
+  },
+  {
+    "assetId": 100065711,
+    "name": "Alpha Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5460317,
+    "x": 1791961
+  },
+  {
+    "assetId": 100064247,
+    "name": "Hapuku Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5319770,
+    "x": 1653727
+  },
+  {
+    "assetId": 100043654,
+    "name": "Glaisnock Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5003557,
+    "x": 1182015
+  },
+  {
+    "assetId": 100035094,
+    "name": "Bobs Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5325140,
+    "x": 1557616
+  },
+  {
+    "assetId": 100033509,
+    "name": "Te Waiotukapiti Hut",
+    "status": "CLSD",
+    "region": null,
+    "y": 5697205,
+    "x": 1934842
+  },
+  {
+    "assetId": 100056330,
+    "name": "Spence Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4925956,
+    "x": 1201358
+  },
+  {
+    "assetId": 100075329,
+    "name": "Nina Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5298275,
+    "x": 1544270
+  },
+  {
+    "assetId": 100081354,
+    "name": "Holyoakes Shelter",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5465237,
+    "x": 1600138
+  },
+  {
+    "assetId": 100060120,
+    "name": "Splugeons Rock Shelter",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5438357,
+    "x": 1567158
+  },
+  {
+    "assetId": 100044541,
+    "name": "Neave Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5217179,
+    "x": 1436030
+  },
+  {
+    "assetId": 100063046,
+    "name": "Neill Forks Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5466041,
+    "x": 1798365
+  },
+  {
+    "assetId": 100034879,
+    "name": "Thor Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5421904.6482,
+    "x": 1552958.6152
+  },
+  {
+    "assetId": 100058228,
+    "name": "Boundary Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4990161,
+    "x": 1220981
+  },
+  {
+    "assetId": 100075429,
+    "name": "Cannibal Gorge Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5313788,
+    "x": 1553026
+  },
+  {
+    "assetId": 100060644,
+    "name": "Macaulay Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5171936,
+    "x": 1406513
+  },
+  {
+    "assetId": 100030281,
+    "name": "Stag Flat Shelter",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5416985.5993,
+    "x": 1541062.7032
+  },
+  {
+    "assetId": 100058912,
+    "name": "Dumpling Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5029415.6811,
+    "x": 1185748.9447
+  },
+  {
+    "assetId": 100075783,
+    "name": "Upper Deception Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5251170,
+    "x": 1487026
+  },
+  {
+    "assetId": 100058074,
+    "name": "Olivine Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5067683.2294,
+    "x": 1219137.3811
+  },
+  {
+    "assetId": 100064244,
+    "name": "Kahutara Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5314426,
+    "x": 1633512
+  },
+  {
+    "assetId": 100030575,
+    "name": "McIntyre Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5025002,
+    "x": 1239926
+  },
+  {
+    "assetId": 100039321,
+    "name": "Elder Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5461965,
+    "x": 1787835
+  },
+  {
+    "assetId": 100038662,
+    "name": "Jubilee Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4933978,
+    "x": 1400798
+  },
+  {
+    "assetId": 100054634,
+    "name": "Ballard Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5651398,
+    "x": 1890855
+  },
+  {
+    "assetId": 100089251,
+    "name": "Camp Creek Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5270833,
+    "x": 1482181
+  },
+  {
+    "assetId": 100137053,
+    "name": "Beetham Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5172600,
+    "x": 1377810
+  },
+  {
+    "assetId": 100071997,
+    "name": "Crow Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5593553,
+    "x": 1864264
+  },
+  {
+    "assetId": 100075079,
+    "name": "Horace Walker Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5158072,
+    "x": 1351918
+  },
+  {
+    "assetId": 100073019,
+    "name": "Oturere Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5662173,
+    "x": 1832363
+  },
+  {
+    "assetId": 100033705,
+    "name": "Waipawa Forks Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5589755.1248,
+    "x": 1871854.806
+  },
+  {
+    "assetId": 100035040,
+    "name": "Ministry of Works Historic Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5478389,
+    "x": 1536059
+  },
+  {
+    "assetId": 100081177,
+    "name": "Rodger Inlet Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4906758,
+    "x": 1168636
+  },
+  {
+    "assetId": 100043254,
+    "name": "Wildlife Hut",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5749558,
+    "x": 1814129
+  },
+  {
+    "assetId": 100055423,
+    "name": "Dead Dog Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5613851,
+    "x": 1883197
+  },
+  {
+    "assetId": 100062929,
+    "name": "Herepai Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5492354,
+    "x": 1813196
+  },
+  {
+    "assetId": 100062417,
+    "name": "Watchdog Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5191477,
+    "x": 1420933
+  },
+  {
+    "assetId": 100065847,
+    "name": "Gosling Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5375999,
+    "x": 1628765
+  },
+  {
+    "assetId": 100058723,
+    "name": "Halfway Hut",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4915940,
+    "x": 1144535
+  },
+  {
+    "assetId": 100060565,
+    "name": "Kennedy Memorial Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5136972,
+    "x": 1356075
+  },
+  {
+    "assetId": 100074649,
+    "name": "Clark Hut - A Frame",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4913379,
+    "x": 1159445
+  },
+  {
+    "assetId": 100059802,
+    "name": "Tarn Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5234509,
+    "x": 1530699
+  },
+  {
+    "assetId": 100072193,
+    "name": "Koranga Forks Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5741351,
+    "x": 1974394
+  },
+  {
+    "assetId": 100043140,
+    "name": "Dynamo Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5029969,
+    "x": 1256957
+  },
+  {
+    "assetId": 100041830,
+    "name": "Totara Flats Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5465946,
+    "x": 1802321
+  },
+  {
+    "assetId": 100059653,
+    "name": "Christmas Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5154700,
+    "x": 1350900
+  },
+  {
+    "assetId": 100059543,
+    "name": "Hideaway Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5084352,
+    "x": 1335455
+  },
+  {
+    "assetId": 100061147,
+    "name": "Hacket Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5415049.2003,
+    "x": 1620553.5187
+  },
+  {
+    "assetId": 100059656,
+    "name": "Cassel Flat Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5161163,
+    "x": 1344135
+  },
+  {
+    "assetId": 100055339,
+    "name": "Okui Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5728972.4808,
+    "x": 1930283.9483
+  },
+  {
+    "assetId": 100056129,
+    "name": "Mangamate Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5703875,
+    "x": 1920590
+  },
+  {
+    "assetId": 100062865,
+    "name": "Gabriel Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5269894,
+    "x": 1541846
+  },
+  {
+    "assetId": 100034520,
+    "name": "Urquhart's Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5234027,
+    "x": 1462901
+  },
+  {
+    "assetId": 100061485,
+    "name": "Canyon Creek Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5225567,
+    "x": 1449855
+  },
+  {
+    "assetId": 100034798,
+    "name": "Penn Creek Hut",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5469654,
+    "x": 1792580
+  },
+  {
+    "assetId": 10000096,
+    "name": "Leaning Lodge Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4966341.543,
+    "x": 1372101.6244
+  },
+  {
+    "assetId": 100038193,
+    "name": "Top Hut – Otago",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5048231,
+    "x": 1347002
+  },
+  {
+    "assetId": 100059804,
+    "name": "Lower Salmon Creek Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5220722,
+    "x": 1517118
+  },
+  {
+    "assetId": 100060985,
+    "name": "Mt Rintoul Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5403578,
+    "x": 1618408
+  },
+  {
+    "assetId": 100038263,
+    "name": "Purity Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5587719,
+    "x": 1861589
+  },
+  {
+    "assetId": 100083034,
+    "name": "Dog Kennel Bivvy",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5171993,
+    "x": 1423182
+  },
+  {
+    "assetId": 100072830,
+    "name": "Triangle Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5578325,
+    "x": 1862915
+  },
+  {
+    "assetId": 100055693,
+    "name": "Cavalier Hunters Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4785393,
+    "x": 1198542
+  },
+  {
+    "assetId": 100056832,
+    "name": "Te Rereatukahia Hut ",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5836344,
+    "x": 1849943
+  },
+  {
+    "assetId": 100056212,
+    "name": "Mangaehuehu Hut",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5642048,
+    "x": 1819753
+  },
+  {
+    "assetId": 100039555,
+    "name": "Highland Creek Hut ",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5034121,
+    "x": 1278892
+  },
+  {
+    "assetId": 100054632,
+    "name": "Mangatainoka Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5661980,
+    "x": 1884615
+  },
+  {
+    "assetId": 100043235,
+    "name": "St Winifreds Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5190262,
+    "x": 1412429
+  },
+  {
+    "assetId": 100096756,
+    "name": "Dome Burn Sod Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4936518,
+    "x": 1266565
+  },
+  {
+    "assetId": 100137086,
+    "name": "Winchcombe Biv",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5464246,
+    "x": 1794442
+  },
+  {
+    "assetId": 100063057,
+    "name": "Top Hope Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5284411,
+    "x": 1532352
+  },
+  {
+    "assetId": 100071994,
+    "name": "Taruarau Bivvy",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5618034.2739,
+    "x": 1880856.1488
+  },
+  {
+    "assetId": 10000171,
+    "name": "Pouākai Hut",
+    "status": "OPEN",
+    "region": "Taranaki",
+    "y": 5656613.5617,
+    "x": 1689536.7617
+  },
+  {
+    "assetId": 100056882,
+    "name": "Bog Inn Hut",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5726201,
+    "x": 1828979
+  },
+  {
+    "assetId": 100063076,
+    "name": "Rokeby Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5301939,
+    "x": 1555867
+  },
+  {
+    "assetId": 100060712,
+    "name": "Top Tīmaru Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5069914,
+    "x": 1321725
+  },
+  {
+    "assetId": 100040842,
+    "name": "Mueller Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5154914.4281,
+    "x": 1363552.4399
+  },
+  {
+    "assetId": 100060146,
+    "name": "Lakehead Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5364015,
+    "x": 1585228
+  },
+  {
+    "assetId": 100043238,
+    "name": "Curtis Memorial Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5186393,
+    "x": 1414940
+  },
+  {
+    "assetId": 100033537,
+    "name": "Cromel Base Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4946720,
+    "x": 1237457
+  },
+  {
+    "assetId": 100065857,
+    "name": "West Burn Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4982700,
+    "x": 1219400
+  },
+  {
+    "assetId": 100044464,
+    "name": "Dasler Biv",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5128148,
+    "x": 1346920
+  },
+  {
+    "assetId": 100054640,
+    "name": "Cattle Creek Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5560430,
+    "x": 1861288
+  },
+  {
+    "assetId": 100065470,
+    "name": "Mistake Flat Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5186811,
+    "x": 1413384
+  },
+  {
+    "assetId": 100075073,
+    "name": "Hunters Hut",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5211581,
+    "x": 1417430
+  },
+  {
+    "assetId": 100063239,
+    "name": "Cow Creek Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5483052,
+    "x": 1810208
+  },
+  {
+    "assetId": 100063238,
+    "name": "Carkeek Hut",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5481767,
+    "x": 1802179
+  },
+  {
+    "assetId": 100030128,
+    "name": "Double Hut",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5182688,
+    "x": 1459360
+  },
+  {
+    "assetId": 100035098,
+    "name": "Black Birch Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5381230,
+    "x": 1668256
+  },
+  {
+    "assetId": 100064112,
+    "name": "Fenella Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5455630,
+    "x": 1560105
+  },
+  {
+    "assetId": 100031290,
+    "name": "Ashton Hut",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4963455,
+    "x": 1229571
+  },
+  {
+    "assetId": 100054510,
+    "name": "Pinnacle Bivvy",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5244436,
+    "x": 1451406
+  },
+  {
+    "assetId": 100073237,
+    "name": "Te Puia Hut (Lodge)",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5658562,
+    "x": 1894574
+  },
+  {
+    "assetId": 100060119,
+    "name": "Kiwi Saddle Hut",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5415920.7034,
+    "x": 1557738.6012
+  },
+  {
+    "assetId": 100064246,
+    "name": "Palmer Bivvy",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5312863,
+    "x": 1621135
+  },
+  {
+    "assetId": 100064235,
+    "name": "Fishtail Hut",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5411606,
+    "x": 1640899
+  },
+  {
+    "assetId": 100072304,
+    "name": "Te Ekaou Hut",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5555991.2086,
+    "x": 1849454.3818
+  },
+  {
+    "assetId": 100033714,
+    "name": "Te Pukeohikarua (Te Puke) Hut",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5656681,
+    "x": 1882974
+  },
+  {
+    "assetId": 100059246,
+    "name": "Makarora Hut",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5107604,
+    "x": 1315229
+  },
+  {
+    "assetId": 100054961,
+    "name": "Nikau Flat Hut",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5746028,
+    "x": 1974944
+  },
+  {
+    "assetId": 100085934,
+    "name": "Waimak Gorge - Hamilton Hut",
+    "status": "OPEN",
+    "region": null,
+    "y": 5225534,
+    "x": 1515943
+  }
+]

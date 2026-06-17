@@ -1,0 +1,12 @@
+{
+  "centre_lat": -39.15,
+  "centre_lon": 175.65,
+  "zoom": 13,
+  "centre_tile_x": 8093,
+  "centre_tile_y": 5065,
+  "grid_size": 5,
+  "centre_row": 2,
+  "centre_col": 2,
+  "tile_width_deg": 0.0439453125,
+  "tile_height_deg": 0.03408080555232118
+}
