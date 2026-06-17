@@ -97,6 +97,9 @@ void test_format_timestamp() {
         s, storm, rain, 0.0f, NijntjeState::Walking, disp, 0, 0);
     // Check date portion only — avoid time-zone assumptions
     TEST_ASSERT_EQUAL_INT(0, strncmp(buf, "2026-06-01T", 11));
+    // Timestamp is UTC and must be marked with a trailing 'Z' (index 19, before the comma)
+    TEST_ASSERT_EQUAL('Z', buf[19]);
+    TEST_ASSERT_EQUAL(',', buf[20]);
 }
 
 void test_format_lat_lon() {

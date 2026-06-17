@@ -3,15 +3,13 @@
 #include <Arduino.h>
 #include <math.h>
 #include <LittleFS.h>
+#include <SPI.h>
 #include "config.h"
 #include "debug.h"
 #include "EventLog.h"
 #include "GpsReader.h"
 #include "sensors/RtcReader.h"
-#include "sensors/CompassReader.h"
-#include "sensors/AccelReader.h"
-#include "sensors/Bmp180Reader.h"
-#include "sensors/Aht10Reader.h"
+#include "sensors/Bme280Reader.h"
 #include "sensors/GpsBuffer.h"
 #include "sensors/WeatherBuffer.h"
 #include "sensors/SensorData.h"
@@ -22,45 +20,41 @@
 #include "algorithms/MathUtils.h"
 #include "nijntje/NijntjeState.h"
 #include "LogFormatter.h"
-#include "UartSync.h"
-#include "BuzzerController.h"
+#include "storage/SdLogger.h"
+#include "model/ModelManifest.h"
+#include "model/ModelEvaluator.h"
+#include "model/ModelFormat.h"
 
 // ── Globals ───────────────────────────────────────────────────────────────────
 
 static EventLog      eventLog;
 static RtcReader     rtc;
 static GpsReader     gps;
-static CompassReader compass;
-static AccelReader   accel;
-static Bmp180Reader  bmp180;
-static Aht10Reader   aht10;
+static Bme280Reader  bme280;
+static SdLogger      sdLog;
+static ModelEvaluator modelEval;
 
 static GpsBuffer         gpsBuffer;
 static WeatherBuffer     weatherBuffer;
 static WeatherPrediction rainPred{};
 static WeatherPrediction stormPred{};
 
-static bool compassOk = false;
-static bool accelOk   = false;
-static bool bmp180Ok  = false;
-static bool aht10Ok   = false;
-static bool rtcSynced = false;
+static bool bme280Ok   = false;
+static bool sdOk       = false;
+static bool modelReady = false;
+static bool rtcSynced  = false;
 
-static UartSync          uartSync;
-static BuzzerController  buzzer;
-static SensorData     sensor{};
+static SensorData    sensor{};
 static NijntjeDisplay display{};
-static int            cycleCount = 0;
 
-// Sunrise/sunset cache (local minutes since midnight; -1 = unknown). Refreshed once
-// per day at the first wake ≥ SUN_REFRESH_HOUR, with a one-shot boot bootstrap.
+// Sunrise/sunset cache (local minutes since midnight; -1 = unknown).
+// Refreshed once per day at the first wake ≥ SUN_REFRESH_HOUR.
 static int16_t  cachedSunriseMin = -1;
 static int16_t  cachedSunsetMin  = -1;
-static uint16_t sunCalcDoy       = 0;   // day-of-year the cache holds (0 = never computed)
+static uint16_t sunCalcDoy       = 0;
 
-// Cached readings from last 5-min cycle
-static Bmp180Reading lastPressure{};
-static Aht10Reading  lastEnv{};
+// Track which UTC hour we last ran the model (to run once per hour at :00 wake).
+static uint32_t lastModelRunHour = 0xFFFFFFFF;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -79,20 +73,80 @@ static uint32_t getFreeHeap() {
 #endif
 }
 
-static void writeLogEntry(uint32_t now, uint32_t gpsMs, NijntjeState activity) {
-    File f = LittleFS.open("/data.csv", "a");
-    if (!f) {
-        eventLog.error("LOG_FAIL", "data.csv", now);
-        return;
-    }
+static void logRaw(uint32_t now, uint32_t gpsMs, NijntjeState activity) {
     float pressureRate = weatherBuffer.count() > 1
         ? weatherBuffer.pressureRateHpaPerHour(3) : 0.0f;
-    char buf[220];
+    char buf[240];
     LogFormatter::formatEntry(buf, sizeof(buf), now, sensor,
         stormPred, rainPred, pressureRate, activity, display, gpsMs, getFreeHeap());
-    f.printf("%s\n", buf);
-    f.close();
-    if (sensor.cyberdeckConnected) uartSync.sendEntry(buf);
+    if (!sdLog.appendRaw(buf, now)) {
+        eventLog.error("LOG_FAIL", "raw", now);
+    }
+}
+
+// Build the 9-feature vector from current sensor + weather state.
+// Feature order must match MODEL_FEATURE_NAMES in ModelFormat.h.
+static void buildFeatureVector(float* feat) {
+    // Cyclical time encodings (UTC)
+    uint32_t now = sensor.unixTime;
+    float hourAngle = (2.0f * 3.14159265f / 24.0f) * ((now / 3600) % 24);
+    float doyAngle  = (2.0f * 3.14159265f / 365.0f) *
+                      MathUtils::dayOfYear(
+                          (uint16_t)(1970 + now / 31557600UL),  // approx year
+                          (uint8_t)((now / 2629800UL) % 12 + 1), // approx month
+                          (uint8_t)((now / 86400UL) % 30 + 1));  // approx day
+
+    feat[0] = sensor.pressureAdj;                                   // pressure_hpa
+    feat[1] = sensor.tempC;                                         // temp_c
+    feat[2] = sensor.humidity;                                      // humidity_pct
+    feat[3] = weatherBuffer.pressureRateHpaPerHour(1);              // pressure_rate_1h
+    feat[4] = weatherBuffer.pressureRateHpaPerHour(3);              // pressure_rate_3h
+    feat[5] = sinf(hourAngle);                                      // hour_sin
+    feat[6] = cosf(hourAngle);                                      // hour_cos
+    feat[7] = sinf(doyAngle);                                       // doy_sin
+    feat[8] = cosf(doyAngle);                                       // doy_cos
+}
+
+static void formatIsoUtc(char* buf, size_t len, uint32_t unix) {
+    uint16_t y; uint8_t mo, d, h, mi, s;
+    MathUtils::dateTimeFromUnix(unix, y, mo, d, h, mi, s);
+    snprintf(buf, len, "%04u-%02u-%02uT%02u:%02u:%02uZ", y, mo, d, h, mi, s);
+}
+
+static void runHourlyModel(uint32_t now) {
+    if (!modelReady || !bme280Ok || !sensor.gpsHasFix) return;
+
+    float feat[MODEL_N_FEATURES];
+    buildFeatureVector(feat);
+
+    // Write /inputs row: timestamp + feature values
+    {
+        char row[256]; size_t pos = 0;
+        char ts[24]; formatIsoUtc(ts, sizeof(ts), now);
+        pos += (size_t)snprintf(row + pos, sizeof(row) - pos, "%s", ts);
+        for (uint8_t i = 0; i < MODEL_N_FEATURES && pos < sizeof(row) - 20; i++)
+            pos += (size_t)snprintf(row + pos, sizeof(row) - pos, ",%.4f", feat[i]);
+        sdLog.appendInputs(row, now);
+    }
+
+    auto result = modelEval.evaluate(feat, MODEL_N_FEATURES);
+
+    if (!result.valid) {
+        eventLog.error("MODEL_FAIL", "eval returned invalid", now);
+        return;
+    }
+
+    // Write /pred row: timestamp + output values
+    {
+        char row[256]; size_t pos = 0;
+        char ts[24]; formatIsoUtc(ts, sizeof(ts), now);
+        pos += (size_t)snprintf(row + pos, sizeof(row) - pos, "%s", ts);
+        for (uint8_t i = 0; i < result.n_outputs && pos < sizeof(row) - 20; i++)
+            pos += (size_t)snprintf(row + pos, sizeof(row) - pos, ",%.4f", result.values[i]);
+        sdLog.appendPred(row, now);
+    }
+
+    LOG("model: %u outputs, v[0]=%.3f", result.n_outputs, result.values[0]);
 }
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
@@ -104,6 +158,7 @@ void setup() {
 
     eventLog.begin();
 
+    // RTC
     rtc.begin();
     {
         RtcTime t = rtc.now();
@@ -111,109 +166,111 @@ void setup() {
             eventLog.warn("RTC_INVALID", "awaiting GPS sync", 0);
     }
 
+    // GPS
     gps.begin();
+
+    // GX16 connection detect (interrupt, active-low)
     pinMode(PIN_GX16_DETECT, INPUT_PULLUP);
 
-    // Compass + accel are an IMU pair — disable accel if compass fails
-    compassOk = compass.begin();
-    if (!compassOk) {
-        eventLog.error("SENSOR_FAIL", "compass+accel disabled", 0);
-    } else {
-        accelOk = accel.begin();
-        if (!accelOk) eventLog.warn("SENSOR_FAIL", "accel", 0);
+    // BME280
+    bme280Ok = bme280.begin();
+    if (!bme280Ok) eventLog.error("SENSOR_FAIL", "bme280", 0);
+
+    // SD card
+    SPI.begin(PIN_SPI_SCK, PIN_SPI_MISO, PIN_SPI_MOSI);
+    sdOk = sdLog.begin(PIN_SD_CS);
+    if (!sdOk) {
+        eventLog.warn("SD_FAIL", "logging degraded", 0);
     }
 
-    bmp180Ok = bmp180.begin();
-    if (!bmp180Ok) eventLog.error("SENSOR_FAIL", "bmp180", 0);
+    // ML model (requires SD)
+    if (sdOk) {
+        modelReady = modelEval.begin("/model/manifest.json", "/model/model.bin");
+        if (!modelReady) {
+            eventLog.warn("MODEL_SKIP", "missing or schema mismatch", 0);
+        } else if (!modelEval.schemaValid()) {
+            eventLog.error("MODEL_SCHEMA", "hash mismatch — using rule-based only", 0);
+            modelReady = false;
+        }
+    }
 
-    aht10Ok = aht10.begin();
-    if (!aht10Ok) eventLog.error("SENSOR_FAIL", "aht10", 0);
-
-    uartSync.begin();
-
+    // Restore rolling buffers from LittleFS
     gpsBuffer.seedFromFlash();
     weatherBuffer.seedFromFlash();
 
-    LOG("boot complete");
+    LOG("boot complete | bme280=%d sd=%d model=%d", bme280Ok, sdOk, modelReady);
 }
 
-// ── Main loop (1-min cycle) ───────────────────────────────────────────────────
+// ── Main loop (10-min UTC-aligned wake) ──────────────────────────────────────
 
 void loop() {
     uint32_t cycleStart = millis();
-    cycleCount++;
 
     // ── GPS fix ───────────────────────────────────────────────────────────────
     uint32_t gpsStart = millis();
     while (!gps.fix().valid && millis() - gpsStart < GPS_FIX_TIMEOUT_MS)
         gps.poll();
-    // Drain remaining NMEA to keep RMC timestamp fresh
     uint32_t drainUntil = millis() + 500;
     while (millis() < drainUntil) gps.poll();
     uint32_t gpsMs = millis() - gpsStart;
 
-    // First valid GPS fix → sync RTC
+    // ── RTC sync from GPS ─────────────────────────────────────────────────────
     if (!rtcSynced && gps.fix().valid && gps.fix().unixTime > 1700000000UL) {
         rtc.setTime(gps.fix().unixTime);
         rtcSynced = true;
         eventLog.warn("RTC_SYNCED", "from GPS", gps.fix().unixTime);
         LOG("RTC synced: %lu", gps.fix().unixTime);
-    }
-    // Ongoing reconciliation: GPS UTC stays authoritative. A drifted or jumped RTC
-    // can still look plausible (valid year) and would otherwise be trusted forever,
-    // so re-sync when RTC and GPS disagree beyond the threshold. Both are UTC.
-    else if (rtcSynced && gps.fix().valid && gps.fix().unixTime > 1700000000UL) {
+    } else if (rtcSynced && gps.fix().valid && gps.fix().unixTime > 1700000000UL) {
         int32_t skew = (int32_t)(rtc.now().unixTime - gps.fix().unixTime);
         if (skew < 0) skew = -skew;
         if (skew > RTC_GPS_MAX_SKEW_S) {
             rtc.setTime(gps.fix().unixTime);
             eventLog.warn("RTC_DRIFT", "resynced from GPS", (uint32_t)skew);
-            LOG("RTC drift %ld s → resynced from GPS", (long)skew);
         }
     }
 
     uint32_t now = getUnixTime();
     RtcTime  t   = rtc.now();
 
+    // ── BME280 read ───────────────────────────────────────────────────────────
+    Bme280Reading bmeRead{};
+    if (bme280Ok) {
+        bmeRead = bme280.read();
+        if (!bmeRead.valid) eventLog.warn("SENSOR_WARN", "bme280 bad read", now);
+    }
+
     // ── Populate SensorData ───────────────────────────────────────────────────
-    sensor.lat               = gps.fix().lat;
-    sensor.lon               = gps.fix().lon;
-    sensor.altitudeM         = gps.fix().altM;
-    sensor.gpsHasFix         = gps.fix().valid;
-    sensor.unixTime          = now;
-    sensor.hour              = t.hour;
-    sensor.minute            = t.minute;
+    sensor.lat       = gps.fix().lat;
+    sensor.lon       = gps.fix().lon;
+    sensor.altitudeM = gps.fix().altM;
+    sensor.gpsHasFix = gps.fix().valid;
+    sensor.unixTime  = now;
+    sensor.hour      = t.hour;
+    sensor.minute    = t.minute;
     sensor.cyberdeckConnected = (digitalRead(PIN_GX16_DETECT) == LOW);
-    sensor.batteryPct        = 0;  // TODO: ADC on RP2350 GP29
+    sensor.batteryPct         = 0;  // TODO: ADC on RP2350 GP29
 
     // ── GPS buffer ────────────────────────────────────────────────────────────
-    // Push before pressure adjustment so the newest fix is included in the median.
     if (gps.fix().valid) {
         GpsEntry entry{ gps.fix().lat, gps.fix().lon, gps.fix().altM, now };
         gpsBuffer.push(entry);
     }
 
-    // Median-filtered altitude smooths GPS spikes before pressure adjustment.
-    // Falls back to the raw fix altitude if the buffer is empty.
     float adjAltM = (gpsBuffer.count() > 0)
         ? gpsBuffer.medianAltitude(ALTITUDE_MEDIAN_SAMPLES)
         : sensor.altitudeM;
 
-    if (lastPressure.valid) {
-        sensor.pressureRaw = lastPressure.pressureHpa;
+    if (bmeRead.valid) {
+        sensor.pressureRaw = bmeRead.pressureHpa;
         sensor.pressureAdj = MathUtils::altitudeAdjustedPressure(
-            lastPressure.pressureHpa, adjAltM);
-    }
-    if (lastEnv.valid) {
-        sensor.tempC    = lastEnv.tempC;
-        sensor.humidity = lastEnv.humidity;
+            bmeRead.pressureHpa, adjAltM);
+        sensor.tempC    = bmeRead.tempC;
+        sensor.humidity = bmeRead.humidity;
     }
 
-    // ── Sunrise/sunset (daily refresh ≥03:00 local, boot bootstrap) ───────────
-    // Needs a real position and a trustworthy clock. t is NZ-local (RtcReader), so
-    // day-of-year is right near UTC midnight; offset is DST-aware for this instant.
+    // ── Sunrise/sunset (daily refresh ≥03:00 local, boot bootstrap) ──────────
     if (gps.fix().valid && t.year >= 2024 && t.year <= 2035) {
-        uint16_t doy = (uint16_t)MathUtils::dayOfYear(t.year, t.month, t.day);
+        uint16_t doy      = (uint16_t)MathUtils::dayOfYear(t.year, t.month, t.day);
         bool bootstrap    = (sunCalcDoy == 0);
         bool dailyRefresh = (t.hour >= SUN_REFRESH_HOUR && doy != sunCalcDoy);
         if (bootstrap || dailyRefresh) {
@@ -226,63 +283,52 @@ void loop() {
     sensor.sunriseMin = cachedSunriseMin;
     sensor.sunsetMin  = cachedSunsetMin;
 
+    // ── Weather buffer + algorithm ────────────────────────────────────────────
+    if (bmeRead.valid && gps.fix().valid) {
+        weatherBuffer.pruneByLocation(sensor.lat, sensor.lon, WEATHER_LOCATION_RADIUS_M);
+        float entryHum = bmeRead.valid ? sensor.humidity : NAN;
+        float entryTemp = bmeRead.valid ? sensor.tempC : NAN;
+        WeatherEntry we{ now, sensor.pressureAdj, entryTemp, entryHum,
+                         sensor.lat, sensor.lon };
+        weatherBuffer.push(we);
+    }
+    WeatherAlgorithm::update(weatherBuffer, rainPred, stormPred, now);
+
     // ── Activity + display evaluation ─────────────────────────────────────────
     NijntjeState activity = ActivityDetector::detect(gpsBuffer, sensor, now);
     display = NijntjeEvaluator::evaluate(sensor, activity, rainPred, stormPred);
 
-    // TODO: if display changed → refresh e-ink (stubbed until 1.54" replaced)
+    // TODO: refresh e-ink display (1.54" 4-colour) when display state changes
 
-    if (sensor.cyberdeckConnected) uartSync.poll();
+    // ── Log raw telemetry to SD ───────────────────────────────────────────────
+    logRaw(now, gpsMs, activity);
 
-    buzzer.sound(buzzer.evaluate(rainPred, stormPred, t.hour));
+    LOG("10min | temp=%.1fC hum=%.0f%% pres=%.1fhPa storm=%d%% rain=%d%%",
+        sensor.tempC, sensor.humidity, sensor.pressureAdj,
+        stormPred.confidence, rainPred.confidence);
 
-    // ── 5-min cycle ───────────────────────────────────────────────────────────
-    if (cycleCount % FULL_CYCLE_INTERVAL == 0) {
-
-        if (bmp180Ok) lastPressure = bmp180.read();
-        if (aht10Ok)  lastEnv      = aht10.read();
-
-        if (lastPressure.valid) {
-            sensor.pressureRaw = lastPressure.pressureHpa;
-            sensor.pressureAdj = MathUtils::altitudeAdjustedPressure(
-                lastPressure.pressureHpa, adjAltM);
-        }
-        if (lastEnv.valid) {
-            sensor.tempC    = lastEnv.tempC;
-            sensor.humidity = lastEnv.humidity;
-        }
-
-        // Only record weather when we have a real position. Location pruning needs
-        // valid coords; a GPS dropout (lat/lon defaulting to 0,0) would otherwise
-        // wipe the whole 24h history and blind storm prediction during bad weather.
-        if (lastPressure.valid && gps.fix().valid) {
-            weatherBuffer.pruneByLocation(
-                sensor.lat, sensor.lon, WEATHER_LOCATION_RADIUS_M);
-
-            // Pressure drives storm prediction (~75% of confidence). If the AHT10
-            // failed this cycle, store temp/humidity as NaN rather than bogus zeros
-            // — the trend functions skip NaN, so a dead env sensor degrades rather
-            // than poisons the prediction (0 °C is a real alpine temp, not a sentinel).
-            float entryTemp = lastEnv.valid ? sensor.tempC    : NAN;
-            float entryHum  = lastEnv.valid ? sensor.humidity : NAN;
-            WeatherEntry we{ now, sensor.pressureAdj, entryTemp,
-                             entryHum, sensor.lat, sensor.lon };
-            weatherBuffer.push(we);
-        }
-
-        WeatherAlgorithm::update(weatherBuffer, rainPred, stormPred, now);
-
-        writeLogEntry(now, gpsMs, activity);
-
-        LOG("5min | temp=%.1fC hum=%.0f%% pres=%.1fhPa storm=%d%% rain=%d%%",
-            sensor.tempC, sensor.humidity, sensor.pressureAdj,
-            stormPred.confidence, rainPred.confidence);
+    // ── Hourly model run (at UTC :00 minute) ─────────────────────────────────
+    uint32_t utcHour = now / 3600;
+    if (utcHour != lastModelRunHour) {
+        lastModelRunHour = utcHour;
+        runHourlyModel(now);
     }
 
-    // On RP2350: sleep GPS via UBX, enter DORMANT until RTC alarm
-    // On ESP32: simulate 1-min cycle with delay
+    // ── Sleep until next 10-min UTC boundary ─────────────────────────────────
+    // RP2350: configure DS3231 alarm for next 10-min mark, enter DORMANT.
+    // ESP32 bench: busy-delay to simulate 10-min cycle.
+#ifndef ARDUINO_ARCH_RP2040
     uint32_t elapsed = millis() - cycleStart;
-    if (elapsed < 60000UL) delay(60000UL - elapsed);
+    if (elapsed < WAKE_INTERVAL_S * 1000UL)
+        delay(WAKE_INTERVAL_S * 1000UL - elapsed);
+#else
+    // TODO: configure DS3231 SQW alarm for next 10-min UTC boundary,
+    //       power-down GPS, then enter rp2040.dormant() / DORMANT sleep.
+    //       Wake on PIN_RTC_SQW interrupt.
+    uint32_t elapsed = millis() - cycleStart;
+    if (elapsed < WAKE_INTERVAL_S * 1000UL)
+        delay(WAKE_INTERVAL_S * 1000UL - elapsed);
+#endif
 }
 
 #endif // UNIT_TEST
