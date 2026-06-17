@@ -1,0 +1,2618 @@
+[
+  {
+    "assetId": 100065349,
+    "name": "Puriri Bay (Whangaruru North Head) Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6085659,
+    "x": 1723562
+  },
+  {
+    "assetId": 100065488,
+    "name": "Kiosk Creek Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5009087,
+    "x": 1207153
+  },
+  {
+    "assetId": 100066095,
+    "name": "Butchers Flat Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5419298,
+    "x": 1649697
+  },
+  {
+    "assetId": 100044315,
+    "name": "Wentworth Valley Campground",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5874024,
+    "x": 1849966
+  },
+  {
+    "assetId": 100031362,
+    "name": "Ōtaki Forks Campsite - School House Flat",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5471991.0996,
+    "x": 1787221.4047
+  },
+  {
+    "assetId": 100066033,
+    "name": "Piano Flat Campsite",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4946997,
+    "x": 1289053
+  },
+  {
+    "assetId": 100043484,
+    "name": "Lyell Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5372328,
+    "x": 1520990
+  },
+  {
+    "assetId": 100044417,
+    "name": "The Green Campsite",
+    "status": "OPEN",
+    "region": "Auckland",
+    "y": 5987076,
+    "x": 1815389
+  },
+  {
+    "assetId": 100044955,
+    "name": "Awana Beach Campsite",
+    "status": "OPEN",
+    "region": "Auckland",
+    "y": 5990750,
+    "x": 1822809
+  },
+  {
+    "assetId": 100093318,
+    "name": "Okiwi Bay Campsite",
+    "status": "CLSD",
+    "region": null,
+    "y": 5325803,
+    "x": 1670897
+  },
+  {
+    "assetId": 100066034,
+    "name": "Thicket Burn Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4890119,
+    "x": 1170714.9904
+  },
+  {
+    "assetId": 100084979,
+    "name": "Lake Ōkareka Campsite",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5770867,
+    "x": 1894453
+  },
+  {
+    "assetId": 100043669,
+    "name": "Orari Campsite",
+    "status": "CLSD",
+    "region": "Canterbury",
+    "y": 5127884,
+    "x": 1454436
+  },
+  {
+    "assetId": 100031412,
+    "name": "Trounson Kauri Park Campground",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6046743,
+    "x": 1658996
+  },
+  {
+    "assetId": 100044059,
+    "name": "Nikau Cove Campsite",
+    "status": "CLSD",
+    "region": "Marlborough",
+    "y": 5439039.2814,
+    "x": 1688019.0834
+  },
+  {
+    "assetId": 100043774,
+    "name": "Watering Cove Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5465252,
+    "x": 1604737
+  },
+  {
+    "assetId": 100038806,
+    "name": "Arohena Campsite",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5772402,
+    "x": 1832829
+  },
+  {
+    "assetId": 100081986,
+    "name": "Corner Creek Campsite",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5417757,
+    "x": 1770503
+  },
+  {
+    "assetId": 100066494,
+    "name": "Maitai Bay Campsite ",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6145779,
+    "x": 1637315
+  },
+  {
+    "assetId": 100039900,
+    "name": "St Bathans Domain Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5026815,
+    "x": 1347126
+  },
+  {
+    "assetId": 100043679,
+    "name": "Omahuru Campsite (Ogilvies) ",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5751447,
+    "x": 1960363
+  },
+  {
+    "assetId": 100072998,
+    "name": "Moawhitu Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5482500,
+    "x": 1668786
+  },
+  {
+    "assetId": 100065887,
+    "name": "Mosquito Bay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5470980,
+    "x": 1605005
+  },
+  {
+    "assetId": 100031419,
+    "name": "Twelve Mile Delta Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4999946.5518,
+    "x": 1249356.9591
+  },
+  {
+    "assetId": 100043486,
+    "name": "Lake Paringa Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5152778,
+    "x": 1310929
+  },
+  {
+    "assetId": 100040698,
+    "name": "Cable Bay Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6101150,
+    "x": 1712295
+  },
+  {
+    "assetId": 100031353,
+    "name": "Trestle View Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5894401,
+    "x": 1837150
+  },
+  {
+    "assetId": 100044320,
+    "name": "Tīeke Marae/Kāinga Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5643868,
+    "x": 1771735
+  },
+  {
+    "assetId": 100043515,
+    "name": "Monowai Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4912227,
+    "x": 1174374
+  },
+  {
+    "assetId": 100043513,
+    "name": "South Arm Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5482182,
+    "x": 1673091
+  },
+  {
+    "assetId": 100043056,
+    "name": "Maraunui Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5701341,
+    "x": 1946510
+  },
+  {
+    "assetId": 100065051,
+    "name": "Verns Camp",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5707639,
+    "x": 1919964
+  },
+  {
+    "assetId": 100042954,
+    "name": "Korokoro Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5698561,
+    "x": 1946261
+  },
+  {
+    "assetId": 100092038,
+    "name": "Mosley's Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5661629,
+    "x": 1779610
+  },
+  {
+    "assetId": 100065557,
+    "name": "Lucky Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5473012,
+    "x": 1672513
+  },
+  {
+    "assetId": 100065399,
+    "name": "Stony Bay Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5956498,
+    "x": 1816877
+  },
+  {
+    "assetId": 100031356,
+    "name": "Piropiro Campsite",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5720961,
+    "x": 1816782
+  },
+  {
+    "assetId": 100120946,
+    "name": "Teetotal Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5373191,
+    "x": 1586195
+  },
+  {
+    "assetId": 100095975,
+    "name": "Round Bush Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5100086,
+    "x": 1345705
+  },
+  {
+    "assetId": 100000726,
+    "name": "Puketī Recreation Area Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6103223,
+    "x": 1672198
+  },
+  {
+    "assetId": 100089341,
+    "name": "Kahikatea Campsite (self-contained only)",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5888100,
+    "x": 1833500
+  },
+  {
+    "assetId": 100043675,
+    "name": "Mokau Landing Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5704909,
+    "x": 1955532
+  },
+  {
+    "assetId": 100065803,
+    "name": "Cameron Campsite",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5635062.3449,
+    "x": 1887004.9365
+  },
+  {
+    "assetId": 100042532,
+    "name": "Henry Creek Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4978212,
+    "x": 1192749
+  },
+  {
+    "assetId": 100043775,
+    "name": "Courthouse Flat Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5409252.8361,
+    "x": 1563895.1421
+  },
+  {
+    "assetId": 100031421,
+    "name": "South Arm Campsite (Lake Manapouri)",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4936474,
+    "x": 1161136
+  },
+  {
+    "assetId": 100043772,
+    "name": "Te Pukatea Bay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5466435,
+    "x": 1605384
+  },
+  {
+    "assetId": 100030214,
+    "name": "Kuripapango (Ox Bow) Campsite",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5634867,
+    "x": 1886289
+  },
+  {
+    "assetId": 100044061,
+    "name": "Coldwater Stream Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5343345,
+    "x": 1593567
+  },
+  {
+    "assetId": 100044099,
+    "name": "Pipi Beach Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5441455,
+    "x": 1672393
+  },
+  {
+    "assetId": 100065884,
+    "name": "Brown Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5477713.5264,
+    "x": 1553406.5458
+  },
+  {
+    "assetId": 100044560,
+    "name": "Scotts Beach Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5451055,
+    "x": 1524801
+  },
+  {
+    "assetId": 100065888,
+    "name": "Observation Beach Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5465053,
+    "x": 1604369
+  },
+  {
+    "assetId": 100102965,
+    "name": "Lake Middleton Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5092872,
+    "x": 1348583
+  },
+  {
+    "assetId": 100044155,
+    "name": "Mangawhero Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5636937,
+    "x": 1809334
+  },
+  {
+    "assetId": 100044048,
+    "name": "Mangatutu Hot Springs Campsite",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5657149,
+    "x": 1898597
+  },
+  {
+    "assetId": 100065559,
+    "name": "Glencoe Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4989354,
+    "x": 1423949
+  },
+  {
+    "assetId": 100065342,
+    "name": "Acheron Accommodation House Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5306311,
+    "x": 1596410
+  },
+  {
+    "assetId": 100037857,
+    "name": "Bucks Road Campsite",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5451345,
+    "x": 1797721
+  },
+  {
+    "assetId": 100084858,
+    "name": "Waikoko Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5664198,
+    "x": 1844643
+  },
+  {
+    "assetId": 100043934,
+    "name": "Dickey Flat Campsite",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5852978,
+    "x": 1843053
+  },
+  {
+    "assetId": 100042533,
+    "name": "Māori Beach Campsite",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4799044,
+    "x": 1225632
+  },
+  {
+    "assetId": 100031420,
+    "name": "Boundary Creek Campsite",
+    "status": "CLSD",
+    "region": "Otago",
+    "y": 5081918.1954,
+    "x": 1294650.8881
+  },
+  {
+    "assetId": 100042952,
+    "name": "Atene Skyline Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5603256,
+    "x": 1786151
+  },
+  {
+    "assetId": 100065345,
+    "name": "Kerr Bay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5371777,
+    "x": 1587370
+  },
+  {
+    "assetId": 100043561,
+    "name": "Rerewhakaaitu, Ash Pit Road Campsite",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5757586,
+    "x": 1906824
+  },
+  {
+    "assetId": 100065880,
+    "name": "Te Pakau (Eight Acre) Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5745740,
+    "x": 1960070
+  },
+  {
+    "assetId": 100044057,
+    "name": "Kauauroa Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5456488,
+    "x": 1681490
+  },
+  {
+    "assetId": 100085452,
+    "name": "West Bay Campsite - Buller zone",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5372311,
+    "x": 1585236
+  },
+  {
+    "assetId": 100066096,
+    "name": "Camp Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5446436,
+    "x": 1696307.9904
+  },
+  {
+    "assetId": 100044093,
+    "name": "Cowshed Bay Campsite",
+    "status": "CLSD",
+    "region": "Marlborough",
+    "y": 5438297,
+    "x": 1686520
+  },
+  {
+    "assetId": 100038502,
+    "name": "Daleys Flat Campsite (lawn at hut)",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5056818.4297,
+    "x": 1232577.8128
+  },
+  {
+    "assetId": 100043935,
+    "name": "Andrews Shelter Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5239136,
+    "x": 1501603
+  },
+  {
+    "assetId": 100030189,
+    "name": "Sunset Bay Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6101175,
+    "x": 1712067
+  },
+  {
+    "assetId": 100066092,
+    "name": "Torrent Bay Village Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5467058,
+    "x": 1603859
+  },
+  {
+    "assetId": 100065593,
+    "name": "Catleys Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5893347,
+    "x": 1836122
+  },
+  {
+    "assetId": 100043745,
+    "name": "Whakaipo Campsite (self-contained only)",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5714199,
+    "x": 1857409
+  },
+  {
+    "assetId": 100065590,
+    "name": "Mangatepopo Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5663948,
+    "x": 1824384
+  },
+  {
+    "assetId": 100065804,
+    "name": "Waikari River Mouth Campsite",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5656825,
+    "x": 1952539
+  },
+  {
+    "assetId": 100044559,
+    "name": "Putangirua Pinnacles Campsite",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5408882,
+    "x": 1785772
+  },
+  {
+    "assetId": 100065482,
+    "name": "Sylvan Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5036824,
+    "x": 1228962
+  },
+  {
+    "assetId": 100044094,
+    "name": "French Pass Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5469114,
+    "x": 1670933
+  },
+  {
+    "assetId": 100042743,
+    "name": "James Mackay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5473620,
+    "x": 1534066
+  },
+  {
+    "assetId": 10000166,
+    "name": "Papatowai Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4837954.4376,
+    "x": 1329434.5573
+  },
+  {
+    "assetId": 100043673,
+    "name": "Mistletoe Flats Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5221620,
+    "x": 1496812
+  },
+  {
+    "assetId": 100030548,
+    "name": "Perry Saddle Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5472061.1467,
+    "x": 1549688.687
+  },
+  {
+    "assetId": 100065343,
+    "name": "Whites Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5418196,
+    "x": 1688387
+  },
+  {
+    "assetId": 100095961,
+    "name": "Pohangina Base Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5562799,
+    "x": 1852229
+  },
+  {
+    "assetId": 100044091,
+    "name": "Bay of Many Coves Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5441556,
+    "x": 1695784
+  },
+  {
+    "assetId": 100065808,
+    "name": "Picnic Bay Campsite",
+    "status": "CLSD",
+    "region": "Marlborough",
+    "y": 5439037,
+    "x": 1687749
+  },
+  {
+    "assetId": 100044160,
+    "name": "Moss Creek Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5898262,
+    "x": 1837720
+  },
+  {
+    "assetId": 100066492,
+    "name": "Lake Rotoroa Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5373011,
+    "x": 1566590
+  },
+  {
+    "assetId": 100031195,
+    "name": "Urchin Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5662317,
+    "x": 1843943
+  },
+  {
+    "assetId": 100044313,
+    "name": "Waikawau Bay Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5945852,
+    "x": 1826915
+  },
+  {
+    "assetId": 100066486,
+    "name": "Tawa Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5452919,
+    "x": 1669199
+  },
+  {
+    "assetId": 100043537,
+    "name": "Piripiri Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5562290,
+    "x": 1850564
+  },
+  {
+    "assetId": 100066035,
+    "name": "Clements Clearing Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5684231,
+    "x": 1875985
+  },
+  {
+    "assetId": 100031198,
+    "name": "Kaniwhaniwha Campsite",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5798987,
+    "x": 1782324
+  },
+  {
+    "assetId": 100031214,
+    "name": "Coquille Bay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5462421,
+    "x": 1602482
+  },
+  {
+    "assetId": 10000217,
+    "name": "Okarito Campground",
+    "status": "OPEN",
+    "region": null,
+    "y": 5210603.5367,
+    "x": 1369601.7207
+  },
+  {
+    "assetId": 100065489,
+    "name": "Totara Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4996355,
+    "x": 1205251
+  },
+  {
+    "assetId": 100043178,
+    "name": "Lake Taylor Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5264062,
+    "x": 1538960
+  },
+  {
+    "assetId": 100042949,
+    "name": "Bettjemann Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5658806,
+    "x": 1772624
+  },
+  {
+    "assetId": 100066485,
+    "name": "Pelorus Bridge Campground",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5427661,
+    "x": 1647731
+  },
+  {
+    "assetId": 100037707,
+    "name": "Lake Daniell Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5316142,
+    "x": 1541459
+  },
+  {
+    "assetId": 100065800,
+    "name": "Orangihikoia Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5712311,
+    "x": 1951583
+  },
+  {
+    "assetId": 100133707,
+    "name": "Remiger Road Ta Camp Site",
+    "status": "OPEN",
+    "region": null,
+    "y": 5959360,
+    "x": 1745012
+  },
+  {
+    "assetId": 100038655,
+    "name": "Saxon Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5473616,
+    "x": 1541742
+  },
+  {
+    "assetId": 100000736,
+    "name": "Pokaka Mill Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5675275,
+    "x": 1817029
+  },
+  {
+    "assetId": 100065797,
+    "name": "Mt Nimrod Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5077608,
+    "x": 1430581
+  },
+  {
+    "assetId": 100066098,
+    "name": "Elaine Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5454821.3906,
+    "x": 1664668.2689
+  },
+  {
+    "assetId": 100038641,
+    "name": "Greenstone Campsite (lawn at hut)",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5008420,
+    "x": 1226496
+  },
+  {
+    "assetId": 100043559,
+    "name": "Motuora Island Campsite",
+    "status": "OPEN",
+    "region": "Auckland",
+    "y": 5958612,
+    "x": 1760354.9904
+  },
+  {
+    "assetId": 10000003,
+    "name": "Blackbridge Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6100557.3652,
+    "x": 1659966.4539
+  },
+  {
+    "assetId": 100043034,
+    "name": "Lake Māhinapua Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5259848,
+    "x": 1428348
+  },
+  {
+    "assetId": 100064670,
+    "name": "Wooded Gully Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5217475,
+    "x": 1546008
+  },
+  {
+    "assetId": 100039602,
+    "name": "Cascade Creek Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5016992,
+    "x": 1211142
+  },
+  {
+    "assetId": 100042739,
+    "name": "Poukaria Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5681984,
+    "x": 1783561
+  },
+  {
+    "assetId": 100092037,
+    "name": "Hellawell's Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5655460,
+    "x": 1770960
+  },
+  {
+    "assetId": 100042740,
+    "name": "Hall Arm Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4947582,
+    "x": 1137277
+  },
+  {
+    "assetId": 100085145,
+    "name": "Lindis Pass Historic Hotel Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5044436,
+    "x": 1322276
+  },
+  {
+    "assetId": 100042529,
+    "name": "Dart Campsite (near hut)",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5060516,
+    "x": 1246874
+  },
+  {
+    "assetId": 100043678,
+    "name": "Lake Tūtira Campsite",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5650061.735,
+    "x": 1936036.8361
+  },
+  {
+    "assetId": 100044151,
+    "name": "Mackay Creek Campsite",
+    "status": "CLSD",
+    "region": null,
+    "y": 4997557,
+    "x": 1205650
+  },
+  {
+    "assetId": 100044319,
+    "name": "Ohinepane Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5687522,
+    "x": 1786004
+  },
+  {
+    "assetId": 100043563,
+    "name": "White Horse Hill Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5155343.7716,
+    "x": 1365787.443
+  },
+  {
+    "assetId": 100043483,
+    "name": "Wharehunga Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5440490,
+    "x": 1708285
+  },
+  {
+    "assetId": 100064829,
+    "name": "Young Forks Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5101825,
+    "x": 1291661
+  },
+  {
+    "assetId": 100044311,
+    "name": "Dancing Camp Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5897228,
+    "x": 1841200
+  },
+  {
+    "assetId": 100043663,
+    "name": "Te Iringa Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5683040,
+    "x": 1879075
+  },
+  {
+    "assetId": 100043485,
+    "name": "Marble Hill Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5311048,
+    "x": 1536021
+  },
+  {
+    "assetId": 100044428,
+    "name": "Schoolhouse Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5448159,
+    "x": 1702842
+  },
+  {
+    "assetId": 100042528,
+    "name": "Routeburn Flats Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5036428,
+    "x": 1220742
+  },
+  {
+    "assetId": 100044419,
+    "name": "Humphries Bay Campsite",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5770190,
+    "x": 1900476
+  },
+  {
+    "assetId": 100044316,
+    "name": "Whangaiterenga Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5892542,
+    "x": 1835120
+  },
+  {
+    "assetId": 100042230,
+    "name": "Aorere Shelter Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5472785.947,
+    "x": 1552805.4824
+  },
+  {
+    "assetId": 100031354,
+    "name": "Kakaho Campsite",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5727610,
+    "x": 1836778
+  },
+  {
+    "assetId": 100066100,
+    "name": "Kenepuru Head Campsite",
+    "status": "CLSD",
+    "region": "Marlborough",
+    "y": 5441344,
+    "x": 1693786
+  },
+  {
+    "assetId": 100121279,
+    "name": "Beach Point at Walter Peak Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4995853,
+    "x": 1249238
+  },
+  {
+    "assetId": 100043054,
+    "name": "Waiharuru Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5703874,
+    "x": 1950504
+  },
+  {
+    "assetId": 100066490,
+    "name": "Molesworth Cob Cottage Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5340738,
+    "x": 1622348
+  },
+  {
+    "assetId": 100039994,
+    "name": "Billygoat Basin Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5894200,
+    "x": 1838900
+  },
+  {
+    "assetId": 100065351,
+    "name": "Urupukapuka Bay Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6102119,
+    "x": 1712715
+  },
+  {
+    "assetId": 100031355,
+    "name": "Ngaherenga Campsite",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5734345,
+    "x": 1823414
+  },
+  {
+    "assetId": 100065798,
+    "name": "Ahuriri Bridge Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5071785,
+    "x": 1360340
+  },
+  {
+    "assetId": 100038550,
+    "name": "Homestead Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5037276,
+    "x": 1353948
+  },
+  {
+    "assetId": 100043033,
+    "name": "Hans Bay – Lake Kaniere Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5258774,
+    "x": 1449134
+  },
+  {
+    "assetId": 100043672,
+    "name": "Waihī Gorge Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5126184,
+    "x": 1452060
+  },
+  {
+    "assetId": 100030342,
+    "name": "South Big Glory Campsite",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4784591,
+    "x": 1230502.9904
+  },
+  {
+    "assetId": 100066038,
+    "name": "Kaimanawa Road Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5664178,
+    "x": 1844270
+  },
+  {
+    "assetId": 100031359,
+    "name": "Mangawaiiti Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5649965,
+    "x": 1764320
+  },
+  {
+    "assetId": 100065537,
+    "name": "Trotters Gorge Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4969749,
+    "x": 1426406
+  },
+  {
+    "assetId": 100031418,
+    "name": "Kinloch Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5023883,
+    "x": 1232511
+  },
+  {
+    "assetId": 100065882,
+    "name": "Waiharakeke Bay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5477980,
+    "x": 1601314
+  },
+  {
+    "assetId": 100043769,
+    "name": "Apple Tree Bay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5463208,
+    "x": 1603169
+  },
+  {
+    "assetId": 100043680,
+    "name": "Whitikau Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5771214,
+    "x": 2002438
+  },
+  {
+    "assetId": 100065596,
+    "name": "Shag Stream Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5888280,
+    "x": 1833665
+  },
+  {
+    "assetId": 100031361,
+    "name": "Whakahoro Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5669059,
+    "x": 1779053
+  },
+  {
+    "assetId": 10000064,
+    "name": "Ōtamahua/Quail Island – Skiers Beach  Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5169111.0162,
+    "x": 1575000.3579
+  },
+  {
+    "assetId": 10000115,
+    "name": "Whakarukumoana Nohoanga Site",
+    "status": "OPEN TSI",
+    "region": null,
+    "y": 5131827.9626,
+    "x": 1396623.9094
+  },
+  {
+    "assetId": 100095962,
+    "name": "Simpsons Domain Campsite",
+    "status": "CLSD",
+    "region": "Manawatu/Whanganui",
+    "y": 5579882,
+    "x": 1822148
+  },
+  {
+    "assetId": 100044418,
+    "name": "Hot Water Beach Campsite",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5761523,
+    "x": 1900515
+  },
+  {
+    "assetId": 100064665,
+    "name": "Loch Katrine Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5269560,
+    "x": 1535016
+  },
+  {
+    "assetId": 100042738,
+    "name": "John Coull Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5655602,
+    "x": 1765211
+  },
+  {
+    "assetId": 100043562,
+    "name": "Rerewhakaaitu, Brett Road Campsite",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5756930,
+    "x": 1905800
+  },
+  {
+    "assetId": 100065558,
+    "name": "Cobb River Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5446880,
+    "x": 1567688
+  },
+  {
+    "assetId": 100082533,
+    "name": "Pandora Campsite",
+    "status": "CLSD",
+    "region": "Northland",
+    "y": 6187667.4843,
+    "x": 1579566.8541
+  },
+  {
+    "assetId": 100043766,
+    "name": "Tōtaranui Campground",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5481379,
+    "x": 1600414
+  },
+  {
+    "assetId": 100065879,
+    "name": "Boulders Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5771431,
+    "x": 1984926
+  },
+  {
+    "assetId": 10000004,
+    "name": "Boielles Campsite",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5473067.6667,
+    "x": 1787951.0348
+  },
+  {
+    "assetId": 100039788,
+    "name": "Macetown Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5023335,
+    "x": 1269866
+  },
+  {
+    "assetId": 100030520,
+    "name": "Rarangi Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5417097,
+    "x": 1687530
+  },
+  {
+    "assetId": 100042231,
+    "name": "Gouland Downs Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5473191.4976,
+    "x": 1545526.3683
+  },
+  {
+    "assetId": 100031414,
+    "name": "Otamure Bay (Whananaki) Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6071381,
+    "x": 1732552
+  },
+  {
+    "assetId": 100038353,
+    "name": "Crosbies Hut Backcountry Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5896813,
+    "x": 1831393
+  },
+  {
+    "assetId": 100065484,
+    "name": "Pleasant Flat Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5120448,
+    "x": 1309901
+  },
+  {
+    "assetId": 100065669,
+    "name": "Akapoua Bay Campsite",
+    "status": "OPEN",
+    "region": "Auckland",
+    "y": 5994397,
+    "x": 1812555
+  },
+  {
+    "assetId": 100100774,
+    "name": "Quailburn Campsite",
+    "status": "CLSD",
+    "region": "Canterbury",
+    "y": 5082890,
+    "x": 1345399.9904
+  },
+  {
+    "assetId": 100086346,
+    "name": "Angelus Hut Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5362601,
+    "x": 1579151
+  },
+  {
+    "assetId": 100031364,
+    "name": "Ballroom Overhang Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5344250,
+    "x": 1471157
+  },
+  {
+    "assetId": 100044321,
+    "name": "Catchpool Valley Campsite",
+    "status": "OPEN",
+    "region": "Wellington/Kapiti",
+    "y": 5420387,
+    "x": 1760876
+  },
+  {
+    "assetId": 100064831,
+    "name": "Greenstone Saddle Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5024665,
+    "x": 1215601
+  },
+  {
+    "assetId": 100064957,
+    "name": "Iris Burn Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4958048,
+    "x": 1170232
+  },
+  {
+    "assetId": 100065487,
+    "name": "Deer Flat Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5004970,
+    "x": 1206545
+  },
+  {
+    "assetId": 100043032,
+    "name": "Goldsborough Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5273472,
+    "x": 1446237
+  },
+  {
+    "assetId": 100095182,
+    "name": "Blackgate Campground",
+    "status": "CLSD",
+    "region": null,
+    "y": 5472616,
+    "x": 1787668
+  },
+  {
+    "assetId": 100044092,
+    "name": "Cannibal Cove Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5452019,
+    "x": 1705169
+  },
+  {
+    "assetId": 100065442,
+    "name": "Home Bay, Motutapu Island Campsite",
+    "status": "OPEN",
+    "region": "Auckland",
+    "y": 5929222,
+    "x": 1772165
+  },
+  {
+    "assetId": 100065480,
+    "name": "Moke Lake Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5007707.0495,
+    "x": 1251101.539
+  },
+  {
+    "assetId": 100043023,
+    "name": "Tapuaenui Campsite",
+    "status": "OPEN",
+    "region": null,
+    "y": 5704729,
+    "x": 1952195
+  },
+  {
+    "assetId": 100065044,
+    "name": "Brod Bay Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4958265,
+    "x": 1183256
+  },
+  {
+    "assetId": 100043757,
+    "name": "Anapai Bay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5483142,
+    "x": 1600360
+  },
+  {
+    "assetId": 100136665,
+    "name": "Diamond Lake Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5036440,
+    "x": 1234280
+  },
+  {
+    "assetId": 100044101,
+    "name": "Ratimera Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5437935,
+    "x": 1693282
+  },
+  {
+    "assetId": 10000000,
+    "name": "Clements Road End Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5679800,
+    "x": 1872211.9904
+  },
+  {
+    "assetId": 100044159,
+    "name": "Hotoritori Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5890769,
+    "x": 1834095
+  },
+  {
+    "assetId": 100043765,
+    "name": "Mutton Cove Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5484453,
+    "x": 1599494
+  },
+  {
+    "assetId": 100031568,
+    "name": "Otaio Gorge Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5067886,
+    "x": 1435397
+  },
+  {
+    "assetId": 100121059,
+    "name": "Boyle Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5292677,
+    "x": 1549601
+  },
+  {
+    "assetId": 100065802,
+    "name": "Everetts Campsite",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5667370,
+    "x": 1920575
+  },
+  {
+    "assetId": 100064828,
+    "name": "Waihohonu Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5656645,
+    "x": 1831328
+  },
+  {
+    "assetId": 100043674,
+    "name": "Hawdon Shelter Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5239772,
+    "x": 1497922
+  },
+  {
+    "assetId": 100044517,
+    "name": "Kiriwhakapapa Campsite",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5479438,
+    "x": 1814763
+  },
+  {
+    "assetId": 100066093,
+    "name": "Black Rock Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5438392,
+    "x": 1689288
+  },
+  {
+    "assetId": 100065591,
+    "name": "Whakapapa Holiday Park",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5657725.1504,
+    "x": 1819285.4872
+  },
+  {
+    "assetId": 100065889,
+    "name": "Onetahuti Bay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5473563,
+    "x": 1603926
+  },
+  {
+    "assetId": 100042930,
+    "name": "Lake Tennyson Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5326704,
+    "x": 1578547
+  },
+  {
+    "assetId": 100065490,
+    "name": "Upper Eglinton Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5013084,
+    "x": 1207940
+  },
+  {
+    "assetId": 100042835,
+    "name": "Welcome Flat Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5164561,
+    "x": 1353678
+  },
+  {
+    "assetId": 100066101,
+    "name": "Kumutoto Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5437892,
+    "x": 1689688
+  },
+  {
+    "assetId": 100065883,
+    "name": "Whariwharangi Bay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5484718,
+    "x": 1597870
+  },
+  {
+    "assetId": 100066491,
+    "name": "Onamalutu Campsite",
+    "status": "CLSD",
+    "region": "Marlborough",
+    "y": 5410100,
+    "x": 1658993
+  },
+  {
+    "assetId": 100044578,
+    "name": "Danseys Pass Campsite",
+    "status": "CLSD",
+    "region": "Otago",
+    "y": 5015709,
+    "x": 1386092
+  },
+  {
+    "assetId": 100044056,
+    "name": "Glenfalls Campsite",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5661107,
+    "x": 1917500
+  },
+  {
+    "assetId": 100044060,
+    "name": "Waiona Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5460587,
+    "x": 1673492
+  },
+  {
+    "assetId": 100043677,
+    "name": "Anaura Bay Campsite",
+    "status": "CLSD",
+    "region": "East Coast",
+    "y": 5754983,
+    "x": 2064734
+  },
+  {
+    "assetId": 100031189,
+    "name": "Army Road Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5682043,
+    "x": 1873335
+  },
+  {
+    "assetId": 100066032,
+    "name": "Robin Hood Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5420832,
+    "x": 1689517
+  },
+  {
+    "assetId": 100065341,
+    "name": "Whatamango Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5430843.7684,
+    "x": 1689987.746
+  },
+  {
+    "assetId": 100066039,
+    "name": "Kakapo Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5683537,
+    "x": 1875074
+  },
+  {
+    "assetId": 100044312,
+    "name": "Port Jackson Campsite ",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5959816,
+    "x": 1809781
+  },
+  {
+    "assetId": 100065801,
+    "name": "Te Taita A Makoro Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5710637,
+    "x": 1952884
+  },
+  {
+    "assetId": 100064830,
+    "name": "Cameron Flat Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5103514,
+    "x": 1303139
+  },
+  {
+    "assetId": 100041142,
+    "name": "Lucky Beach Campsite",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4814685,
+    "x": 1213386.9904
+  },
+  {
+    "assetId": 100066483,
+    "name": "Momorangi Bay Campground",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5430659.445,
+    "x": 1678830.7092
+  },
+  {
+    "assetId": 100065885,
+    "name": "Bark Bay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5470462,
+    "x": 1604269
+  },
+  {
+    "assetId": 100043676,
+    "name": "Waikaremoana Holiday Park",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5702377,
+    "x": 1961155
+  },
+  {
+    "assetId": 100043031,
+    "name": "Slab Hut Creek Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5332147,
+    "x": 1500236
+  },
+  {
+    "assetId": 100065483,
+    "name": "Kidds Bush Reserve Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5072357,
+    "x": 1302484
+  },
+  {
+    "assetId": 100121018,
+    "name": "Awaroa/Godley Head Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5173819.6968,
+    "x": 1584005.1944
+  },
+  {
+    "assetId": 100132228,
+    "name": "Mid Caples Campsite (lawn at hut)",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5018182,
+    "x": 1226751
+  },
+  {
+    "assetId": 100044317,
+    "name": "Maharanui Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5673069,
+    "x": 1776875
+  },
+  {
+    "assetId": 100031357,
+    "name": "Mangapapa Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5666968,
+    "x": 1772810
+  },
+  {
+    "assetId": 100066094,
+    "name": "Blumine Island/Ōruawairua Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5441690,
+    "x": 1703485
+  },
+  {
+    "assetId": 100065595,
+    "name": "Fletcher Bay Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5960540,
+    "x": 1814136
+  },
+  {
+    "assetId": 100065443,
+    "name": "Motuihe Island Campsite",
+    "status": "OPEN",
+    "region": "Auckland",
+    "y": 5925165,
+    "x": 1772695
+  },
+  {
+    "assetId": 100042955,
+    "name": "Waiopaoa Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5696866.4448,
+    "x": 1946808.2943
+  },
+  {
+    "assetId": 100043768,
+    "name": "Anchorage Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5466004.7116,
+    "x": 1604981.7435
+  },
+  {
+    "assetId": 100085686,
+    "name": "Graces Stream Campsite",
+    "status": "CLSD",
+    "region": "Wellington/Kapiti",
+    "y": 5421415,
+    "x": 1761695.9904
+  },
+  {
+    "assetId": 100040090,
+    "name": "Temple Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5111251,
+    "x": 1345322
+  },
+  {
+    "assetId": 100065352,
+    "name": "Waikahoa Bay Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6077005.6062,
+    "x": 1728210.0028
+  },
+  {
+    "assetId": 100044956,
+    "name": "Harataonga Campsite",
+    "status": "OPEN",
+    "region": "Auckland",
+    "y": 5994150,
+    "x": 1823001
+  },
+  {
+    "assetId": 100030221,
+    "name": "Lake Mackenzie Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 5031911,
+    "x": 1218263
+  },
+  {
+    "assetId": 100065344,
+    "name": "Kawatiri Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5384128,
+    "x": 1568176
+  },
+  {
+    "assetId": 100044562,
+    "name": "Lake Ianthe Matahi Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5229783,
+    "x": 1407332
+  },
+  {
+    "assetId": 100030172,
+    "name": "Mangatainoka Campsite",
+    "status": "OPEN",
+    "region": "Hawke’s Bay",
+    "y": 5659790,
+    "x": 1893280
+  },
+  {
+    "assetId": 100066489,
+    "name": "Marfells Beach Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5380002,
+    "x": 1700179
+  },
+  {
+    "assetId": 100044154,
+    "name": "Mangahuia Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5660336,
+    "x": 1813334
+  },
+  {
+    "assetId": 100065878,
+    "name": "Rosie Bay Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5698859,
+    "x": 1958798
+  },
+  {
+    "assetId": 100065881,
+    "name": "Manganuku Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5752821,
+    "x": 1983591
+  },
+  {
+    "assetId": 100043947,
+    "name": "Siberia Flat Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5412084.4855,
+    "x": 1565231.2772
+  },
+  {
+    "assetId": 100065807,
+    "name": "Penguin Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5478100,
+    "x": 1676575
+  },
+  {
+    "assetId": 100044538,
+    "name": "Sanctuary Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5713965,
+    "x": 1924364
+  },
+  {
+    "assetId": 100044090,
+    "name": "Aussie Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5430506.2257,
+    "x": 1677814.2529
+  },
+  {
+    "assetId": 100000746,
+    "name": "Totara Flat Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5893933,
+    "x": 1836676
+  },
+  {
+    "assetId": 100064685,
+    "name": "Avalanche Creek Shelter Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5244772,
+    "x": 1482726
+  },
+  {
+    "assetId": 100065348,
+    "name": "Taputaputa Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6189275,
+    "x": 1573950
+  },
+  {
+    "assetId": 100031416,
+    "name": "Purakaunui Bay Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4839816,
+    "x": 1340242
+  },
+  {
+    "assetId": 100044100,
+    "name": "Putanui Point Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5436293,
+    "x": 1672792
+  },
+  {
+    "assetId": 100044539,
+    "name": "Deer Valley Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5305098,
+    "x": 1550437
+  },
+  {
+    "assetId": 100044314,
+    "name": "Wainora Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5893822,
+    "x": 1836197
+  },
+  {
+    "assetId": 100043671,
+    "name": "Pioneer Park Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5110157,
+    "x": 1436530
+  },
+  {
+    "assetId": 100042530,
+    "name": "Aspiring Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5066108,
+    "x": 1254805
+  },
+  {
+    "assetId": 100041144,
+    "name": "West Ruggedy Beach Campsite",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4809534,
+    "x": 1196671.9904
+  },
+  {
+    "assetId": 100066099,
+    "name": "Ferndale Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5439689,
+    "x": 1681497
+  },
+  {
+    "assetId": 100132227,
+    "name": "McKellar Campsite (lawn at hut)",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5019820,
+    "x": 1216530
+  },
+  {
+    "assetId": 100066041,
+    "name": "Gillespies Beach Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5188984,
+    "x": 1343216
+  },
+  {
+    "assetId": 100039405,
+    "name": "Geordie Hill Campsite",
+    "status": "OPEN",
+    "region": null,
+    "y": 5043302,
+    "x": 1322942
+  },
+  {
+    "assetId": 100066484,
+    "name": "Nydia Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5444286,
+    "x": 1665651
+  },
+  {
+    "assetId": 100038588,
+    "name": "Canaan Downs Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5467579,
+    "x": 1590897
+  },
+  {
+    "assetId": 100084505,
+    "name": "Lake Poaka Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5101068.8738,
+    "x": 1368131.9705
+  },
+  {
+    "assetId": 100043936,
+    "name": "Mimiha Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5714982,
+    "x": 1941081
+  },
+  {
+    "assetId": 100043773,
+    "name": "Tinline Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5462518,
+    "x": 1602084
+  },
+  {
+    "assetId": 100085451,
+    "name": "West Bay Campsite - Jetty zone",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5372655,
+    "x": 1585660
+  },
+  {
+    "assetId": 100044561,
+    "name": "Otto/MacDonalds Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5202284,
+    "x": 1374926
+  },
+  {
+    "assetId": 100088343,
+    "name": "Tōtaranui Great Walk Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5480904,
+    "x": 1600365
+  },
+  {
+    "assetId": 10000063,
+    "name": "Ōtamahua/Quail Island – Whakamaru Beach Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5169138.6326,
+    "x": 1575272.6643
+  },
+  {
+    "assetId": 100066097,
+    "name": "Davies Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5432811.8135,
+    "x": 1678819.0678
+  },
+  {
+    "assetId": 100065350,
+    "name": "Uretiti Beach Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6022410,
+    "x": 1731699
+  },
+  {
+    "assetId": 100044157,
+    "name": "Oturere Campsite",
+    "status": "OPEN",
+    "region": "Central North Island",
+    "y": 5662157,
+    "x": 1832374
+  },
+  {
+    "assetId": 100031409,
+    "name": "Mill Flat Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5405488,
+    "x": 1642638
+  },
+  {
+    "assetId": 100042744,
+    "name": "Heaphy Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5462315,
+    "x": 1525152
+  },
+  {
+    "assetId": 100044318,
+    "name": "Ohauora Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5662398,
+    "x": 1769219
+  },
+  {
+    "assetId": 100044421,
+    "name": "Lake Pearson (Moana Rua) Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5228474,
+    "x": 1501021
+  },
+  {
+    "assetId": 100065045,
+    "name": "Port William Campsite",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4801244,
+    "x": 1225142
+  },
+  {
+    "assetId": 100043670,
+    "name": "Peel Forest Campground",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5138885,
+    "x": 1460733
+  },
+  {
+    "assetId": 100084995,
+    "name": "Pāhautea Hut Campsite",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5792813,
+    "x": 1783719
+  },
+  {
+    "assetId": 100065347,
+    "name": "Kapowairua (Spirits Bay) Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6190362,
+    "x": 1587447
+  },
+  {
+    "assetId": 100065806,
+    "name": "Mill Arm Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5478603,
+    "x": 1670897
+  },
+  {
+    "assetId": 100043558,
+    "name": "Whangapoua Campsite",
+    "status": "OPEN",
+    "region": "Auckland",
+    "y": 5997238,
+    "x": 1817893
+  },
+  {
+    "assetId": 100065594,
+    "name": "Fantail Bay Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5955320,
+    "x": 1808450
+  },
+  {
+    "assetId": 100039423,
+    "name": "Raetea North Side Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6108124,
+    "x": 1639664
+  },
+  {
+    "assetId": 100035410,
+    "name": "Kōhaihai Campsite",
+    "status": "OPEN",
+    "region": "West Coast",
+    "y": 5448696,
+    "x": 1524647
+  },
+  {
+    "assetId": 100042950,
+    "name": "Johnsons Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5659269,
+    "x": 1775547
+  },
+  {
+    "assetId": 100064946,
+    "name": "Lawrence Campsite",
+    "status": "CLSD",
+    "region": "Hawke’s Bay",
+    "y": 5636374,
+    "x": 1896496
+  },
+  {
+    "assetId": 100043764,
+    "name": "Awaroa Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5476252.838,
+    "x": 1601589.4595
+  },
+  {
+    "assetId": 100042716,
+    "name": "North Arm Campsite",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4795790.241,
+    "x": 1220469.0497
+  },
+  {
+    "assetId": 100044097,
+    "name": "Moetapu Bay Campsite",
+    "status": "CLSD",
+    "region": "Marlborough",
+    "y": 5431994,
+    "x": 1671592
+  },
+  {
+    "assetId": 100031417,
+    "name": "Tawanui Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 4849046,
+    "x": 1330717
+  },
+  {
+    "assetId": 100038658,
+    "name": "Central Clearing Campsite",
+    "status": "OPEN",
+    "region": "Waikato",
+    "y": 5796435,
+    "x": 1778879
+  },
+  {
+    "assetId": 100044322,
+    "name": "Holdsworth Campsite",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5468642,
+    "x": 1808889
+  },
+  {
+    "assetId": 100031360,
+    "name": "Ngaporo Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5634079,
+    "x": 1775215
+  },
+  {
+    "assetId": 100066487,
+    "name": "Waimaru Campsite",
+    "status": "CLSD",
+    "region": "Marlborough",
+    "y": 5451776,
+    "x": 1686677
+  },
+  {
+    "assetId": 100082534,
+    "name": "Twilight Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6181625,
+    "x": 1572768
+  },
+  {
+    "assetId": 100037922,
+    "name": "Matiu/Somes Island Campsite",
+    "status": "CLSD",
+    "region": "Wellington/Kapiti",
+    "y": 5430941,
+    "x": 1756303
+  },
+  {
+    "assetId": 100043933,
+    "name": "Mid Okahu Road Campsite",
+    "status": "OPEN",
+    "region": "East Coast",
+    "y": 5719581,
+    "x": 1934369
+  },
+  {
+    "assetId": 100065491,
+    "name": "Walker Creek Campsite",
+    "status": "OPEN",
+    "region": "Fiordland",
+    "y": 4993449,
+    "x": 1203952
+  },
+  {
+    "assetId": 100085474,
+    "name": "Matatā Campsite",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5800119,
+    "x": 1930738
+  },
+  {
+    "assetId": 100065481,
+    "name": "Skippers Campsite",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5025407.8403,
+    "x": 1258680.6387
+  },
+  {
+    "assetId": 100065346,
+    "name": "Rarawa Beach Campsite",
+    "status": "OPEN",
+    "region": "Northland",
+    "y": 6157437,
+    "x": 1607538
+  },
+  {
+    "assetId": 100065592,
+    "name": "Broken Hills Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5889917,
+    "x": 1843345
+  },
+  {
+    "assetId": 100066335,
+    "name": "Mistletoe Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5436076,
+    "x": 1681534
+  },
+  {
+    "assetId": 100044152,
+    "name": "Mavora Lakes Campsite",
+    "status": "OPEN",
+    "region": "Southland",
+    "y": 4975941,
+    "x": 1221497
+  },
+  {
+    "assetId": 100038503,
+    "name": "Shelter Rock Campsite (lawn at hut)",
+    "status": "OPEN",
+    "region": "Otago",
+    "y": 5056266,
+    "x": 1243308
+  },
+  {
+    "assetId": 100044158,
+    "name": "Booms Flat Campsite",
+    "status": "OPEN",
+    "region": "Coromandel",
+    "y": 5893149,
+    "x": 1835607
+  },
+  {
+    "assetId": 10000001,
+    "name": "Puhi Puhi Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5319969.0353,
+    "x": 1660831.4618
+  },
+  {
+    "assetId": 100031363,
+    "name": "Waiohine Gorge Campsite",
+    "status": "OPEN",
+    "region": "Wairarapa",
+    "y": 5458932,
+    "x": 1801046
+  },
+  {
+    "assetId": 100044095,
+    "name": "Harvey Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5447573.3778,
+    "x": 1662291.0634
+  },
+  {
+    "assetId": 100044098,
+    "name": "Ngaruru Bay campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5435291,
+    "x": 1701785
+  },
+  {
+    "assetId": 100065052,
+    "name": "Klondyke Corner Campsite",
+    "status": "OPEN",
+    "region": "Canterbury",
+    "y": 5237994,
+    "x": 1485015
+  },
+  {
+    "assetId": 100031358,
+    "name": "Mangapurua Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5650103,
+    "x": 1769629
+  },
+  {
+    "assetId": 100044096,
+    "name": "Jacobs Bay Campsite",
+    "status": "OPEN",
+    "region": "Marlborough",
+    "y": 5448690,
+    "x": 1674292
+  },
+  {
+    "assetId": 100039958,
+    "name": "Katipo Creek Shelter Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5455943,
+    "x": 1524934
+  },
+  {
+    "assetId": 100044957,
+    "name": "Medlands Beach Campsite",
+    "status": "OPEN",
+    "region": "Auckland",
+    "y": 5983154,
+    "x": 1824828
+  },
+  {
+    "assetId": 100044420,
+    "name": "Lake Tarawera Outlet (Te Tapahoro) Campsite",
+    "status": "OPEN",
+    "region": "Bay of Plenty",
+    "y": 5767854,
+    "x": 1906838
+  },
+  {
+    "assetId": 100042951,
+    "name": "Mangapurua Trig Campsite",
+    "status": "OPEN",
+    "region": "Manawatu/Whanganui",
+    "y": 5657718,
+    "x": 1779664
+  },
+  {
+    "assetId": 100043767,
+    "name": "Akersten Bay Campsite",
+    "status": "OPEN",
+    "region": "Nelson/Tasman",
+    "y": 5464346,
+    "x": 1603992
+  }
+]
