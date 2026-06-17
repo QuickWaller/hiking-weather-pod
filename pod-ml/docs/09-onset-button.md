@@ -1,8 +1,14 @@
 # 09 — Rain-onset button: ablation and verdict
 
-> **Status: signal confirmed, full retrain pending.**
-> The feature is real and the button is justified. Production numbers require a full retrain
-> (all 2861 cells). The 200-cell ablation here is sufficient to decide on the hardware.
+> **⚠️ SUPERSEDED (2026-06-14) — there is no button.** The rain-onset button was **removed from the hardware**
+> (2026-06-13, with the compass/accelerometer/buzzer). This log is retained as research history only. The
+> fine-side truth the button was meant to supply is now **GPM-Late** (`12-recent-gpm-fine-labels.md`), and the
+> combined model is the three-way coarse+climatology+fine design in `model_architecture.md`. The ablation
+> below (button → +0.034 CRPSS) is real but moot: the live forecast was already decided button-independent
+> (`10-deployment-and-sync.md` §6), and the hardware is gone.
+>
+> *Original status (now historical):* signal confirmed, full retrain pending — the feature is real and the
+> 200-cell ablation was sufficient to decide on the hardware.
 
 ---
 

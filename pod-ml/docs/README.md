@@ -4,7 +4,8 @@
 
 | Doc | Covers |
 |---|---|
-| **[07-forecast-ensemble.md](07-forecast-ensemble.md)** | **Living doc for the current phase.** The new approach: from binary thresholds to a distributional **ensemble plume** forecast — quantile/Tweedie model with horizon-as-a-feature, per-cell climatology blend, fan-chart rendering, pod deployment via a tree-interpreter on SD. Carries the learnings from phase 06. Proposed; updated as decisions and results land. |
+| **[model_architecture.md](model_architecture.md)** | **Living design doc for the combined model** (refined 2026-06-14). The **three-way** coarse + climatology + fine mix with **emergent** horizon ownership, fitted by a stacking/gating weight model over `(cell-features, horizon)` with GP/ARD relevance + partial pooling. Supersedes the two-way (climatology-in-coarse) framing and the removed rain-onset button. Open decisions: combination rule (D2), calibration home (D3), granularity (D4). |
+| **[07-forecast-ensemble.md](07-forecast-ensemble.md)** | **Living doc for the coarse-model phase.** The distributional **ensemble plume** forecast — quantile/Tweedie model with horizon-as-a-feature, per-cell climatology blend, fan-chart rendering, pod deployment via a tree-interpreter on SD. Carries the learnings from phase 06. Proposed; updated as decisions and results land. |
 
 ## Design record (concluded phases)
 
@@ -29,6 +30,9 @@ The motion-aware pipeline lives in `src/podml/`:
 - `motionsim.py` — simulate a moving hiker's signal history along a feasible path (Markov still/walk/drive,
   MSLP reduction + GPS-altitude error); `sensorsim.py` then degrades it; `features.py` builds the vector.
 - `labels_gpm.py` — per-cell GPM rain labels.
+- `download_gpm_harmony.py` / `download_gpm_late.py` — GPM IMERG pullers. **Harmony** = the Final-Run *archive*
+  (training labels, `data/raw/gpm_grid/`). **Late** = recent-hike rain *checks* for the fine model
+  (`data/raw/gpm_fine/`, GPS-point-and-time queries) — see [12-recent-gpm-fine-labels.md](12-recent-gpm-fine-labels.md).
 - `features.py` — **the pod-replicable feature vector spec** (`FEATURE_VECTOR_VERSION 3`). Anything added here
   must be reproducible on the pod from its ring buffer. Currently: pressure backbone (6 trend windows) +
   pressure acceleration (nested + disjoint 2nd derivative) + humidity/temperature trends + dewpoint depression
@@ -42,3 +46,19 @@ The motion-aware pipeline lives in `src/podml/`:
   CLI: `--build-cache`, `--from-cache`, `--ablation`.
 - `report_motion.py` — figures + the `06-feature-testing.md` report.
 - `maps.py` — static domain maps (terrain, static vars, climatology).
+- `download_gpm_late.py` — GPM IMERG Late puller for recent-hike rain checks (fine-model truth).
+
+## LINZ vector data download (scripts/linz/)
+
+Offline copy of NZ Topo50 vector layers as WGS84 GeoPackages, used by the map tile generator.
+Downloaded via paginated WFS GetFeature (LINZ uses matrix-parameter auth, not query params).
+
+| Script | Purpose |
+|--------|---------|
+| `layer_config.py` | 8-layer registry (LINZ IDs, cadences, descriptions) |
+| `linz_pull.py` | Full download + changeset apply → `~/linz-data/<layer>/<name>.gpkg` |
+| `linz_status.py` | Aggregates per-layer status → `data/linz_status.json` |
+| `install_cron.sh` | Daily 02:30 UTC cron + 5-min status aggregator (no sudo) |
+
+All 8 layers downloaded (2.9 GB total, WGS84). Daily cron running on the VM.
+Tests: `tests/test_linz_pull.py` (19 offline tests).

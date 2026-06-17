@@ -41,7 +41,7 @@ class TestLayerConfig:
             assert cfg["cadence_days"] > 0
 
     def test_expected_layers_present(self):
-        expected = {"contours", "tracks", "roads", "lakes", "rivers", "coastline", "peaks", "glaciers"}
+        expected = {"contours", "tracks", "roads", "lakes", "rivers", "rivers_major", "coastline", "peaks", "glaciers", "cliffs", "place_names"}
         assert expected == set(_lc_mod.LAYERS)
 
     def test_base_dir_is_string(self):

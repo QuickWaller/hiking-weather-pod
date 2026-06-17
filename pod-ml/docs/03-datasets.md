@@ -82,7 +82,8 @@ Download command: `python -m podml.download_era5_grid --group more_labels_1`
 |---|---|---|---|
 | ERA5-Land `core` grid | VM `data/raw/era5_grid/core/` | ✅ Done | 180/180 months, 2010–2024, sp/t2m/d2m/tp |
 | ERA5-Land `more_labels_1` | VM `data/raw/era5_grid/more_labels_1/` | ⏳ Downloading | 6/180 months, ETA ~29h, snowfall + surface_runoff |
-| GPM IMERG labels | VM `data/raw/gpm_grid/` | ⏳ Downloading | 98/295 (33%), 2000–2024, ETA ~197h |
+| GPM IMERG labels (Final) | VM `data/raw/gpm_grid/` | ⏳ Downloading | 98/295 (33%), 2000–2024, ETA ~197h |
+| GPM IMERG fine labels (Late) | VM `data/raw/gpm_fine/` | On-demand | Recent-hike rain checks via `download_gpm_late.py`; see [12](12-recent-gpm-fine-labels.md) |
 | DEM (ETOPO 2022) | Local `data/raw/dem_nz.nc` | ✅ Done | Static, one-time |
 | Open-Meteo validation | VM `data/raw/openmeteo/` | On-demand | Query after hikes via `fetch_openmeteo.py`; no cron |
 
@@ -104,3 +105,13 @@ Pulled 2 half-hour granules (GPM_3IMERGHH **V07** Final) for 2022-06-01:
 - Sample NZ-box precip reached ~47 mm/hr (vs ERA5-Land's smoothed ~18) — GPM captures the extremes ERA5
   misses, which is the whole reason it's the label source.
 - **Access gotcha:** GES DISC returns HTTP 403 until the Earthdata client is approved once per account.
+
+### GPM IMERG fine labels — Late Run, for recent hikes (2026-06-13)
+
+The Final Run above lags ~3.5 months, so it can never cover a hike you did last week. For validating the
+**fine model + combined weights** against recent pod logs, we pull the **Late Run** (`GPM_3IMERGHHL` v07,
+concept-id `C2723754845-GES_DISC`, ~14 h latency) per GPS-point-and-time via `download_gpm_late.py`, into the
+separate `data/raw/gpm_fine/`. Late is satellite-only (Final is gauge-corrected), but stays in the same
+observation family as the coarse model's labels — unlike ERA5/Open-Meteo, which is a reanalysis model product
+and would be circular. Full rationale, interface, and verification in
+[12-recent-gpm-fine-labels.md](12-recent-gpm-fine-labels.md).

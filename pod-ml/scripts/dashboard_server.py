@@ -2,7 +2,7 @@
 """pod-ml live dashboard — richer than the stock one. Polls /proc + logs + filesystem."""
 
 import glob, json, os, re, time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
 
 REPO = Path("/home/claude/cyber-deck-and-weather-station/pod-ml")
@@ -357,20 +357,106 @@ def api_data():
         },
     }
 
+TILES_ROOT = Path("/home/claude/tiles")
+_ALLOWED_GRIDS = {"nz_10km_v2", "nz_10km_v2_base",
+                  "nz_10km_v2_offset", "nz_10km_v2_offset_base",
+                  "nz_4km_v2", "nz_4km_v2_base",
+                  "nz_4km_v2_offset", "nz_4km_v2_offset_base",
+                  "nz_2km_v2", "nz_2km_v2_base",
+                  "nz_2km_v2_offset", "nz_2km_v2_offset_base"}
+
+def _available_grids():
+    if not TILES_ROOT.exists():
+        return []
+    return sorted(g.name for g in TILES_ROOT.iterdir()
+                  if g.is_dir() and (g / "meta.json").exists())
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        p = self.path.split("?")[0]
+
         if self.path.startswith("/api"):
             body = json.dumps(api_data()).encode()
-            ctype = "application/json"
+            self._reply(200, "application/json", body)
+
+        elif p == "/map":
+            self._reply(200, "text/html", MAP_HTML.encode())
+
+        elif p == "/map/grids":
+            body = json.dumps(_available_grids()).encode()
+            self._reply(200, "application/json", body)
+
+        elif p == "/map/meta.json":
+            qs = self.path.partition("?")[2]
+            params = {k: v for k, v in (kv.split("=", 1) for kv in qs.split("&") if "=" in kv)}
+            grid = params.get("grid", "nz_10km_regular")
+            grid = grid if grid in _ALLOWED_GRIDS else "nz_10km_regular"
+            mp = TILES_ROOT / grid / "meta.json"
+            if mp.exists():
+                full = json.loads(mp.read_bytes())
+                # Strip tile list — JS only needs scalars; full file is 5+ MB
+                slim = {k: v for k, v in full.items() if k != "tiles"}
+                body = json.dumps(slim).encode()
+            else:
+                body = b"{}"
+            self._reply(200, "application/json", body)
+
+        elif p == "/map/preview":
+            # Simple img-tag grid around NZ centre — no JS needed, confirms tiles serve
+            qs = self.path.partition("?")[2]
+            params = {k: v for k, v in (kv.split("=", 1) for kv in qs.split("&") if "=" in kv)}
+            grid = params.get("grid", "nz_10km_regular")
+            grid = grid if grid in _ALLOWED_GRIDS else "nz_10km_regular"
+            mp = TILES_ROOT / grid / "meta.json"
+            cr, cc = 75, 75
+            if mp.exists():
+                m = json.loads(mp.read_bytes())
+                cr = m.get("centre_row", 75)
+                cc = m.get("centre_col", 75)
+            rows = range(max(0, cr - 2), min(151, cr + 3))
+            cols = range(max(0, cc - 3), min(151, cc + 4))
+            imgs = "".join(
+                f'<img src="/map/tiles/{grid}/tile_{r:02d}_{c:02d}.png" '
+                f'style="width:200px;height:200px;image-rendering:pixelated" '
+                f'title="[{r},{c}]">'
+                for r in rows for c in cols
+            )
+            html = (
+                f'<!doctype html><html><head><meta charset="utf-8">'
+                f'<title>Tile preview — {grid}</title>'
+                f'<style>body{{background:#111;margin:0}}div{{display:flex;flex-wrap:wrap}}</style>'
+                f'</head><body><div>{imgs}</div></body></html>'
+            )
+            self._reply(200, "text/html", html.encode(), cache=False)
+
+        elif p.startswith("/map/tiles/"):
+            parts = p[len("/map/tiles/"):].split("/")
+            if len(parts) == 2:
+                grid, name = parts[0], parts[1]
+                if grid in _ALLOWED_GRIDS and name.startswith("tile_") and name.endswith(".png"):
+                    tp = TILES_ROOT / grid / name
+                    if tp.exists():
+                        data = tp.read_bytes()
+                        self.send_response(200)
+                        self.send_header("Content-Type", "image/png")
+                        self.send_header("Cache-Control", "max-age=86400")
+                        self.send_header("Content-Length", str(len(data)))
+                        self.end_headers()
+                        self.wfile.write(data)
+                        return
+            self.send_error(404)
+
         else:
-            body = HTML.encode()
-            ctype = "text/html"
-        self.send_response(200)
+            self._reply(200, "text/html", HTML.encode(), cache=False)
+
+    def _reply(self, code, ctype, body, cache=True):
+        self.send_response(code)
         self.send_header("Content-Type", f"{ctype}; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Cache-Control", "max-age=86400" if cache else "no-cache")
         self.end_headers()
         self.wfile.write(body)
+
     def log_message(self, *_): pass
 
 HTML = r"""<!doctype html>
@@ -679,6 +765,7 @@ body {
     <span class="ts-val" id="tb-uptime">—</span>
     <span class="ts-lbl">uptime</span>
   </div>
+  <a href="/map" style="margin-left:16px;font-size:11px;color:var(--blue);text-decoration:none;letter-spacing:.08em;opacity:.8" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">MAP ↗</a>
   <span class="clock" id="clock">—</span>
 </div>
 
@@ -1204,10 +1291,166 @@ window.addEventListener('resize', () => { if (_lastHourly) drawChart(_lastHourly
 </body>
 </html>"""
 
+MAP_HTML = r"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pod Map — pod-ml ops</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0b0d;--surface:#111115;--border:#222228;
+  --text:#d8d8e0;--muted:#606070;--blue:#40c4ff;--mono:'IBM Plex Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);overflow:hidden}
+#bar{
+  display:flex;align-items:center;gap:16px;padding:0 16px;height:36px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  font-size:11px;letter-spacing:.06em;
+}
+#bar a{color:var(--blue);text-decoration:none;opacity:.75}
+#bar a:hover{opacity:1}
+#bar .title{color:var(--text);opacity:.5}
+#bar select{
+  background:var(--bg);color:var(--text);border:1px solid var(--border);
+  font:11px var(--mono);padding:2px 6px;border-radius:3px;cursor:pointer;
+}
+#pos{margin-left:auto;color:var(--blue);font-size:11px;min-width:260px;text-align:right}
+#loading{color:#ffab00;font-size:11px;min-width:80px;text-align:right}
+canvas{display:block;cursor:grab}
+canvas.drag{cursor:grabbing}
+</style>
+</head>
+<body>
+<div id="bar">
+  <a href="/">← ops</a>
+  <span class="title">MAP TILES</span>
+  <select id="grid-sel" onchange="switchGrid(this.value)"></select>
+  <span id="loading"></span>
+  <span id="pos">—</span>
+</div>
+<canvas id="c"></canvas>
+<script>
+const TW=200,TH=200,BAR=36;
+let meta=null,gsz=0,cRow=0,cCol=0,currentGrid='nz_10km_regular';
+let vpX=0,vpY=0,drag=false,dsx=0,dsy=0,vpX0=0,vpY0=0;
+const cache={};
+let pending=0;
+
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const posEl=document.getElementById('pos');
+const loadEl=document.getElementById('loading');
+const sel=document.getElementById('grid-sel');
+
+const ph=(()=>{
+  const c=document.createElement('canvas');c.width=TW;c.height=TH;
+  const x=c.getContext('2d');
+  x.fillStyle='#111';x.fillRect(0,0,TW,TH);
+  x.strokeStyle='#1e1e1e';x.strokeRect(0.5,0.5,TW-1,TH-1);
+  return c;
+})();
+
+async function loadGridList(){
+  try{
+    const r=await fetch('/map/grids');
+    const grids=await r.json();
+    sel.innerHTML='';
+    (grids.length?grids:['nz_10km_regular']).forEach(g=>{
+      const o=document.createElement('option');o.value=o.textContent=g;sel.appendChild(o);
+    });
+    sel.value=currentGrid;
+  }catch{}
+}
+
+function switchGrid(g){
+  currentGrid=g;
+  Object.keys(cache).forEach(k=>delete cache[k]);
+  loadMeta();
+}
+
+async function loadMeta(){
+  meta=null;
+  try{
+    const r=await fetch('/map/meta.json?grid='+currentGrid);
+    meta=await r.json();
+    gsz=meta.grid_size;cRow=meta.centre_row;cCol=meta.centre_col;
+    centreView();render();
+  }catch(e){posEl.textContent='meta.json not found — tiles still rendering?';}
+}
+
+function tileKey(r,c){return String(r).padStart(2,'0')+'_'+String(c).padStart(2,'0');}
+
+function loadTile(r,c){
+  const k=tileKey(r,c);
+  if(k in cache)return cache[k];
+  cache[k]=null;
+  pending++;loadEl.textContent='loading '+pending+'…';
+  const img=new Image();
+  img.onload=()=>{cache[k]=img;pending--;if(!pending)loadEl.textContent='';render();};
+  img.onerror=()=>{cache[k]=false;pending--;if(!pending)loadEl.textContent='';};
+  img.src='/map/tiles/'+currentGrid+'/tile_'+k+'.png';
+  return null;
+}
+
+function render(){
+  if(!meta)return;
+  const W=canvas.width,H=canvas.height;
+  ctx.fillStyle='#0b0b0d';ctx.fillRect(0,0,W,H);
+  const c0=Math.max(0,Math.floor(vpX/TW));
+  const r0=Math.max(0,Math.floor(vpY/TH));
+  const c1=Math.min(gsz-1,Math.ceil((vpX+W)/TW));
+  const r1=Math.min(gsz-1,Math.ceil((vpY+H)/TH));
+  for(let r=r0;r<=r1;r++){
+    for(let c=c0;c<=c1;c++){
+      const img=loadTile(r,c);
+      ctx.drawImage(img||ph,c*TW-vpX,r*TH-vpY);
+    }
+  }
+  // crosshair
+  const hx=W/2,hy=H/2;
+  ctx.strokeStyle='rgba(255,60,60,.45)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(hx-14,hy);ctx.lineTo(hx+14,hy);
+  ctx.moveTo(hx,hy-14);ctx.lineTo(hx,hy+14);ctx.stroke();
+  // hud
+  const cx=vpX+W/2,cy=vpY+H/2;
+  const tr=Math.floor(cy/TH),tc=Math.floor(cx/TW);
+  if(meta&&tr>=0&&tr<gsz&&tc>=0&&tc<gsz){
+    const lat=meta.centre_lat-(tr-cRow)*meta.tile_km/111.0;
+    const lon=meta.centre_lon+(tc-cCol)*meta.tile_km/(111.0*Math.cos(meta.centre_lat*Math.PI/180));
+    posEl.textContent='['+tr+','+tc+']  lat '+lat.toFixed(4)+'  lon '+lon.toFixed(4);
+  }
+}
+
+function centreView(){
+  vpX=cCol*TW+TW/2-canvas.width/2;
+  vpY=cRow*TH+TH/2-canvas.height/2;
+}
+
+window.addEventListener('resize',()=>{
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight-BAR;render();
+});
+canvas.addEventListener('mousedown',e=>{drag=true;canvas.classList.add('drag');dsx=e.clientX;dsy=e.clientY;vpX0=vpX;vpY0=vpY;});
+window.addEventListener('mouseup',()=>{drag=false;canvas.classList.remove('drag');});
+window.addEventListener('mousemove',e=>{if(!drag)return;vpX=vpX0-(e.clientX-dsx);vpY=vpY0-(e.clientY-dsy);render();});
+window.addEventListener('keydown',e=>{
+  const step=(e.shiftKey?5:1)*TW;
+  const m={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]};
+  if(m[e.key]){e.preventDefault();vpX+=m[e.key][0];vpY+=m[e.key][1];render();}
+  else if(e.key==='Home'){centreView();render();}
+});
+
+canvas.width=window.innerWidth;canvas.height=window.innerHeight-BAR;
+loadGridList();
+loadMeta();
+</script>
+</body>
+</html>"""
+
 if __name__ == "__main__":
     import sys
     if "--json" in sys.argv:
         print(json.dumps(api_data(), indent=2))
     else:
         print(f"dashboard on :{PORT}", flush=True)
-        HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+        ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
