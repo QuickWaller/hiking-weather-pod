@@ -22,10 +22,11 @@ Covers:
 - I2C scan (verifies all expected devices are on bus; skips device tests if absent)
 - GPS: NMEA streaming, no-fix state, outdoor fix acquisition + RTC seeding
 - RTC: date/time range, unix plausibility, ticks
-- Compass: begin, heading 0–360, raw axes non-zero
-- Accelerometer: begin, magnitude ~1g at rest, gyro near zero
 - BMP180: begin, pressure 863–1163 hPa, temperature plausible
 - AHT10: begin, humidity 0–100%, temperature plausible
+
+> Compass/accel tests are for **dropped** hardware — prune with the code. BMP180/AHT10 are the
+> **bench** readers; the target sensor is a single **BME280** (a `Bme280Reader` + its tests are pending).
 
 ## Rules
 

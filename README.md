@@ -6,56 +6,55 @@ A two-component hiking data logger for NZ backcountry and coastal hiking.
 
 | Component | Hardware | Role |
 |---|---|---|
-| **Pod** | RP2350-Zero | Data logger, e-ink display, GPS/weather sensors, buzzer alerts |
-| **Cyberdeck** | CM5, Python | Receives pod logs, analyses weather and activity, displays summaries |
+| **Pod** | RP2350-Zero | Data logger, e-ink display, GPS/weather sensors, microSD storage |
+| **Cyberdeck** | CM5, Python | ⏸️ tabled (2026-06-12) — was to receive pod logs and analyse weather/activity |
 
-Pod and cyberdeck communicate over UART at 115200 baud via a GX16-5 connector.
+Logs sync to the analysis VM by **SD-card sneakernet** (no live link — the cyberdeck is tabled).
 
 ---
 
 ## Hardware (Pod)
 
 - **MCU:** RP2350-Zero (Cortex-M33, hardware FPU, 2MB flash)
-- **Display:** Waveshare 1.54" 4-colour e-ink (200×200px, Black/White/Yellow/Red)
+- **Display:** Waveshare 1.54" 4-colour e-ink (200×200px, Black/White/Yellow/Red) — the only display
 - **GPS:** NEO-M8N (UART, software sleep via UBX commands)
 - **Weather:** BME280 (I2C, forced mode — temp/humidity/pressure)
-- **RTC:** DS3231 (I2C, wake alarm source)
-- **Buzzer:** GP14 (PWM)
-- **Flash:** LittleFS on 2MB onboard flash (~14KB/day at 5-min log intervals)
+- **RTC:** DS3231 (I2C, SQW wake alarm → GP15)
+- **Storage:** microSD (logs + model file) + LittleFS on 2MB onboard flash for small critical state
+
+> Full pin map + BOM: [`pod/docs/hardware.md`](pod/docs/hardware.md). No compass, accelerometer,
+> or buzzer (all dropped); pod has no UART link.
 
 ---
 
 ## Wake Cycle
 
-The pod spends most of its time in DORMANT mode. The RTC triggers a wake every minute.
+The pod spends most of its time in DORMANT mode. The RTC triggers a single **10-minute** wake,
+phase-aligned to UTC (so samples tile GPM's 30-min / hourly grid cleanly).
 
 ```
-every 1 minute:
-  check GX16 pin
-    if connected and not showing Connected → update display, sleep
+every 10 minutes (aligned to UTC :00/:10/…):
+  wake GPS (UBX command), get fix (timeout 8s)
+  read BME280 (temp, humidity, pressure)
+  altitude-adjust pressure → store in memory
+  run activity detection + rule-based weather algorithm
+  append a /raw telemetry row to SD; refresh display if state/banner changed
 
-  wake GPS (UBX command)
-  get fix (timeout 8s)
-  altitude-adjust cached pressure → store both in memory
-
-  run activity detection
-  if state or banner changed → refresh display
+  on the UTC hour:
+    build model input vector → /inputs
+    run the combined coarse+fine model (streamed from SD) → /pred
 
   sleep GPS, MCU → DORMANT
-
-  if this is the 5th cycle (every 5 minutes):
-    read BME280 (temp, humidity, pressure)
-    run weather algorithm
-    write log entry to flash
 ```
 
-**Estimated average draw:** ~13mA → 8+ days on 2600mAh 18650.
+Connection-detect (GX16) is interrupt-driven, separate from the timed loop.
 
 ---
 
 ## Activity Detection
 
-Runs every minute from the GPS circular buffer (last 30 entries = 30 minutes).
+Runs each 10-min cycle from the GPS circular buffer. (Buffer length + thresholds are being
+re-tuned for the 10-min cadence — they were sized for the old 1-min wake.)
 
 ### State Priority (highest first)
 
@@ -80,13 +79,15 @@ Applies to Walking, Climbing, Resting only. Priority: **Foggy > Cold > Hot > Non
 | Cold | Temp < 8°C |
 | Hot | Temp > 25°C |
 
-Modifier state is cached from the last 5-minute BME280 read.
+Modifier state is cached from the last 10-minute BME280 read.
 
 ---
 
 ## Weather Prediction
 
-Runs every 5 minutes from the 24-hour pressure history buffer (288 entries).
+This rule-based algorithm is the on-device **baseline/fallback**; the primary forecast is the
+combined coarse+fine ML model (streamed from SD, run hourly — see `pod/docs/architecture.md`).
+The rule-based scorer runs each 10-min cycle from the 24-hour pressure history buffer.
 
 ### Confidence Scoring
 
@@ -118,7 +119,7 @@ Pressure rate is the strongest single predictor. Zambretti achieves ~90% accurac
 
 ### Countdown Display
 
-Estimated arrival is recalculated every 5 minutes from current pressure rate:
+Estimated arrival is recalculated each cycle from current pressure rate:
 
 ```
 < 6 hours   → "STORM ~2 HRS"    + "CONFIDENCE 73%"
@@ -127,11 +128,7 @@ Estimated arrival is recalculated every 5 minutes from current pressure rate:
 overdue     → "STORM ARRIVING"  + "CONFIDENCE 81%"
 ```
 
-Same pattern for rain with Yellow banner.
-
-### Buzzer
-
-Chirps on new alert. Suppressed between 22:00–07:00 unless storm confidence ≥85% (severe override).
+Same pattern for rain with Yellow banner. (No buzzer — alerts are display-only.)
 
 ---
 
@@ -165,14 +162,19 @@ select one of 17 pre-rendered sprites (220×160px, 2bpp, Black/White/Yellow/Red)
 
 ## Data Log Format
 
-Pipe-delimited CSV, written to LittleFS every 5 minutes:
+Comma-separated CSV on **microSD**, daily UTC-dated files split by purpose: `/raw` (10-min
+telemetry), `/inputs` + `/pred` (hourly model feature vectors + forecasts, joined on the UTC
+issue-hour), `/events` (diagnostics). All timestamps are **UTC with a trailing `Z`**.
+
+The `/raw` telemetry row (sensors + rule-based outputs + device state):
 
 ```
-timestamp|lat,lon|alt|temp|humidity|pressure_raw|pressure_adj|battery
-2026-05-25T14:32:42|-41.2865,172.1043|847|12.3|65|980.2|978.1|64
+timestamp,lat,lon,alt,temp,humidity,pressure_raw,pressure_adj,battery,storm_conf,rain_conf,storm_active,rain_active,pressure_rate,activity,state,modifier,banner,gps_ms,free_heap
+2026-05-25T14:32:42Z,-41.2865,172.1043,847,12.3,65,980.2,978.1,64,58,42,0,0,-1.2,R,X,N,R,3240,198432
 ```
 
-`pressure_adj` is altitude-adjusted to sea-level equivalent (hypsometric formula).
+`pressure_adj` is altitude-adjusted to sea-level equivalent (hypsometric formula). Full field
+reference + the `/inputs`/`/pred` schemas: [`CLAUDE.md`](CLAUDE.md) and `pod/docs/architecture.md`.
 
 ---
 

@@ -1,17 +1,19 @@
 # Pod — Current Status
 
-Last updated: 2026-06-01. Currently developing and testing on ESP32 dev board.
+Last updated: 2026-06-16. Developing and testing on ESP32 dev board; target is RP2350-Zero.
 
 ## Sensor Readers
 
 | Sensor | File | Status | Notes |
 |--------|------|--------|-------|
-| DS3231 RTC | sensors/RtcReader.cpp | ✅ Working | GPS→RTC sync designed, not yet in main loop |
+| DS3231 RTC | sensors/RtcReader.cpp | ✅ Working | GPS→RTC sync wired in main.cpp |
 | GPS M8N | GpsReader.cpp | ✅ Working | RMC parsing for UTC time. Fix test requires outdoors |
-| HMC5883L Compass | sensors/CompassReader.cpp | ✅ Working | Confirmed HMC5883L, not QMC5883L. Flat `read()` + tilt-compensated `readTilted()` both implemented; both use `atan2(y,x)`, 0°=N clockwise (see architecture.md → Compass heading). Magnetic north only — **declination not yet applied** (~+23° in NZ). Hard-iron offsets in config = 0 (uncalibrated). Target display: 2.13" B/W (partial refresh), button-triggered |
-| MPU6050 Accel | sensors/AccelReader.cpp | ❌ Blocked: unsoldered headers | **2026-06-01:** I2C scan shows 0x1E/0x38/0x68/0x77 but **no 0x69** (AD0 *is* wired to 3.3V). Root cause is mechanical: the MPU6050 breakout's header pins aren't soldered and the bare male jumpers don't seat tightly in its holes, so it doesn't make reliable bus contact. Firmware/address (0x69) are correct — **solder headers and re-test**. Compass tilt comp blocked until accel ACKs; flat heading works fine |
-| BMP180 Pressure | sensors/Bmp180Reader.cpp | ✅ Working | Adafruit BMP085 library. Confirmed BMP180 (sold as BMP280) |
-| AHT10 Temp/Humidity | sensors/Aht10Reader.cpp | ✅ Working | Raw I2C. If it fails, weather record stores temp/humidity as NaN (trends skip it) so pressure prediction survives |
+| BME280 (P+T+H) | sensors/Bme280Reader.cpp | ✅ Written | I²C 0x76, replaces BMP180+AHT10. Adafruit BME280 library |
+| ~~BMP180~~ | sensors/Bmp180Reader.cpp | 🗑️ Dead code | Superseded by BME280 — keep for now, pending removal |
+| ~~AHT10~~ | sensors/Aht10Reader.cpp | 🗑️ Dead code | Superseded by BME280 — keep for now, pending removal |
+| ~~HMC5883L Compass~~ | ~~sensors/CompassReader.cpp~~ | 🗑️ Dropped 2026-06-13 | Dead code pending removal |
+| ~~MPU6050 Accel~~ | ~~sensors/AccelReader.cpp~~ | 🗑️ Dropped 2026-06-13 | Dead code pending removal |
+| microSD | storage/SdLogger.cpp | ✅ Written | SPI bus; daily UTC CSVs in /raw /inputs /pred /events |
 
 ## Algorithms
 
@@ -24,52 +26,72 @@ Last updated: 2026-06-01. Currently developing and testing on ESP32 dev board.
 | WeatherBuffer | sensors/WeatherBuffer.cpp | ✅ Implemented + tested |
 | NijntjeEvaluator | — | ✅ Implemented + tested |
 
+## Model Inference
+
+| Component | File | Status | Notes |
+|-----------|------|--------|-------|
+| Binary format spec | model/ModelFormat.h | ✅ Done | MODEL_SCHEMA_HASH = 0 (placeholder) — update after first export |
+| Manifest parser | model/ModelManifest.cpp | ✅ Done | FNV-1a schema hash; hand-rolled JSON parser |
+| Streaming evaluator | model/ModelEvaluator.cpp | ✅ Done | One tree at a time, peak RAM ~1 tree; schema-hash gate |
+| Offline exporter | pod-ml/scripts/export_model.py | ✅ Done | LightGBM → model.bin + manifest.json |
+| SD card scaffold | pod/sd_card/ | ✅ Done | Copy to SD root; raw/ inputs/ pred/ events/ model/ maps/ |
+
+**To deploy the model:**
+1. Train with pod-ml; save model as `.pkl`
+2. `python pod-ml/scripts/export_model.py --model ... --features ... --output-names ... --out pod/sd_card/model/`
+3. Update `MODEL_SCHEMA_HASH` in `model/ModelFormat.h` (printed by exporter)
+4. Copy `pod/sd_card/model/` to SD card
+
 ## Infrastructure
 
 | Component | File | Status |
 |-----------|------|--------|
-| EventLog | EventLog.cpp | ✅ Implemented, integrated in main loop |
-| LittleFS CSV log writer | main.cpp `writeLogEntry()` | ✅ Implemented |
-| Main wake cycle loop | main.cpp | ✅ Implemented (1-min + 5-min cycles) |
-| GPS→RTC sync | main.cpp | ✅ Implemented (first valid fix per boot) |
-| Component fallback logic | main.cpp setup() | ✅ Implemented |
+| EventLog | EventLog.cpp | ✅ Implemented |
+| SD CSV logger | storage/SdLogger.cpp | ✅ Written (embedded via SD.h; native stub) |
+| Main wake cycle | main.cpp | ✅ Refactored — single 10-min UTC-aligned wake |
+| Hourly model run | main.cpp `runHourlyModel()` | ✅ Wired — fires when UTC hour changes |
+| GPS→RTC sync | main.cpp | ✅ Implemented (first valid fix + drift correction) |
 | Display calls | main.cpp | ⚠️ Stubbed (TODO comment) — 1.54" fried |
 | Battery ADC | main.cpp | ⚠️ Returns 0 — needs RP2350 GP29 wiring |
+| RP2350 DORMANT sleep | main.cpp | ⚠️ TODO — currently delay() on both arches |
 
-## Display Simulator
+## Display
 
 | Component | File | Status |
 |-----------|------|--------|
-| IFramebuffer | display/IFramebuffer.h | ✅ Abstract interface (decouples renderer from Adafruit_GFX) |
-| NativeFramebuffer | display/NativeFramebuffer.cpp | ✅ Pure-C++ 2bpp framebuffer, no Arduino deps |
-| SDL2Display | display/SDL2Display.cpp | ✅ SDL3-backed window, decodes 2bpp → RGBA |
-| NijntjeRenderer | nijntje/NijntjeRenderer.cpp | ✅ Renders sprites + banner via IFramebuffer |
-| NijntjeSpriteRegistry | nijntje/NijntjeSpriteRegistry.cpp | ✅ Implemented — all 17 sprites mapped |
-| native_display env | platformio.ini | ✅ Working — calls NijntjeEvaluator for real logic |
-| esp32_stream env | test/test_display_stream/main_stream.cpp | ✅ Working — streams CSV from live sensors every 15s |
-
-Requires SDL3 in `vendor/SDL3-x.x.x/`. See [commands.md](commands.md).
+| NativeFramebuffer | display/NativeFramebuffer.cpp | ✅ Working |
+| NijntjeRenderer | nijntje/NijntjeRenderer.cpp | ✅ Working |
+| NijntjeSpriteRegistry | nijntje/NijntjeSpriteRegistry.cpp | ✅ All 17 sprites mapped |
+| 1.54" 4-colour e-ink | display/EPD1in54G.h | ⚠️ BLOCKED — display fried, replacement ordered |
 
 ## Tests
 
-| Suite | Command | Result |
+| Suite | Command | Status |
 |-------|---------|--------|
-| Native (PC) | `pio test -e native` | 182 passing (56 math, 90 algorithms, 14 log, 17 nijntje, 5 display). Includes tilt-comp ↔ flat-read consistency guard (test_math) and compassIndex bucket map (test_display) |
-| Embedded (ESP32) | `pio test -e esp32` | hardware-gated: GPS fix skips indoors; MPU6050/accel tests skip until soldered |
+| Native (PC) | `pio test -e native` | **215 passing** (math, algorithms, log, nijntje, display, model, storage) |
+| Embedded (ESP32) | `pio test -e esp32` | Hardware-gated: GPS fix skips indoors |
 
 ## Known Hardware Facts
 
-- **Compass:** HMC5883L at 0x1E (NOT QMC5883L at 0x0D as originally suspected)
-- **Pressure sensor:** BMP180 at 0x77 (Jaycar XC3702 sold as BMP280 but chip is BMP180)
-- **GPS TX pin:** Changed to GPIO14 for ESP32 dev (GPIO12 is strapping pin on ESP32). **Must revert to GP12 for RP2350.**
-- **RTC coin cell:** Must be installed — RTC loses time on power loss without it
-- **1.54" display:** FRIED — replacement on order. All display work blocked until replacement arrives.
+- **Sensor:** BME280 (P+T+H) at I²C 0x76. Verify 0x76 vs 0x77 on first bring-up.
+- **GPS TX pin:** GPIO14 on ESP32 bench (GPIO12 on RP2350) — arch-split in config.h.
+- **RTC:** DS3231 + CR2032 coin cell. Must disable trickle charger (CR2032 not rechargeable).
+- **1.54" display:** FRIED — replacement on order. All display work blocked.
 - **I2C bus:** SDA=GPIO26, SCL=GPIO27 (config.h). Confirmed working.
+- **SD card:** MISO=GP4, MOSI=GP3, SCK=GP2, CS=GP1 (RP2350). Not wired on ESP32 bench.
+
+## Map Tile Tools
+
+| Tool | Location | Status |
+|------|----------|--------|
+| `map_tile_gen.py` | `pod/tools/map_tile_gen.py` | ✅ GeoPackage rewrite done (2026-06-16) |
+| LINZ download infra | `pod-ml/scripts/linz/` | ✅ All 8 layers on VM, daily cron |
+
+See `pod/docs/map-tiles.md` for the full pipeline and SD card layout.
 
 ## What's Blocked
 
 - Display integration in main loop (1.54" fried — replacement on order)
-- Display tests against hardware
 
 ## What's Next
 

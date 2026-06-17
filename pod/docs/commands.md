@@ -85,7 +85,7 @@ pio.exe run -e esp32_stream --target upload
 .pio/build/native_display/program.exe --port COM4
 ```
 
-**Note:** On ESP32, I2C sensors (BMP180, AHT10, RTC) may show Wire errors — these sensors are wired for RP2350 I2C pins and degrade gracefully (sensor.valid = false). GPS and activity detection work. Full sensor data requires the RP2350 target.
+**Note:** On ESP32, I2C sensors (BMP180, AHT10, RTC — the bench readers; the RP2350 target uses a single BME280) may show Wire errors and degrade gracefully (sensor.valid = false). GPS and activity detection work. Full sensor data requires the RP2350 target.
 
 ## Environments
 
