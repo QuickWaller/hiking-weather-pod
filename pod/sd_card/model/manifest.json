@@ -1,0 +1,10 @@
+{
+  "version": 0,
+  "trained_at": "1970-01-01T00:00:00Z",
+  "model_file": "model.bin",
+  "n_features": 0,
+  "features": [],
+  "schema_hash": "0000000000000000",
+  "n_outputs": 0,
+  "output_names": []
+}

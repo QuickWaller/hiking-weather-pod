@@ -2,56 +2,89 @@
 #include <stdint.h>
 
 // ── Pin assignments ───────────────────────────────────────────────────────────
+// Target MCU = RP2350-Zero; dev/testing also runs on an ESP32 dev board. Pin numbers
+// differ per MCU, so the live map is split by arch. **Authoritative wiring + rationale:
+// docs/hardware.md — keep the two in sync.** The arduino-pico core defines
+// ARDUINO_ARCH_RP2040 for the RP2350 too (same macro the readers use for Wire→Wire1).
+#if defined(ARDUINO_ARCH_RP2040)
+// ===== RP2350-Zero target (see docs/hardware.md) =====
+// I2C1 bus
+static constexpr uint8_t PIN_I2C_SDA          = 26;
+static constexpr uint8_t PIN_I2C_SCL          = 27;
+// RTC alarm wake (DS3231 SQW)
+static constexpr uint8_t PIN_RTC_SQW          = 15;
+// GPS — UART0
+static constexpr uint8_t PIN_GPS_TX           = 12;
+static constexpr uint8_t PIN_GPS_RX           = 13;
+// GX16 connection detect (interrupt)
+static constexpr uint8_t PIN_GX16_DETECT      = 14;
+// ADC users (GP26-29 are the only ADCs; 26/27 are I2C → analog goes on 28/29)
+static constexpr uint8_t PIN_ROTARY           = 28;
+static constexpr uint8_t PIN_BATTERY_ADC      = 29;
+// SPI0 shared bus (display + SD)
+static constexpr uint8_t PIN_SPI_SCK          = 2;
+static constexpr uint8_t PIN_SPI_MOSI         = 3;
+static constexpr uint8_t PIN_SPI_MISO         = 4;
+// microSD (chip select on the shared bus)
+static constexpr uint8_t PIN_SD_CS            = 1;
+// 1.54" 4-colour e-ink (Nijntje — the only display)
+static constexpr uint8_t PIN_EPD154_CS        = 5;
+static constexpr uint8_t PIN_EPD154_DC        = 6;
+static constexpr uint8_t PIN_EPD154_RST       = 7;
+static constexpr uint8_t PIN_EPD154_BUSY      = 8;
+// DEAD — pins for dropped parts (compass/accel/buzzer/UART/2.13" panel). The code that
+// references these is dead and slated for removal; 0xFF placeholders keep it compiling.
+static constexpr uint8_t PIN_COMPASS_DRDY     = 0xFF;
+static constexpr uint8_t PIN_BUZZER           = 0xFF;
+static constexpr uint8_t PIN_CYBERDECK_TX     = 0xFF;
+static constexpr uint8_t PIN_CYBERDECK_RX     = 0xFF;
+static constexpr uint8_t PIN_EPD213_CS        = 0xFF;
+static constexpr uint8_t PIN_EPD213_DC        = 0xFF;
+static constexpr uint8_t PIN_EPD213_RST       = 0xFF;
+static constexpr uint8_t PIN_EPD213_BUSY      = 0xFF;
+
+#else
+// ===== ESP32 dev board (current bench) — values unchanged =====
 // I2C bus
 static constexpr uint8_t PIN_I2C_SDA          = 26;
 static constexpr uint8_t PIN_I2C_SCL          = 27;
-
-// I2C device addresses
-static constexpr uint8_t I2C_ADDR_DS3231      = 0x68;
-static constexpr uint8_t I2C_ADDR_MPU6050     = 0x69;  // AD0 wired to 3.3V
-static constexpr uint8_t I2C_ADDR_BMP180      = 0x77;
-static constexpr uint8_t I2C_ADDR_AHT10       = 0x38;
-static constexpr uint8_t I2C_ADDR_HMC5883L    = 0x1E;  // confirmed XC4496
-
 // Sensor interrupt/control pins
 static constexpr uint8_t PIN_COMPASS_DRDY     = 16;
 static constexpr uint8_t PIN_RTC_SQW          = 17;
-
 // GPS — UART0
 static constexpr uint8_t PIN_GPS_TX           = 14;
 static constexpr uint8_t PIN_GPS_RX           = 13;
-
 // Cyberdeck — UART1
 static constexpr uint8_t PIN_CYBERDECK_TX     = 4;
 static constexpr uint8_t PIN_CYBERDECK_RX     = 5;
-
 // Buzzer (PWM)
 static constexpr uint8_t PIN_BUZZER           = 14;
-
 // GX16 connection detect
 static constexpr uint8_t PIN_GX16_DETECT      = 9;
-
 // Rotary position switch (ADC)
 static constexpr uint8_t PIN_ROTARY           = 28;
-
 // Battery voltage (ADC)
 static constexpr uint8_t PIN_BATTERY_ADC      = 29;
-
-// Display — SPI shared bus
+// Display/SD — SPI shared bus
 static constexpr uint8_t PIN_SPI_SCK          = 2;
 static constexpr uint8_t PIN_SPI_MOSI         = 3;
-
+static constexpr uint8_t PIN_SPI_MISO         = 0xFF;  // SD not wired on the ESP32 bench
+static constexpr uint8_t PIN_SD_CS            = 0xFF;
 // 2.13" e-ink (black/white)
 static constexpr uint8_t PIN_EPD213_CS        = 1;
 static constexpr uint8_t PIN_EPD213_DC        = 6;
 static constexpr uint8_t PIN_EPD213_RST       = 7;
 static constexpr uint8_t PIN_EPD213_BUSY      = 8;
-
-// 1.54" 4-colour e-ink — FRIED, awaiting replacement
+// 1.54" 4-colour e-ink
 static constexpr uint8_t PIN_EPD154_CS        = 10;
 static constexpr uint8_t PIN_EPD154_DC        = 11;
 static constexpr uint8_t PIN_EPD154_RST       = 15;
 static constexpr uint8_t PIN_EPD154_BUSY      = 0;
+#endif
+
+// I2C device addresses (arch-independent)
+static constexpr uint8_t I2C_ADDR_DS3231      = 0x68;
+static constexpr uint8_t I2C_ADDR_BME280      = 0x76;  // pod sensor: pressure+temp+humidity. 0x77 if SDO high — VERIFY
 
 // ── Activity detection ────────────────────────────────────────────────────────
 static constexpr float   CLIMBING_ALT_GAIN_M_PER_MIN = 10.0f;  // m/min sustained
@@ -113,31 +146,12 @@ static constexpr float PRESSURE_LEVEL_SPAN_HPA  = 15.0f;    // hPa to reach max 
 static constexpr float PRESSURE_LEVEL_MAX_BOOST = 1.40f;    // factor at LOW-SPAN and below
 static constexpr float PRESSURE_LEVEL_MIN_DAMP  = 0.70f;    // factor at HIGH+SPAN and above
 
-// ── Compass calibration ───────────────────────────────────────────────────────
-// Hard-iron offsets (HMC5883L raw LSB units). The buzzer is a hard-iron source
-// and must be idle during calibration. Zero = uncalibrated.
-// TODO: implement user-triggered calibration routine that collects per-axis
-// min/max over ~15s of rotation and stores midpoints to LittleFS.
-static constexpr float COMPASS_HARD_IRON_OFFSET_X = 0.0f;
-static constexpr float COMPASS_HARD_IRON_OFFSET_Y = 0.0f;
-static constexpr float COMPASS_HARD_IRON_OFFSET_Z = 0.0f;
-
-// Accel→compass axis remap (yaw about the shared +Z). Tilt compensation needs the
-// MPU6050 accel axes expressed in the HMC5883L frame; the two breakouts are mounted
-// rotated in-plane. Quadrant = CCW rotation viewed from +Z (top):
-//   0 → ( ax,  ay)   1 → (-ay,  ax)   2 → (-ax, -ay)   3 → ( ay, -ax)
-// Z is shared (both +Z up), so az passes through. Set 0 if remounted aligned.
-// Confirmed 2026-06-01 via axis tilt tests: compass -Y down → accel +X,
-// compass +X down → accel +Y, so rx=ay, ry=-ax → quadrant 3.
-static constexpr int ACCEL_YAW_QUADRANT = 3;
-
-// ── BMP180 calibration ───────────────────────────────────────────────────────
-// Added to every valid raw BMP180 pressure reading (hPa) before any downstream use.
-// The Zambretti LEVEL term above reads ABSOLUTE (sea-level) pressure, so a fixed
-// sensor bias shifts boost/damp directly — the rate/tendency term cancels a constant
-// bias, the level term does NOT. Set via a one-time offset cal: park the pod at a
+// ── BME280 calibration ────────────────────────────────────────────────────────
+// Added to every valid raw BME280 pressure reading (hPa) before any downstream use.
+// The Zambretti LEVEL term reads ABSOLUTE (sea-level) pressure, so a fixed sensor
+// bias shifts boost/damp directly. Set via a one-time offset cal: park the pod at a
 // known elevation and compare pressureAdj against a nearby station's QNH. 0 = uncal.
-static constexpr float BMP180_PRESSURE_OFFSET_HPA = 0.0f;
+static constexpr float BME280_PRESSURE_OFFSET_HPA = 0.0f;
 
 // ── Weather prediction — storm weights (must sum to 1.0) ─────────────────────
 static constexpr float STORM_W_PRESSURE_RATE  = 0.50f;
@@ -160,7 +174,9 @@ static_assert(RAIN_W_PRESSURE_RATE + RAIN_W_ZAMBRETTI + RAIN_W_HUMIDITY + RAIN_W
               RAIN_W_PRESSURE_RATE + RAIN_W_ZAMBRETTI + RAIN_W_HUMIDITY + RAIN_W_TEMP_DROP < 1.001f,
               "Rain weights must sum to 1.0");
 
-// ── Buzzer ────────────────────────────────────────────────────────────────────
+// ── Alert quiet hours ─────────────────────────────────────────────────────────
+// No audible buzzer in the design (removed 2026-06-13); used by
+// WeatherAlgorithm::shouldChirp() which remains for algorithm testing.
 static constexpr uint8_t QUIET_HOUR_START = 22;
 static constexpr uint8_t QUIET_HOUR_END   =  7;
 
@@ -176,5 +192,5 @@ static constexpr uint32_t GPS_STALE_THRESHOLD_S = 180;  // 3 missed fixes → tr
 static constexpr int ALTITUDE_MEDIAN_SAMPLES = 5;
 
 // ── Timing ────────────────────────────────────────────────────────────────────
-static constexpr int     FULL_CYCLE_INTERVAL = 5;     // every Nth 1-min wake = full cycle
-static constexpr uint32_t GPS_FIX_TIMEOUT_MS = 8000;
+static constexpr uint32_t GPS_FIX_TIMEOUT_MS  = 8000;
+static constexpr uint32_t WAKE_INTERVAL_S     = 600;  // 10-min UTC-aligned wake

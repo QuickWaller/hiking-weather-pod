@@ -54,7 +54,7 @@ int LogFormatter::formatEntry(char* buf, size_t bufLen,
     MathUtils::dateTimeFromUnix(unixTime, year, month, day, hour, min, sec);
 
     return snprintf(buf, bufLen,
-        "%04u-%02u-%02uT%02u:%02u:%02u,"
+        "%04u-%02u-%02uT%02u:%02u:%02uZ,"
         "%.6f,%.6f,%d,"
         "%.1f,%d,"
         "%.2f,%.2f,"
