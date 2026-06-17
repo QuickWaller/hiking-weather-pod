@@ -59,4 +59,22 @@ LAYERS = {
         "cadence_days": 365,
         "description": "NZ Ice Polygons (Topo, 1:50k) — glaciers and snowfields",
     },
+    "rivers_major": {
+        "linz_id": "50182",
+        "name": "nz-river-centrelines-250k",
+        "cadence_days": 365,
+        "description": "NZ River Centrelines (Topo, 1:250k) — significant named rivers only",
+    },
+    "cliffs": {
+        "linz_id": "50233",
+        "name": "nz-cliff-lines",
+        "cadence_days": 365,
+        "description": "NZ Cliff Lines (Topo, 1:50k) — cliff and scarp symbols",
+    },
+    "place_names": {
+        "linz_id": "51681",
+        "name": "nz-place-names",
+        "cadence_days": 365,
+        "description": "NZ Gazetteer of Place Names — towns, summits, lakes, bays etc.",
+    },
 }

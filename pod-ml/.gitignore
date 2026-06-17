@@ -36,6 +36,12 @@ data/processed/
 # Plots / scratch outputs
 outputs/
 
+# Topo experiment — large source rasters + rendered samples (parked, reference only)
+experiments/topo_display/originals/
+experiments/topo_display/samples/
+*.tif
+*.tiff
+
 # Runtime logs + completion sentinels (per-run state, never commit)
 *.log
 logs/

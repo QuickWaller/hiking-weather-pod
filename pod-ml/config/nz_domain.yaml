@@ -78,6 +78,17 @@ gpm_imerg:
   # The full label pull needs real subsetting (Harmony/OPeNDAP) — a step-4 concern. Verification
   # just grabs 1-2 global granules to confirm the field name, units, and time convention.
 
+gpm_imerg_late:
+  # RECENT-DATA precip CHECKS (fine labels), used by download_gpm_late.py — NOT the training archive.
+  # IMERG LATE Run V07: lags ~14h (vs Final's ~3.5 months), so it's the only GPM that covers a hike you
+  # did last week. Late is NOT gauge-corrected (Final IS) — minor extra raw-satellite bias, fine for labels,
+  # and it keeps these labels in the SAME observation family as the coarse model's GPM labels (ERA5/Open-Meteo
+  # would be a reanalysis *model* product → circular). Same grid/fields/period-beginning stamps as Final.
+  product: "GPM_3IMERGHHL"       # half-hourly Late
+  version: "07"
+  variable: "precipitation"
+  harmony_collection_hhr: "C2723754845-GES_DISC"  # GPM_3IMERGHHL v07 — verified via CMR + smoke test 2026-06-13
+
 labels:
   # Acute model: max severity class in [T, T+H]. Boundaries grounded in MetService NZ thresholds.
   horizons_hours: [6, 12, 24, 48]
